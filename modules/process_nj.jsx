@@ -10,7 +10,7 @@
 // =============================================================================
 // 1. Bootstrap: Find config.json relative to this script
 var SCRIPT_PATH = File($.fileName).parent.fsName;
-var CFG_FILE  = new File(SCRIPT_PATH + "/config.json");
+var CFG_FILE  = new File(SCRIPT_PATH + "/../config.json");
 
 var config = {};
 if (CFG_FILE.exists) {
@@ -35,7 +35,7 @@ var JOB_FILE  = new File(ROOT_PATH + "active_job.txt");
 var LOG_FILE  = new File(ROOT_PATH + "photoshop_log.txt");
 
 var PSD_NAME = config.filenames ? config.filenames.nj_psd : "AUTOMATED NJ F AND B.psd";
-var PSD_PATH = ROOT_PATH + PSD_NAME;
+var PSD_PATH = ROOT_PATH + "PSDs/" + PSD_NAME;
 
 function main() {
     initLog();

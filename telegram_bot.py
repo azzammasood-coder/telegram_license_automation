@@ -21,8 +21,7 @@ from telegram.ext import (
 from openai import OpenAI
 
 # --- IMPORT JURISDICTION MODULES ---
-import nj_modules.nj_module as nj_module
-import ny_modules.ny_module as ny_module
+from modules import nj_module, ny_module
 
 
 # ==============================================================================
@@ -357,7 +356,14 @@ async def new_barcode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             return ConversationHandler.END
 
     # --- NORMAL MODE ---
-    template = "📋 **Please send your details below:**..."
+    template = (
+        "📋 **Please send your details below:**\n\n"
+        "Jurisdiction: (NJ or NY)\nFirst Name: JOHN\nMiddle Name: ROBERT\nLast Name: DOE\nAddress: 123 MAIN ST\n"
+        "City: NEWARK\nState Code: NJ\nFull Zip Code + 4 Digits: 07101\nGender: M\nDob: 01/01/1980\n"
+        "Height: 5'-11\"\nEyes: BRN\nClass: D\nEndorsements: NONE\nRestrictions: NONE\n"
+        "Issue Date: 01/01/2023\nExpires Date: 01/01/2030\nReal ID: Visible\n"
+        "Not Real ID: Not Visible\nSignature: JOHN DOE"
+    )
     await update.message.reply_text(template, reply_markup=ReplyKeyboardRemove(), parse_mode="Markdown")
     return BULK_INPUT
 
@@ -375,7 +381,7 @@ async def handle_bulk_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def ask_custom_dl(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text.lower()
     if text == "yes":
-        await update.message.reply_text("Enter DL In Exact Format:", reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("Enter DL In Exact Format (e.g. S0000 00000 00000)", reply_markup=ReplyKeyboardRemove())
         return CUSTOM_DL_INPUT
     else:
         reply_keyboard = [["Yes", "No"]]
@@ -400,8 +406,38 @@ async def ask_signature(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         return FACE_CHECK
 
 async def get_signature_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # (Existing Logic kept for completeness if you switch back to online)
-    await update.message.reply_text("Signature Upload Not Supported in Console Mode")
+    file_obj = None
+    if update.message.document:
+        file_obj = await update.message.document.get_file()
+    elif update.message.photo:
+        file_obj = await update.message.photo[-1].get_file()
+    
+    if file_obj:
+        # 1. Download Original
+        ext = os.path.splitext(file_obj.file_path)[1] or ".png"
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        raw_path = os.path.join(TEMP_DIR, f"sig_raw_{timestamp}{ext}")
+        await file_obj.download_to_drive(raw_path)
+        
+        # 2. Define Output Path (Must be PNG for transparency)
+        clean_path = os.path.join(TEMP_DIR, f"sig_{timestamp}.png")
+        
+        # 3. Call OpenAI BG Removal (CONDITIONAL)
+        success = False
+        if ENABLE_BG_REMOVAL:
+            await update.message.reply_text("🤖 Removing background (Signature)...")
+            success = remove_bg_removebg(raw_path, clean_path)
+        
+        # 4. Fallback if API fails OR disabled
+        final_path = clean_path if success else raw_path
+        
+        context.user_data["signature_path"] = final_path
+        await update.message.reply_text("✍️ Signature received & processed.")
+    else:
+        await update.message.reply_text("Couldn't download image.")
+    
+    reply_keyboard = [["Yes", "No"]]
+    await update.message.reply_text("Upload Face Picture? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
     return FACE_CHECK
 
 async def ask_face(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -413,7 +449,36 @@ async def ask_face(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return await execute_generation(update, context)
 
 async def get_face_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("Face Upload Not Supported in Console Mode")
+    file_obj = None
+    if update.message.document:
+        file_obj = await update.message.document.get_file()
+    elif update.message.photo:
+        file_obj = await update.message.photo[-1].get_file()
+    
+    if file_obj:
+        # 1. Download Original
+        ext = os.path.splitext(file_obj.file_path)[1] or ".png"
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        raw_path = os.path.join(TEMP_DIR, f"face_raw_{timestamp}{ext}")
+        await file_obj.download_to_drive(raw_path)
+        
+        # 2. Define Output Path (Must be PNG)
+        clean_path = os.path.join(TEMP_DIR, f"face_{timestamp}.png")
+        
+        # 3. Call OpenAI BG Removal (CONDITIONAL)
+        success = False
+        if ENABLE_BG_REMOVAL:
+            await update.message.reply_text("🤖 Removing background (Face)...")
+            success = remove_bg_removebg(raw_path, clean_path)
+        
+        # 4. Fallback if API fails OR disabled
+        final_path = clean_path if success else raw_path
+        
+        context.user_data["face_path"] = final_path
+        await update.message.reply_text("👤 Face received & processed.")
+    else:
+        await update.message.reply_text("Couldn't download face image.")
+    
     return await execute_generation(update, context)
 
 # --- EXECUTION ---
@@ -443,7 +508,11 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     data_map[k.strip()] = v.strip()
         
         jurisdiction = context.user_data.get('jurisdiction', 'NJ').strip().upper()
-        jsx_path = os.path.join(BASE_DIR, "process_ny.jsx" if jurisdiction == 'NY' else "process_nj.jsx")
+        
+        if jurisdiction == 'NY':
+            jsx_path = os.path.join(BASE_DIR, "modules", "process_ny.jsx")
+        else:
+            jsx_path = os.path.join(BASE_DIR, "modules", "process_nj.jsx")
 
         await update.message.reply_text(f"🚀 Re-triggering Photoshop on: {os.path.basename(existing_data_path)}")
         await processing_queue.put((

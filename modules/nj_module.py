@@ -132,5 +132,6 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     with open(data_file_path, "w", encoding="utf-8") as f: f.write("\n".join(lines))
     
     # Return path to NJ JSX
-    jsx_path = os.path.join(BASE_DIR, "process_nj.jsx")
+    jsx_path = os.path.join(BASE_DIR, "modules", "process_nj.jsx")
+    
     return temp_id, data_file_path, front_final, back_final, psd_final, jsx_path

@@ -13,7 +13,8 @@
     },
     "filenames": {
         "nj_psd": "AUTOMATED NJ F AND B.psd",
-        "ny_psd": "AUTOMATED NY F AND B.psd"
+        "ny_front": "Front NY Automation.psd",
+        "ny_back": "Back NY Automation.psd"
     },
     "toggles": {
         "offline_test_mode": false,
@@ -21,6 +22,6 @@
     },
     "testing": {
         "barcode_only": false,
-        "jsx_only": true
+        "jsx_only": false
     }
 }
