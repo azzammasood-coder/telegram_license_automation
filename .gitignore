@@ -1,0 +1,22 @@
+# Large Assets
+*.psd
+PSDs/
+backup_files/
+find_me_files/
+temp_files/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Project Logs/Temp Data
+photoshop_log.txt
+active_job.txt
+imp.txt
+prompt.txt
+offline_test_data.txt
+
+# Sensitive Info
+config.json
+PSUserConfig.txt

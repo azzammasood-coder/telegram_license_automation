@@ -1,0 +1,26 @@
+{
+    "telegram": {
+        "bot_token": "7977608846:AAFpeRZrFwhyVnM1-emOOHHsDQurkca0rXQ"
+    },
+    "api": {
+        "fis_key": "8f5b1d33-d284-415b-9c63-ae10b9152977",
+        "fis_url": "https://barcodes.fakeidsolutions.com/api/v2",
+        "removebg_key": "sWz6NetFxj4ifLY1w4T3wUK3"
+    },
+    "paths": {
+        "base_dir": "C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation",
+        "photoshop_exe": "C:/Program Files/Adobe/Adobe Photoshop 2021/Photoshop.exe"
+    },
+    "filenames": {
+        "nj_psd": "AUTOMATED NJ F AND B.psd",
+        "ny_psd": "AUTOMATED NY F AND B.psd"
+    },
+    "toggles": {
+        "offline_test_mode": false,
+        "enable_bg_removal": true
+    },
+    "testing": {
+        "barcode_only": false,
+        "jsx_only": true
+    }
+}

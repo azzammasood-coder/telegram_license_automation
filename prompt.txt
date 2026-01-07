@@ -1,0 +1,285 @@
+Telegram Bot link: https://t.me/driver_license_999_bot
+
+HTTP token: 7977608846:AAFpeRZrFwhyVnM1-emOOHHsDQurkca0rXQ
+
+Now there are two psds for NY:
+Front NY Automation.psd
+Back NY Automation.psd 
+
+Screenshot of front and back are also attached.
+
+Front Automation Guide For NY:
+
+This is the layer structure for Front:
+
+Structure for: AUTOMATED NY F AND B.psd
+-----------------------------
+Back
+   - 1 Barcode
+      - barcode
+   -  2 Regular Print Doc#
+      - Doc#
+      - Number
+      - Doc
+   - 3 Regular Print Top Window
+      - DOB
+      - Group 3 copy 3
+      - bs
+         - Group 1
+            - Group 2
+               - Group 3 copy 2
+            - window
+               - Group 3
+                  - Layer 22
+                  - Layer 21
+         - MMM DD YY WHITE LETTERS
+   - 4 Regular Print Swirl
+      - EDIT
+         - Month - First character
+         - Month - Second Characer
+         - Month - Third Character
+         - Lorem Ipsum
+         - Day
+         - Year
+         - DL
+      - Layer 6 copy
+      - Layer 20
+      - Layer 19
+      - Layer 18
+      - MAY  05  59  copy 2
+   - 5 Raised text
+      - MAY 05 01
+      - Raised text
+   - 6 Regular Print Light Black
+      - Barcode number
+   - 7 Bottom Barcode
+      - barcode
+Rectangle 1
+front
+   - Raised
+      - 16 RAISED DL 
+         - text
+      - 17 RAISED DOB
+         - day
+         - month
+         - last two digits of year
+      - 18 RAISED EXP
+         - last two digits of year
+         - month
+         - day
+      - 19 RAISED TEXT SWIRL DOB
+         - dob
+      - 20 RAISED SIG
+         - SIG copy
+         - SIG
+      - 21 Raised Dob Text Under Big Photo
+         - dob
+   - Laser
+      - "01, 02, 03, 04, 05" LASER Do Not Touch
+         - 02 Commissioner
+            - 01 Driver License
+               - DRIVER LICENSE
+            - Commissioner of Motor Vehicles
+         - 03 Commissioner Sig
+            - Commissioner Sig
+         - 04 Star
+            - REAL ID STAR BLACK
+         - 05 Do Not Touch
+            - Class
+            - ID
+            - R
+            - Eyes
+            - Height
+            - Sex
+            - E
+            - Expires
+            - Issued
+            - DOB
+         - "06" Not real ID
+            - NOT FOR FEDERAL PURPOSES
+      - "07, 08" window
+         - 07 middle window
+         - 08 top window
+         - Layer 10
+      - "9, 10, 11"Laser Edit Text
+         - 09 Laser Swirl name
+            - Lorem Ipsum
+            - Name
+         - 10 Laser Edited BOLD Text
+            - DOB
+               - 05/09/1959
+               - first two digits of year
+            - 4  7 1  9 0  0
+            - Last Name
+            - Front and Middle Name
+            - Address First Line
+            - Address Second Line
+            - ISSUE
+            - EXP
+               -          20
+         - 11 LIGHT
+            - Gender
+            - Height
+            - Eye Color
+            - GUIDE
+            - Micro
+            - EXP Dashes
+               - / copy
+               - /
+            - DOB dahses
+               - / copy 3
+               - / copy 2
+            - D
+            - NONE
+            - NONE copy
+            - Layer 17 copy
+            - Layer 17
+      - 12 Laser Dob Text Under Pic
+         - dob
+      -  13 Big Photo
+         - 13b made
+         - Big Photo Bg copy
+         - 13a Big Photo Bg
+         - Lens Bg
+      - "14" Lens Face
+         - 13b made copy 2
+         - 13b made copy
+         - 13b made copy 3
+         - Lens Bg copy
+      - "15" Lens Dob
+         - month
+         - day
+
+Layers To Automate
+"Raised" Folder/layerset contains the below layersets:
+16 RAISED DL - Edit the text layer named "DL 3 characters" and in it Only change letters in specific positions. (By default the DL visible in PSD is "467 149 050). In the layer this is default text: "  6     4   5  ", so change the characters at position 3, 9 and 13. For example, if the DL in barcode is: 919698127, then the updated text layer will be: "  1     9   2  ". Also for the remaining DL characters, edit the layergroup named "10 Laser Edited BOLD Text" and inside it edit the text layer "DL remaining characters", by default it contains "4  7 1  9 0  0".
+17 RAISED DOB - Edit three text layers named day, month and "last two digits of year"
+18 RAISED EXP - Edit three text layers named day, month and "last two digits of year"
+19 RAISED TEXT SWIRL DOB - Edit one text layer. Dob format is JUN 11 87
+20 RAISED SIG - replace contents on the SIG copy smart object
+21 Raised Dob Text Under Big Photo - Edit one text layer named dob, date format is JUN87
+
+
+
+Laser Folder/layerset contains the below layerset:
+"9, 10, 11"Laser Edit Text -  Contains the layerset "09 Laser Swirl name" - Contains the text layer "Name" which contains the First name + Middle Name + Last name and repeat until the number of characters in the default text: ANNARDIESSLINANNARDIESSLIN. In the default case, the first name Anna, middle name R and last name Diesslin. The first two characters are size 100 px. Then the size increases by 16.67px, until the character N in the middle, at this point the size of N is 300 px, after this character the size starts decreasing by 16.67px until the last character which is now 66.67px.
+
+""9, 10, 11"Laser Edit Text" - contains the layerset "10 Laser Edited BOLD Text" - Contains the layerset "DOB" - Contains the text layer first two digits of year. Also update the layer "ISSUE" and the layer (contains issue date in format 03/02/2024), and the layer 
+
+""9, 10, 11"Laser Edit Text" - contains the layerset "10 Laser Edited BOLD Text" - Contains the text layers "First Name and Middle Name", "Last Name", Address First Line (street address eg 478 83RD ST FL2) and Address Second Line (city and state and zip code e.g BROOKLYN, NY 14075).
+
+""9, 10, 11"Laser Edit Text" - Contans the layerset "11 LIGHT" - Edit the Gender text layer (M or F) and Height text layer (5'-07"), and Eye Color text layer (BRO) and Micro text layer.
+
+12 Laser Dob Text Under Pic - edit text layer dob, format is JUN87
+
+13 Big Photo - REplace smart object "13b made"
+
+14 Lens Face - Replace smart object "13b made copy 3"
+
+15 Lens Dob - edit text layers month and day.
+
+Important notes:
+-"09 Laser Swirl name" Each character needs to be  changed to the specific font text size thats there already. Each character is a different size. 
+
+-"11 Light" folder "Micro" Format is Exp: Month   Day Year First Name Last Name, Continuted until  fills up the space under big photo, "guide" layer  has a line that shows where it should stop. By default, this is text in Micro: "06 11 2032 Anna R Diesslin 06 11 2032 Anna R Diesslin 06 11 2032 ". So use this length.
+
+- "13 Big Photo" Needs to be changable in grayscale only. Saved Layer File Needs to be in grayscale PNG.
+
+-"20 RAISED SIG" Needs to be changed by signature image sent to the bot
+
+-"19 RAISED TEXT SWIRL DOB" Each text needs to be   changed to the specific font text size thats   there already. Each Text is a different size
+
+-"14 Lens Face" Needs to be changable in     grayscale only. Saved Layer File Needs to be       in grayscale PNG
+
+- Each of the below layers also needs to be exported as PNG (just the layer should be visible):
+
+09 Laser Swirl name.png
+10 Laser Edited BOLD Text.png
+11 LIGHT.png
+12 Laser Dob Text Under Pic.png
+13 Big Photo.png
+14 Lens Face.png
+15 Lens Dob.png
+Raised.png
+
+
+
+
+Back Automation Guide For NY:
+
+- Layers that need to be exported as png:
+
+1 Barcode.png
+
+2 Regular Print Doc#.png
+
+3 Regular Print Top Window.png
+
+4 Regular Print Swirl.png
+
+5 Raised text.png
+
+6 Regular Print Light Black.png
+
+- Layer edits:
+
+7 Bottom Barcode layergroup contains the Layer 18 smart object, open it and place and fit
+
+1 Barcode layergroup contains the layer barcode, open it and place and fit
+
+3 Regular Print Top Window layergroup contains text layer "DOB", by default it contains "JUN 11 87", keep same format after edit, each character is different size:
+Character 1: 350.00 pt
+Character 2: 316.67 pt
+Character 3: 300.00 pt
+Character 4: 333.33 pt
+Character 5: 266.67 pt
+Character 6: 233.33 pt
+Character 7: 233.33 pt
+Character 8: 183.33 pt
+Character 9: 166.67 pt
+Character 10: 166.67 pt
+
+2 Regular Print Doc# contains the layer "Number", it contains XF1F6X3S93 by default, update it
+
+5 Raised text contains the layer "Raised text", by default it contains ANNARDIESSLINANNADIESSLIN, this is the complete name, but each character has different size: These are the sizes:
+Character 1: 450.00 pt
+Character 2: 466.67 pt
+Character 3: 500.00 pt
+Character 4: 516.67 pt
+Character 5: 516.67 pt
+Character 6: 508.33 pt
+Character 7: 482.24 pt
+Character 8: 434.02 pt
+Character 9: 416.67 pt
+Character 10: 400.00 pt
+Character 11: 391.67 pt
+Character 12: 383.33 pt
+Character 13: 369.72 pt
+Character 14: 383.33 pt
+Character 15: 369.72 pt
+Character 16: 353.64 pt
+Character 17: 337.57 pt
+Character 18: 305.42 pt
+Character 19: 273.27 pt
+Character 20: 241.12 pt
+Character 21: 208.97 pt
+Character 22: 192.90 pt
+Character 23: 160.75 pt
+Character 24: 144.67 pt
+Character 25: 144.67 pt
+
+Character 26: 144.67 pt
+4 Regular Print Swirl contains the layers:
+Month - First character
+Month - Second Characer
+Month - Third Character
+Day
+Year
+By default, the layers combined give JUN 11 87, keep this format
+And also change the DL layer
+
+6 Regular Print Light Black laerygroup contains "Barcode number", update it to the correct number, by default it contains: 01223 003211301 94
+
+
+
+

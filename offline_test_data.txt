@@ -1,0 +1,20 @@
+Jurisdiction: NY
+First Name: PATRICIA
+Middle Name: M
+Last Name: SIEGEL
+Address: 110 Yetman Ave
+City: Staten Island
+State Code: NY
+Full Zip Code + 4 Digits: 10307-1608
+Gender: F
+Dob: 06/03/1990
+Height: 5'-04"
+Eyes: BRN
+Class: D
+Endorsements: NONE
+Restrictions: NONE
+Issue Date: 05/06/2023
+Expires Date: 06/07/2027
+Real ID: Visible
+Not Real ID: Not Visible
+Signature: Patricia M

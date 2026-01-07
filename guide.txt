@@ -1,0 +1,13 @@
+1. Make sure python is installed. Make sure the PSDs are inside the bot folder. Make sure the py files and jsx files are also inside the bot folder.
+
+2. In config.json, update the paths:
+- The base_dir is the bot folder containing all the code files and the PSD files.
+- photoshop_exe is the path of the Adobe Photoshop EXE file.
+
+3. In a terminal, navigate to the bot directory, and run the command: pip install -r requirements.txt
+
+4. Move the PSUserConfig.txt to C:\Users\<username>\AppData\Roaming\Adobe\<your photoshop version>\Adobe Photoshop 2021 Settings\
+
+5. To run the bot, in the terminal, run this command: python telegram_bot.py
+
+6. When the bot is running correctly, then in the bot folder, the photoshop logs will be created, if there is any problem in editing the template, please refer to these logs.
