@@ -1,6 +1,9 @@
+# Telegram License Automation 
+## Guide
+
 1. Repo link: https://github.com/azzammasood-coder/telegram_license_automation
-Click on Code (Green button), then click on Download Zip.
-Extract the zip to get a single folder, go inside it, this is the Root folder/Bot Folder/Base folder (these mean the same thing).
+- Click on Code (Green button), then click on Download Zip.
+- Extract the zip to get a single folder, go inside it, this is the Root folder/Bot Folder/Base folder (these mean the same thing).
 
 2. Make sure python is installed. Make sure the PSDs are inside the root folder. Make sure the py files and jsx files are also inside the bot folder.
 
