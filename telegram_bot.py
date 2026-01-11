@@ -18,7 +18,6 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from openai import OpenAI
 
 # --- IMPORT JURISDICTION MODULES ---
 from modules import nj_module, ny_module
@@ -122,8 +121,7 @@ async def process_queue_worker(app: Application):
     logger.info("👷 Queue Worker is active.")
     while True:
         item = await processing_queue.get()
-        # Item now includes jsx_path at the end
-        update, context, unique_id, data_path, out_front, out_back, out_psd, jsx_path = item
+        update, context, unique_id, data_path, out_front, out_back, out_psd, jsx_paths = item
         chat_id = update.effective_chat.id
 
         try:
@@ -132,13 +130,14 @@ async def process_queue_worker(app: Application):
                 f.write(data_path)
 
             if os.path.exists(PHOTOSHOP_EXE_PATH):
-                # Run the specific JSX for this template
-                subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx_path])
+                for jsx in jsx_paths:
+                    subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx])
+                    await asyncio.sleep(2) # Short pause between scripts
             else:
                 await context.bot.send_message(chat_id, "⚠️ Error: Photoshop path incorrect.")
                 continue
 
-            timeout = 600
+            timeout = 1800
             start_time = time.time()
             success = False
 
@@ -164,7 +163,7 @@ async def process_queue_worker(app: Application):
             if success:
                 await context.bot.send_message(chat_id, "🎉 Job Done!")
             else:
-                await context.bot.send_message(chat_id, "😔 Timeout: Files created but Python couldn't verify filenames.")
+                await context.bot.send_message(chat_id, "😔 Job took very long...")
 
         except Exception as e:
             logger.error(f"Worker Error: {e}")
@@ -381,7 +380,10 @@ async def handle_bulk_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def ask_custom_dl(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text.lower()
     if text == "yes":
-        await update.message.reply_text("Enter DL In Exact Format (e.g. S0000 00000 00000)", reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text(
+            "Enter DL in this format:\nNJ: S0000 00000 00000\nNY: 123456789", 
+            reply_markup=ReplyKeyboardRemove()
+        )
         return CUSTOM_DL_INPUT
     else:
         reply_keyboard = [["Yes", "No"]]
@@ -510,15 +512,22 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         jurisdiction = context.user_data.get('jurisdiction', 'NJ').strip().upper()
         
         if jurisdiction == 'NY':
-            jsx_path = os.path.join(BASE_DIR, "modules", "process_ny.jsx")
+            jsx_paths = [
+                os.path.join(BASE_DIR, "modules", "process_ny_front.jsx"),
+                os.path.join(BASE_DIR, "modules", "process_ny_back.jsx")
+            ]
         else:
-            jsx_path = os.path.join(BASE_DIR, "modules", "process_nj.jsx")
+            jsx_paths = [
+                os.path.join(BASE_DIR, "modules", "process_nj.jsx")
+            ]
 
         await update.message.reply_text(f"🚀 Re-triggering Photoshop on: {os.path.basename(existing_data_path)}")
+        
+        # Pass the LIST (jsx_paths) instead of the single string (jsx_path)
         await processing_queue.put((
             update, context, "TEST_RERUN", existing_data_path, 
             data_map.get("Output Front"), data_map.get("Output Back"), data_map.get("Output PSD"), 
-            jsx_path
+            jsx_paths
         ))
         return ConversationHandler.END
 
@@ -538,9 +547,13 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         module = ny_module if jurisdiction == 'NY' else nj_module
             
         # 3. Prepare Files
-        unique_id, data_path, front_path, back_path, psd_path, jsx_path = module.prepare_job_files(
+        results = module.prepare_job_files(
             context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR
         )
+        # Capture first 5 standard items
+        unique_id, data_path, front_path, back_path, psd_path = results[:5]
+        # Capture all remaining items as the JSX paths tuple
+        jsx_paths = results[5:]
 
         # ---------------------------------------------------------
         # MODE B: BARCODE ONLY (Stop here)
@@ -558,10 +571,10 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             return ConversationHandler.END
 
         # 4. Standard Queue
-        await processing_queue.put((update, context, unique_id, data_path, front_path, back_path, psd_path, jsx_path))
+        await processing_queue.put((update, context, unique_id, data_path, front_path, back_path, psd_path, jsx_paths))
         
         q_pos = processing_queue.qsize()
-        await update.message.reply_text(f"🚀 Processing {jurisdiction} License... Position #{q_pos}")
+        await update.message.reply_text(f"🚀 Processing {jurisdiction} License in Queue... Position #{q_pos}")
         
     except Exception as e:
         logger.error(f"Failed: {e}")
@@ -598,8 +611,8 @@ async def run_offline_mode():
     if not processing_queue.empty():
         print("📥 Picking item from queue...")
         item = await processing_queue.get()
-        update, context, unique_id, data_path, out_front, out_back, out_psd, jsx_path = item
-        
+        update, context, unique_id, data_path, out_front, out_back, out_psd, jsx_paths = item    
+
         try:
             with open(JOB_TICKET_PATH, "w", encoding="utf-8") as f:
                 f.write(data_path)
@@ -609,10 +622,12 @@ async def run_offline_mode():
                 print("🛑 TEST_BARCODE_ONLY is True. Script finished without Photoshop.")
                 return
 
-            print(f"🖥️ Launching Photoshop: {jsx_path}")
+            print(f"🖥️ Launching Photoshop...")
             if os.path.exists(PHOTOSHOP_EXE_PATH):
-                subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx_path])
-                print("✅ Photoshop Command Sent. Please check Photoshop.")
+                for jsx in jsx_paths:
+                    print(f"   -> Running: {jsx}")
+                    subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx])
+                print("✅ Photoshop Commands Sent.")
             else:
                 print("❌ Photoshop EXE Path not found.")
                 

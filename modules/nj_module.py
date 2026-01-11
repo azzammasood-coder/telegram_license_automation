@@ -119,7 +119,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"End edit: {user_data.get('endorsements', 'NONE')}",
         f"Restriction edit: {user_data.get('restrictions', 'NONE')}",
         f"Sex edit: {'M' if user_data.get('gender') == '1' else 'F' if user_data.get('gender') == '2' else user_data.get('gender')}",
-        f"Eyes edit: {user_data.get('eyes', 'BRN')}",
+        f"Eyes edit: {'BRN' if user_data.get('eyes', '').upper().strip() in ['BRO', 'BROWN'] else user_data.get('eyes', 'BRN')}",
         f"Height edit: {visual_height}", 
         "",
         "--- BACK DATA ---",

@@ -1,0 +1,44 @@
+--- NY FRONT LOG START ---
+[15:46:48] Starting Front Process...
+[15:46:49] Opening Front Template: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\PSDs\Front NY Automation.psd
+[15:46:50] Processing 'Raised' Section...
+[15:46:51] Update Text -> Layer: 'DL 3 characters' | Org:   6     4   5   | New:    8     5     2 | Final:    8     5     2
+[15:46:52] Update Text -> Layer: 'day' | Org: 11 | New: 03 | Final: 03
+[15:46:52] Update Text -> Layer: 'month' | Org: 06 | New: 06 | Final: 06
+[15:46:53] Update Text -> Layer: 'last two digits of year' | Org: 87 | New: 90 | Final: 90
+[15:46:54] Update Text -> Layer: 'day' | Org: 11 | New: 07 | Final: 07
+[15:46:54] Update Text -> Layer: 'month' | Org: 06 | New: 06 | Final: 06
+[15:46:55] Update Text -> Layer: 'last two digits of year' | Org: 32 | New: 27 | Final: 27
+[15:46:55] Update Text -> Layer: 'dob' | Org: JUN 11 87 | New: JUN 03 90 | Final: JUN 03 90
+[15:46:55] Replacing SO: SIG copy
+[15:47:14] Update Text -> Layer: 'dob' | Org: JUN87 | New: JUN90 | Final: JUN90
+[15:47:14] Processing 'Laser' Section...
+[15:47:14] Updating Front Swirl (Styled). Text: PATRICIAMSIEGELPATRICIAMSI
+[15:47:16] Applying Swirl Styles (Arial Black/FauxBold)...
+[15:47:20] Update Text -> Layer: 'first two digits of year' | Org: 19 | New: 19 | Final: 19
+[15:47:20] Update Text -> Layer: '06/03/1990' | Org: 05/09/1959 | New: 06/03/1990 | Final: 06/03/1990
+[15:47:21] Update Text -> Layer: 'DL remaining characters' | Org: 4  7 1  9 0  0 | New: 9  7 6  4 3  1 | Final: 9  7 6  4 3  1
+[15:47:22] Update Text -> Layer: 'ISSUE' | Org: 03/02/2024 | New: 05/06/2023 | Final: 05/06/2023
+[15:47:22] WARNING: Text Layer matching 'EXP' NOT FOUND in 10 Laser Edited BOLD Text
+[15:47:23] Update Text -> Layer: 'Last Name' | Org: Diesslin | New: SIEGEL | Final: SIEGEL
+[15:47:23] Update Text -> Layer: 'Front and Middle Name' | Org: Anna R | New: PATRICIA M | Final: PATRICIA M
+[15:47:24] Update Text -> Layer: 'Address First Line' | Org: 478 83rd St FL2 | New: 110 YETMAN AVE | Final: 110 YETMAN AVE
+[15:47:25] Update Text -> Layer: 'Address Second Line' | Org: Brooklyn, NY 14075 | New: STATEN ISLAND, NY 10307 | Final: STATEN ISLAND, NY 10307
+[15:47:26] Update Text -> Layer: 'Gender' | Org: F | New: 2 | Final: 2
+[15:47:26] Height Preserve Update: 5 -07 -> 5 -04
+[15:47:27] Update Text -> Layer: 'Eye Color' | Org: BRO | New: BRO | Final: BRO
+[15:47:28] Update Text -> Layer: 'Micro' | Org: 06 11 2032 Anna R Diesslin 06 11 2032 Anna R Diesslin 06 11 2032  | New: 06 07 2027 PATRICIA M SIEGEL 06 07 2027 PATRICIA M SIEGEL 06 07 2 | Final: 06 07 2027 PATRICIA M SIEGEL 06 07 2027 PATRICIA M SIEGEL 06 07 2
+[15:47:28] Updating 12 Laser Dob Text Under Pic...
+[15:47:28] Update Text -> Layer: 'dob' | Org: JUN87 | New: JUN90 | Final: JUN90
+[15:47:29] Replacing SO: 13b made
+[15:48:13] --- Exporting Full Front PNGs ---
+[15:49:38] --- Exporting Layers ---
+[15:49:38] Fast Exporting: 09 Laser Swirl name
+[15:49:57] Fast Exporting: 10 Laser Edited BOLD Text
+[15:50:16] Fast Exporting: 11 LIGHT
+[15:50:35] Fast Exporting: 12 Laser Dob Text Under Pic
+[15:50:53] Fast Exporting:  13 Big Photo
+[15:51:35] Fast Exporting: "14" Lens Face
+[15:51:59] Fast Exporting: "15" Lens Dob
+[15:52:15] Fast Exporting: Raised
+[15:53:05] Front Processing Complete.

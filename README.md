@@ -14,10 +14,15 @@
 
 4. Place the psd files inside the PSDs folder in the root folder.
 
-5. Move the PSUserConfig.txt to C:\Users\<username>\AppData\Roaming\Adobe\<your photoshop version>\Adobe Photoshop 2021 Settings\
+5. ONLY IF NOT DONE BEFORE: Move the PSUserConfig.txt to C:\Users\<username>\AppData\Roaming\Adobe\<your photoshop version>\Adobe Photoshop 2021 Settings\
 
-6. In a terminal, navigate to the root folder, and run the command: pip install -r requirements.txt
+6. ONLY IF NOT DONE BEFORE: In a terminal, navigate to the root folder, and run the command: pip install -r requirements.txt
 
 7. To run the bot, in the terminal, run this command: python telegram_bot.py
 
-8. When the bot is running correctly, then in the bot folder, the photoshop logs will be created, if there is any problem in editing the template, please refer to these logs.
+8. In the logs folder, the telegram bot logs and photoshop logs are created. If there is any problem, please refer to these logs.
+
+Notes:
+
+- For Eyes, it does not matter what user has typed in (BRN or BRO), it is automatically handled in the template. For NJ it is BRN, for NY it is BRO.
+

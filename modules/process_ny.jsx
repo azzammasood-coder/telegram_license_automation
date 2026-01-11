@@ -1,6 +1,6 @@
 /**
  * PROCESS NY LICENSE (JSX) - DUAL PSD
- * Features: Smart Path Detection (PSDs folder -> Root), Atomic Text Sizing
+ * Features: Smart Path Detection, Atomic Text Sizing, Detailed Logging
  */
 
 #target photoshop
@@ -9,6 +9,7 @@
 // CONFIGURATION & SETUP
 // =============================================================================
 var SCRIPT_PATH = File($.fileName).parent.fsName;
+// Look in parent directory (root) for config.json
 var CFG_FILE  = new File(SCRIPT_PATH + "/../config.json");
 
 var config = {};
@@ -18,11 +19,8 @@ if (CFG_FILE.exists) {
     CFG_FILE.close();
     config = eval("(" + jsonString + ")");
 } else {
-    // Fallback defaults
-    config = { 
-        paths: { base_dir: "C:/License_Factory/" },
-        filenames: { ny_front: "Front NY Automation.psd", ny_back: "Back NY Automation.psd" }
-    };
+    // REMOVED FALLBACK - Now throws error
+    throw "CRITICAL ERROR: config.json missing at " + CFG_FILE.fsName;
 }
 
 var ROOT_PATH = config.paths.base_dir;
@@ -56,8 +54,10 @@ var PATH_BACK  = findTemplatePath(NAME_BACK);
 
 function main() {
     initLog();
-    log("------------------------------------------");
-    log("Starting NY Processing...");
+    log("==========================================");
+    log("STARTING NY PROCESSING");
+    log("Script Path: " + SCRIPT_PATH);
+    log("Root Path: " + ROOT_PATH);
     
     app.preferences.rulerUnits = Units.PIXELS;
     app.preferences.typeUnits = TypeUnits.POINTS; 
@@ -70,6 +70,7 @@ function main() {
         var dataPath = JOB_FILE.read();
         JOB_FILE.close();
         
+        log("Reading Job Data from: " + dataPath);
         var dataFile = new File(dataPath);
         if (!dataFile.exists) throw "Data file not found: " + dataPath;
         var data = parseDataFile(dataFile);
@@ -78,16 +79,20 @@ function main() {
         // SECTION 1: FRONT PSD
         // =====================================================================
         if (PATH_FRONT) {
-            log("Opening Front Template: " + PATH_FRONT);
+            log("------------------------------------------");
+            log("OPENING FRONT TEMPLATE: " + PATH_FRONT);
             openDocument(PATH_FRONT, NAME_FRONT);
             var doc = app.activeDocument;
             doc.activeHistoryState = doc.historyStates[0];
 
             var frontGroup = getLayerSet(doc, "front");
             if (frontGroup) {
+                log("Found 'Front' Group. Starting Updates...");
+                
                 // --- A. RAISED ---
                 var raised = getLayerSet(frontGroup, "Raised");
                 if (raised) {
+                    log("Processing 'Raised' Section...");
                     updateText(getLayerSet(raised, "16 RAISED DL"), "text", data["DL 3 Chars"]);
                     
                     var r17 = getLayerSet(raised, "17 RAISED DOB");
@@ -106,14 +111,18 @@ function main() {
                     var sigPath = data["Load Signature Image"];
                     if (sigPath && new File(sigPath).exists) {
                         replaceSmartObject(r20, "SIG copy", new File(sigPath), true);
+                    } else {
+                        log("WARNING: Signature file missing or path empty: " + sigPath);
                     }
 
                     updateText(getLayerSet(raised, "21 Raised Dob Text Under Big Photo"), "dob", data["Dob Compact"]);
-                }
+                } else { log("ERROR: 'Raised' group not found."); }
 
                 // --- B. LASER ---
                 var laser = getLayerSet(frontGroup, "Laser");
                 if (laser) {
+                    log("Processing 'Laser' Section...");
+                    
                     // 05 DO NOT TOUCH
                     var l05 = getLayerSet(getLayerSet(laser, "01, 02, 03, 04, 05 LASER Do Not Touch"), "05 Do Not Touch");
                     if (l05) {
@@ -131,6 +140,8 @@ function main() {
                     if (!laserEdit) laserEdit = getLayerSet(laser, "\"9, 10, 11\"Laser Edit Text");
                     
                     if (laserEdit) {
+                        log("Found Laser Edit Text Group. Updating Details...");
+                        
                         // --- 09 SWIRL NAME ---
                         var l09 = getLayerSet(laserEdit, "09 Laser Swirl name");
                         var l09text = getLayerSet(l09, "Name"); 
@@ -138,9 +149,10 @@ function main() {
                         
                         if (l09text && l09text.kind == LayerKind.TEXT) {
                             var swirlTxt = data["Swirl Text 26"] || "ANNARDIESSLINANNARDIESSLIN";
+                            log("Updating Front Swirl (Atomic). Text: " + swirlTxt);
                             var sizes = generateFrontSwirlSizes(swirlTxt.length);
                             updateTextAtomic(l09text, swirlTxt, sizes, "px");
-                        }
+                        } else { log("ERROR: Could not find 'Name' text layer in Swirl group."); }
 
                         // --- 10 BOLD ---
                         var l10 = getLayerSet(laserEdit, "10 Laser Edited BOLD Text");
@@ -167,7 +179,7 @@ function main() {
                             updateText(l11, "Eye Color", data["Eyes"]);
                             updateText(l11, "Micro", data["Micro Text"]);
                         }
-                    }
+                    } else { log("ERROR: '9, 10, 11 Laser Edit Text' group not found."); }
 
                     // 12-15 IMAGES
                     updateText(getLayerSet(laser, "12 Laser Dob Text Under Pic"), "dob", data["Dob Compact"]);
@@ -176,131 +188,139 @@ function main() {
                     if (facePath && new File(facePath).exists) {
                         replaceSmartObject(getLayerSet(laser, "13 Big Photo"), "13b made", new File(facePath), true);
                         replaceSmartObject(getLayerSet(laser, "14 Lens Face"), "13b made copy 3", new File(facePath), true);
+                    } else {
+                        log("WARNING: Face file missing or path empty: " + facePath);
                     }
 
                     var l15 = getLayerSet(laser, "15 Lens Dob");
                     updateText(l15, "month", data["Dob Month"]);
                     updateText(l15, "day", data["Dob Day"]);
-                }
-            }
+                } else { log("ERROR: 'Laser' group not found."); }
+            } else { log("CRITICAL ERROR: 'Front' master group not found in PSD."); }
 
-        //     // --- FRONT EXPORTS ---
-        //     log("Exporting Front Layers...");
-        //     var outDir = data["Output Dir"];
-        //     var baseName = data["Base Name"];
+            // --- FRONT EXPORTS ---
+            log("--- Exporting Front Layers ---");
+            var outDir = data["Output Dir"];
+            var baseName = data["Base Name"];
             
-        //     exportPNG(new File(outDir + "\\Front_" + baseName + ".png"));
+            // exportPNG(new File(outDir + "\\Front_" + baseName + ".png"));
 
-        //     if (laserEdit) {
-        //         exportLayer(doc, getLayerSet(laserEdit, "09 Laser Swirl name"), outDir + "\\09 Laser Swirl name.png");
-        //         exportLayer(doc, getLayerSet(laserEdit, "10 Laser Edited BOLD Text"), outDir + "\\10 Laser Edited BOLD Text.png");
-        //         exportLayer(doc, getLayerSet(laserEdit, "11 LIGHT"), outDir + "\\11 LIGHT.png");
-        //     }
-        //     if (laser) {
-        //         exportLayer(doc, getLayerSet(laser, "12 Laser Dob Text Under Pic"), outDir + "\\12 Laser Dob Text Under Pic.png");
-        //         exportLayer(doc, getLayerSet(laser, "13 Big Photo"), outDir + "\\13 Big Photo.png");
-        //         exportLayer(doc, getLayerSet(laser, "14 Lens Face"), outDir + "\\14 Lens Face.png");
-        //         exportLayer(doc, getLayerSet(laser, "15 Lens Dob"), outDir + "\\15 Lens Dob.png");
-        //     }
-        //     exportLayer(doc, getLayerSet(frontGroup, "Raised"), outDir + "\\Raised.png");
+            // if (laserEdit) {
+            //     exportLayer(doc, getLayerSet(laserEdit, "09 Laser Swirl name"), outDir + "\\09 Laser Swirl name.png");
+            //     exportLayer(doc, getLayerSet(laserEdit, "10 Laser Edited BOLD Text"), outDir + "\\10 Laser Edited BOLD Text.png");
+            //     exportLayer(doc, getLayerSet(laserEdit, "11 LIGHT"), outDir + "\\11 LIGHT.png");
+            // }
+            // if (laser) {
+            //     exportLayer(doc, getLayerSet(laser, "12 Laser Dob Text Under Pic"), outDir + "\\12 Laser Dob Text Under Pic.png");
+            //     exportLayer(doc, getLayerSet(laser, "13 Big Photo"), outDir + "\\13 Big Photo.png");
+            //     exportLayer(doc, getLayerSet(laser, "14 Lens Face"), outDir + "\\14 Lens Face.png");
+            //     exportLayer(doc, getLayerSet(laser, "15 Lens Dob"), outDir + "\\15 Lens Dob.png");
+            // }
+            // exportLayer(doc, getLayerSet(frontGroup, "Raised"), outDir + "\\Raised.png");
             
-        //     doc.close(SaveOptions.DONOTSAVECHANGES);
-        // } else {
-        //     log("ERROR: Front Template Not Found! Checked 'PSDs' folder and Root.");
-        // }
-
-        // // =====================================================================
-        // // SECTION 2: BACK PSD
-        // // =====================================================================
-        // if (PATH_BACK) {
-        //     log("Opening Back Template: " + PATH_BACK);
-        //     openDocument(PATH_BACK, NAME_BACK);
-        //     var doc = app.activeDocument;
-        //     doc.activeHistoryState = doc.historyStates[0];
-
-        //     var backGroup = getLayerSet(doc, "Back");
-        //     if (backGroup) {
-        //         log("Processing Back...");
-                
-        //         // 1 BARCODE
-        //         var barcodePath = data["Load Big Barcode"];
-        //         if (barcodePath && new File(barcodePath).exists) {
-        //             replaceSmartObject(getLayerSet(backGroup, "1 Barcode"), "barcode", new File(barcodePath));
-        //         }
-
-        //         // 2 DOC NUM
-        //         updateText(getLayerSet(backGroup, "2 Regular Print Doc#"), "Number", data["Doc Discriminator"]);
-
-        //         // --- 3 TOP WINDOW DOB ---
-        //         var b3 = getLayerSet(backGroup, "3 Regular Print Top Window");
-        //         var b3dob = getLayerSet(b3, "DOB");
-        //         if (b3dob && b3dob.kind == LayerKind.TEXT) {
-        //             var backDobTxt = data["Dob Swirl"] || "JUN 11 87";
-        //             var dobSizes = [350.00, 316.67, 300.00, 333.33, 266.67, 233.33, 233.33, 183.33, 166.67, 166.67];
-        //             updateTextAtomic(b3dob, backDobTxt, dobSizes, "pt");
-        //         }
-
-        //         // 4 SWIRL
-        //         var b4edit = getLayerSet(getLayerSet(backGroup, "4 Regular Print Swirl"), "EDIT");
-        //         if (b4edit) {
-        //             updateText(b4edit, "Month - First character", data["Back Swirl Month 1"]);
-        //             updateText(b4edit, "Month - Second Characer", data["Back Swirl Month 2"]);
-        //             updateText(b4edit, "Month - Third Character", data["Back Swirl Month 3"]);
-        //             updateText(b4edit, "Day", data["Back Swirl Day"]);
-        //             updateText(b4edit, "Year", data["Back Swirl Year"]);
-        //             updateText(b4edit, "DL", data["Raw DL"]);
-        //         }
-
-        //         // --- 5 RAISED TEXT ---
-        //         var b5 = getLayerSet(backGroup, "5 Raised text");
-        //         var b5text = getLayerSet(b5, "Raised text");
-        //         if (!b5text && b5.artLayers.length > 0) b5text = b5.artLayers[0];
-
-        //         if (b5text && b5text.kind == LayerKind.TEXT) {
-        //             var backRaisedTxt = data["Back Raised Text"] || "ANNARDIESSLINANNARDIESSLIN";
-        //             var raisedSizes = [
-        //                 450.00, 466.67, 500.00, 516.67, 516.67, 508.33, 482.24, 434.02, 
-        //                 416.67, 400.00, 391.67, 383.33, 369.72, 383.33, 369.72, 353.64, 
-        //                 337.57, 305.42, 273.27, 241.12, 208.97, 192.90, 160.75, 144.67, 
-        //                 144.67, 144.67
-        //             ];
-        //             updateTextAtomic(b5text, backRaisedTxt, raisedSizes, "pt");
-        //         }
-
-        //         // 6-7 BARCODES
-        //         updateText(getLayerSet(backGroup, "6 Regular Print Light Black"), "Barcode number", data["Back Barcode Num"]);
-        //         var smallBarPath = data["Load Small Barcode"];
-        //         if (smallBarPath && new File(smallBarPath).exists) {
-        //             replaceSmartObject(getLayerSet(backGroup, "7 Bottom Barcode"), "barcode", new File(smallBarPath));
-        //         }
-        //     }
-
-        //     // --- BACK EXPORTS ---
-        //     log("Exporting Back Layers...");
-        //     var outDir = data["Output Dir"];
-        //     var baseName = data["Base Name"];
-
-        //     exportPNG(new File(outDir + "\\Back_" + baseName + ".png"));
-
-        //     if (backGroup) {
-        //         exportLayer(doc, getLayerSet(backGroup, "1 Barcode"), outDir + "\\1 Barcode.png");
-        //         exportLayer(doc, getLayerSet(backGroup, "2 Regular Print Doc#"), outDir + "\\2 Regular Print Doc#.png");
-        //         exportLayer(doc, getLayerSet(backGroup, "3 Regular Print Top Window"), outDir + "\\3 Regular Print Top Window.png");
-        //         exportLayer(doc, getLayerSet(backGroup, "4 Regular Print Swirl"), outDir + "\\4 Regular Print Swirl.png");
-        //         exportLayer(doc, getLayerSet(backGroup, "5 Raised text"), outDir + "\\5 Raised text.png");
-        //         exportLayer(doc, getLayerSet(backGroup, "6 Regular Print Light Black"), outDir + "\\6 Regular Print Light Black.png");
-        //     }
-            
-        //     doc.saveAs(new File(outDir + "\\" + baseName + ".psd"));
-        //     doc.close(SaveOptions.SAVECHANGES);
+            // doc.close(SaveOptions.DONOTSAVECHANGES);
+            log("Front Processing Complete.");
         } else {
-            log("ERROR: Back Template Not Found! Checked 'PSDs' folder and Root.");
+            log("CRITICAL ERROR: Front Template Not Found! Checked 'PSDs' folder and Root.");
         }
 
-        log("NY DUAL PSD DONE.");
+        // =====================================================================
+        // SECTION 2: BACK PSD
+        // =====================================================================
+        if (PATH_BACK) {
+            log("------------------------------------------");
+            log("OPENING BACK TEMPLATE: " + PATH_BACK);
+            openDocument(PATH_BACK, NAME_BACK);
+            var doc = app.activeDocument;
+            doc.activeHistoryState = doc.historyStates[0];
+
+            var backGroup = getLayerSet(doc, "Back");
+            if (backGroup) {
+                log("Found 'Back' Group. Starting Updates...");
+                
+                // 1 BARCODE
+                var barcodePath = data["Load Big Barcode"];
+                if (barcodePath && new File(barcodePath).exists) {
+                    replaceSmartObject(getLayerSet(backGroup, "1 Barcode"), "barcode", new File(barcodePath));
+                } else { log("WARNING: Big Barcode file missing."); }
+
+                // 2 DOC NUM
+                updateText(getLayerSet(backGroup, "2 Regular Print Doc#"), "Number", data["Doc Discriminator"]);
+
+                // --- 3 TOP WINDOW DOB ---
+                var b3 = getLayerSet(backGroup, "3 Regular Print Top Window");
+                var b3dob = getLayerSet(b3, "DOB");
+                if (b3dob && b3dob.kind == LayerKind.TEXT) {
+                    var backDobTxt = data["Dob Swirl"] || "JUN 11 87";
+                    log("Updating Back Window DOB (Atomic): " + backDobTxt);
+                    var dobSizes = [350.00, 316.67, 300.00, 333.33, 266.67, 233.33, 233.33, 183.33, 166.67, 166.67];
+                    updateTextAtomic(b3dob, backDobTxt, dobSizes, "pt");
+                } else { log("ERROR: Back Top Window DOB layer not found."); }
+
+                // 4 SWIRL
+                var b4edit = getLayerSet(getLayerSet(backGroup, "4 Regular Print Swirl"), "EDIT");
+                if (b4edit) {
+                    log("Processing Back Swirl Edit Group...");
+                    updateText(b4edit, "Month - First character", data["Back Swirl Month 1"]);
+                    updateText(b4edit, "Month - Second Characer", data["Back Swirl Month 2"]);
+                    updateText(b4edit, "Month - Third Character", data["Back Swirl Month 3"]);
+                    updateText(b4edit, "Day", data["Back Swirl Day"]);
+                    updateText(b4edit, "Year", data["Back Swirl Year"]);
+                    updateText(b4edit, "DL", data["Raw DL"]);
+                }
+
+                // --- 5 RAISED TEXT ---
+                var b5 = getLayerSet(backGroup, "5 Raised text");
+                var b5text = getLayerSet(b5, "Raised text");
+                if (!b5text && b5.artLayers.length > 0) b5text = b5.artLayers[0];
+
+                if (b5text && b5text.kind == LayerKind.TEXT) {
+                    var backRaisedTxt = data["Back Raised Text"] || "ANNARDIESSLINANNARDIESSLIN";
+                    log("Updating Back Raised Text (Atomic): " + backRaisedTxt);
+                    var raisedSizes = [
+                        450.00, 466.67, 500.00, 516.67, 516.67, 508.33, 482.24, 434.02, 
+                        416.67, 400.00, 391.67, 383.33, 369.72, 383.33, 369.72, 353.64, 
+                        337.57, 305.42, 273.27, 241.12, 208.97, 192.90, 160.75, 144.67, 
+                        144.67, 144.67
+                    ];
+                    updateTextAtomic(b5text, backRaisedTxt, raisedSizes, "pt");
+                } else { log("ERROR: Back Raised Text layer not found."); }
+
+                // 6-7 BARCODES
+                updateText(getLayerSet(backGroup, "6 Regular Print Light Black"), "Barcode number", data["Back Barcode Num"]);
+                var smallBarPath = data["Load Small Barcode"];
+                if (smallBarPath && new File(smallBarPath).exists) {
+                    replaceSmartObject(getLayerSet(backGroup, "7 Bottom Barcode"), "barcode", new File(smallBarPath));
+                }
+            } else { log("CRITICAL ERROR: 'Back' master group not found in PSD."); }
+
+            // --- BACK EXPORTS ---
+            log("--- Exporting Back Layers ---");
+            var outDir = data["Output Dir"];
+            var baseName = data["Base Name"];
+
+            // exportPNG(new File(outDir + "\\Back_" + baseName + ".png"));
+
+            // if (backGroup) {
+            //     exportLayer(doc, getLayerSet(backGroup, "1 Barcode"), outDir + "\\1 Barcode.png");
+            //     exportLayer(doc, getLayerSet(backGroup, "2 Regular Print Doc#"), outDir + "\\2 Regular Print Doc#.png");
+            //     exportLayer(doc, getLayerSet(backGroup, "3 Regular Print Top Window"), outDir + "\\3 Regular Print Top Window.png");
+            //     exportLayer(doc, getLayerSet(backGroup, "4 Regular Print Swirl"), outDir + "\\4 Regular Print Swirl.png");
+            //     exportLayer(doc, getLayerSet(backGroup, "5 Raised text"), outDir + "\\5 Raised text.png");
+            //     exportLayer(doc, getLayerSet(backGroup, "6 Regular Print Light Black"), outDir + "\\6 Regular Print Light Black.png");
+            // }
+            
+            // doc.saveAs(new File(outDir + "\\" + baseName + ".psd"));
+            // doc.close(SaveOptions.SAVECHANGES);
+            log("Back Processing Complete.");
+        } else {
+            log("CRITICAL ERROR: Back Template Not Found! Checked 'PSDs' folder and Root.");
+        }
+
+        log("NY DUAL PSD PROCESS COMPLETED SUCCESSFULLY.");
 
     } catch(e) {
-        log("ERROR: " + e + " line: " + e.line);
+        log("FATAL SCRIPT ERROR: " + e + " (Line: " + e.line + ")");
     }
 }
 
@@ -310,6 +330,7 @@ function main() {
 
 function updateTextAtomic(layer, textContent, sizesArray, unitStr) {
     try {
+        log("Atomic Update -> Layer: " + layer.name + " | Text: " + textContent);
         app.activeDocument.activeLayer = layer;
         var desc = new ActionDescriptor();
         var ref = new ActionReference();
@@ -363,8 +384,8 @@ function updateTextAtomic(layer, textContent, sizesArray, unitStr) {
         
         desc.putObject(charIDToTypeID("T   "), charIDToTypeID("TxLr"), textDesc);
         executeAction(charIDToTypeID("setd"), desc, DialogModes.NO);
-        
-    } catch(e) { log("Atomic Update Error: " + e); }
+        log("Atomic Update Success.");
+    } catch(e) { log("ERROR in Atomic Update: " + e); }
 }
 
 function generateFrontSwirlSizes(len) {
@@ -390,6 +411,7 @@ function generateFrontSwirlSizes(len) {
 function exportLayer(doc, group, savePath) {
     if(!group) return;
     try {
+        log("Exporting Layer Group: " + group.name + " -> " + new File(savePath).name);
         var state = doc.activeHistoryState;
         for(var i=0; i<doc.layers.length; i++) doc.layers[i].visible = false; 
         
@@ -404,8 +426,13 @@ function exportLayer(doc, group, savePath) {
 }
 
 function openDocument(path, name) {
-    if (!isDocumentOpen(name)) app.open(new File(path));
-    else app.activeDocument = app.documents.getByName(name);
+    if (!isDocumentOpen(name)) {
+        log("File not open. Opening: " + name);
+        app.open(new File(path));
+    } else {
+        log("File already open: " + name);
+        app.activeDocument = app.documents.getByName(name);
+    }
 }
 
 function isDocumentOpen(name) {
@@ -438,24 +465,43 @@ function getLayerSet(p, n) {
             if(p.layers[i].name.toLowerCase().indexOf(t) > -1) return p.layers[i];
         }
     } catch(e) {}
+    // log("Layer Set not found: " + n + " in " + p.name); // Optional: can be noisy
     return null;
 }
 
 function updateText(p, n, txt) {
-    if(!p || !txt) return;
+    if(!p) {
+        log("UpdateText Skipped: Parent group missing.");
+        return;
+    }
+    if(!txt) {
+        log("UpdateText Skipped: No text provided for layer matching '" + n + "'");
+        return;
+    }
     try {
+        var found = false;
         for(var i=0; i<p.artLayers.length; i++) {
             var l = p.artLayers[i];
             if(l.kind == LayerKind.TEXT && l.name.toLowerCase().indexOf(n.toLowerCase()) > -1) {
+                log("Update Text -> Layer: '" + l.name + "' | Val: " + txt);
                 l.textItem.contents = txt;
+                found = true;
                 return;
             }
         }
-    } catch(e) {}
+        if(!found) log("WARNING: Text Layer matching '" + n + "' NOT FOUND in " + p.name);
+    } catch(e) { log("Error updating text: " + e); }
 }
 
 function replaceSmartObject(parentSet, layerName, fileRef, doBg) {
-    if (!parentSet || !fileRef.exists) return;
+    if (!parentSet) {
+        log("ReplaceSO Failed: Parent set missing.");
+        return;
+    }
+    if (!fileRef.exists) {
+        log("ReplaceSO Failed: File not found " + fileRef.fsName);
+        return;
+    }
     try {
         var foundLayer = null;
         var t = layerName.toLowerCase();
@@ -466,6 +512,7 @@ function replaceSmartObject(parentSet, layerName, fileRef, doBg) {
             }
         }
         if (foundLayer && foundLayer.kind == LayerKind.SMARTOBJECT) {
+            log("Replacing Smart Object: " + foundLayer.name);
             app.activeDocument.activeLayer = foundLayer;
             executeAction(stringIDToTypeID("placedLayerEditContents"), new ActionDescriptor(), DialogModes.NO);
             var soDoc = app.activeDocument;
@@ -485,6 +532,8 @@ function replaceSmartObject(parentSet, layerName, fileRef, doBg) {
             newLayer.resize(scaleX, scaleY, AnchorPosition.MIDDLECENTER);
             
             if(doBg) {
+                // Auto Cutout Logic
+                log("Applying Auto Cutout to SO.");
                 try {
                     var idautoCutout = stringIDToTypeID("autoCutout");
                     var desc2 = new ActionDescriptor();
@@ -498,22 +547,28 @@ function replaceSmartObject(parentSet, layerName, fileRef, doBg) {
                     desc3.putReference(charIDToTypeID("At  "), ref);
                     desc3.putEnumerated(charIDToTypeID("Usng"), charIDToTypeID("UsrM"), charIDToTypeID("RvlS"));
                     executeAction(idMk, desc3, DialogModes.NO);
-                } catch(e) {}
+                } catch(e) { log("Auto Cutout Failed: " + e); }
             }
             
             for(var j=soDoc.layers.length-1; j>=0; j--) {
                 if(soDoc.layers[j] != newLayer) soDoc.layers[j].remove();
             }
             soDoc.close(SaveOptions.SAVECHANGES);
+            log("Smart Object Replaced Successfully.");
+        } else {
+            log("WARNING: Smart Object matching '" + layerName + "' NOT FOUND.");
         }
-    } catch(e) {}
+    } catch(e) { log("Error replacing SO: " + e); }
 }
 
 function exportPNG(fileRef) {
-    var pngOpts = new PNGSaveOptions();
-    pngOpts.compression = 0;
-    pngOpts.interlaced = false;
-    app.activeDocument.saveAs(fileRef, pngOpts, true, Extension.LOWERCASE);
+    try {
+        var pngOpts = new PNGSaveOptions();
+        pngOpts.compression = 0;
+        pngOpts.interlaced = false;
+        app.activeDocument.saveAs(fileRef, pngOpts, true, Extension.LOWERCASE);
+        // log("Saved PNG: " + fileRef.name);
+    } catch(e) { log("PNG Export Error: " + e); }
 }
 
 function initLog() {

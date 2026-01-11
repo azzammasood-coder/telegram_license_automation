@@ -1,0 +1,31 @@
+--- NY BACK LOG START ---
+[16:04:33] Starting Back Process...
+[16:04:34] Opening Back Template: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\PSDs\Back NY Automation.psd
+[16:04:41] Found 'Back' Group. Starting Updates...
+[16:04:41] Update Text -> Layer: 'Number' | Org: XF1F6X3S93 | New: XF6Z1F3S23 | Final: XF6Z1F3S23
+[16:04:41] Updating Back Window DOB (Atomic): JUN 03 90
+[16:04:42] Applying Swirl Styles (Arial Black/FauxBold)...
+[16:04:44] Applying White Color...
+[16:04:44] Applying Tracking: -40
+[16:04:45] Updating Back Raised Text (Atomic): PATRICIAMSIEGELPATRICIAMSI
+[16:04:47] Applying Swirl Styles (Arial Black/FauxBold)...
+[16:04:48] Applying Tracking: 200
+[16:04:49] Processing Back Swirl Edit Group...
+[16:04:49] Update Text -> Layer: 'Month - First character' | Org: J | New: J | Final: J
+[16:04:50] Update Text -> Layer: 'Month - Second Characer' | Org: U | New: U | Final: U
+[16:04:50] Update Text -> Layer: 'Month - Third Character' | Org: N | New: N | Final: N
+[16:04:51] Update Text -> Layer: 'Day' | Org: 11 | New: 03 | Final: 03
+[16:04:51] Update Text -> Layer: 'Year' | Org: 87 | New: 90 | Final: 90
+[16:04:52] Update Text -> Layer: 'DL' | Org: 467149050M  | New: 987654321 | Final: 987654321
+[16:04:53] Update Text -> Layer: 'Barcode number' | Org: 01223 003211301 94 | New: 01223 987654321 94 | Final: 01223 987654321 94
+[16:04:53] Replacing SO: barcode
+[16:05:10] Replacing SO: barcode
+[16:05:15] --- Exporting Full Back PNGs ---
+[16:06:09] --- Exporting Layers ---
+[16:06:09] Fast Exporting: 1 Barcode
+[16:06:33] Fast Exporting:  2 Regular Print Doc#
+[16:06:56] Fast Exporting: 3 Regular Print Top Window
+[16:07:17] Fast Exporting: 4 Regular Print Swirl
+[16:07:39] Fast Exporting: 5 Raised text
+[16:07:57] Fast Exporting: 6 Regular Print Light Black
+[16:08:16] Back Processing Complete.
