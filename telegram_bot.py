@@ -280,6 +280,15 @@ def generate_barcodes(user_data: dict, api_height: str):
     if "visible" in user_data.get("real_id", "").lower():
         real_id_status = "F" 
 
+    # 3. TRUNCATION LOGIC (T = Single Letter/Initial, N = Full Name/Empty)
+    fn_len = len(user_data.get("first_name", "").strip())
+    mn_len = len(user_data.get("middle_name", "").strip())
+    ln_len = len(user_data.get("last_name", "").strip())
+
+    trunc_first = "T" if fn_len == 1 else "N"
+    trunc_middle = "T" if mn_len == 1 else "N"
+    trunc_last = "T" if ln_len == 1 else "N"
+
     payload = {
         "jurisdiction": state, 
         "document": "DL", "save": "true",
@@ -295,6 +304,9 @@ def generate_barcodes(user_data: dict, api_height: str):
         "data[DAU]": api_height, 
         "data[DAY]": api_eyes,              # <--- UPDATED
         "data[DDA]": real_id_status,        # <--- ADDED
+        "data[DDF]": trunc_first,  # First Name Truncation
+        "data[DDG]": trunc_middle, # Middle Name Truncation
+        "data[DDE]": trunc_last,   # Family Name Truncation
         "data[DCA]": user_data.get("class", "D").upper(), 
         "data[DCB]": user_data.get("restrictions", "NONE").upper(),
         "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
