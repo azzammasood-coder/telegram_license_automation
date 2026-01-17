@@ -286,14 +286,20 @@ def generate_barcodes(user_data: dict, api_height: str):
     ln_len = len(user_data.get("last_name", "").strip())
 
     trunc_first = "T" if fn_len == 1 else "N"
-    trunc_middle = "T" if mn_len == 1 else "N"
     trunc_last = "T" if ln_len == 1 else "N"
+
+    # Middle Name Logic: If empty -> Blank. If 1 char -> T. Else -> N.
+    if mn_len == 0:
+        trunc_middle = ""
+    elif mn_len == 1:
+        trunc_middle = "T"
+    else:
+        trunc_middle = "N"
 
     payload = {
         "jurisdiction": state, 
         "document": "DL", "save": "true",
         "data[DAC]": user_data.get("first_name", "").upper(),
-        "data[DAD]": user_data.get("middle_name", "").upper(),
         "data[DCS]": user_data.get("last_name", "").upper(),
         "data[DAG]": user_data.get("address", "").upper(), 
         "data[DAI]": user_data.get("city", "").upper(),
@@ -305,7 +311,6 @@ def generate_barcodes(user_data: dict, api_height: str):
         "data[DAY]": api_eyes,              # <--- UPDATED
         "data[DDA]": real_id_status,        # <--- ADDED
         "data[DDF]": trunc_first,  # First Name Truncation
-        "data[DDG]": trunc_middle, # Middle Name Truncation
         "data[DDE]": trunc_last,   # Family Name Truncation
         "data[DCA]": user_data.get("class", "D").upper(), 
         "data[DCB]": user_data.get("restrictions", "NONE").upper(),
@@ -316,6 +321,13 @@ def generate_barcodes(user_data: dict, api_height: str):
 
     if user_data.get("custom_dl"):
         payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
+
+    if mn_len > 0:
+        payload["data[DAD]"] = user_data.get("middle_name", "").upper(),
+        payload["data[DDG]"] = trunc_middle
+        
+
+    logging.info(f"payload: {payload}")
 
     resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=60)
     resp.raise_for_status()

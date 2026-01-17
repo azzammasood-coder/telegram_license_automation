@@ -129,7 +129,6 @@ function main() {
                 var raised = getLayerSet(frontGroup, "Raised");
                 if (raised) {
                     log("Processing 'Raised' Section...");
-                    // Using updateText for standard replacement, spacing handled in Python
                     updateText(getLayerSet(raised, "16 RAISED DL"), "DL 3 characters", data["DL 3 Chars"]);
                     
                     var r17 = getLayerSet(raised, "17 RAISED DOB");
@@ -144,10 +143,33 @@ function main() {
 
                     updateText(getLayerSet(raised, "19 RAISED TEXT SWIRL DOB"), "dob", data["Dob Swirl"]); 
 
+                    // --- SIGNATURE LOGIC (TOGGLE IMAGE/TEXT) ---
                     var r20 = getLayerSet(raised, "20 RAISED SIG");
                     var sigPath = data["Load Signature Image"];
+                    var sigTextVal = data["Signature Text"]; // From Python logic
+                    
+                    // Layers inside Group 20
+                    var sigImgLayer = getLayerSet(r20, "SIG copy");
+                    var sigTextLayer = getLayerSet(raised, "Signature Text");
+                    
                     if (sigPath && new File(sigPath).exists) {
-                        replaceSmartObject(r20, "SIG copy", new File(sigPath), true);
+                        log("Using Signature Image");
+                        if(sigTextLayer) sigTextLayer.visible = false;
+                        if(sigImgLayer) {
+                            sigImgLayer.visible = true;
+                            replaceSmartObject(r20, "SIG copy", new File(sigPath), true);
+                        }
+                    } else {
+                        log("Using Signature Text Fallback: " + sigTextVal);
+                        if(sigImgLayer) sigImgLayer.visible = false;
+                        if(sigTextLayer) {
+                            sigTextLayer.visible = true;
+                            if(sigTextLayer.kind == LayerKind.TEXT) {
+                                sigTextLayer.textItem.contents = sigTextVal;
+                            }
+                        } else {
+                            log("WARNING: 'Signature Text' layer not found in 20 RAISED SIG");
+                        }
                     }
 
                     updateText(getLayerSet(raised, "21 Raised Dob Text Under Big Photo"), "dob", data["Dob Compact"]);
@@ -156,72 +178,59 @@ function main() {
                 // --- B. LASER ---
                 var laser = getLayerSet(frontGroup, "Laser");
                 if (laser) {
+                    
                     log("Processing 'Laser' Section...");
-
                     // LASER EDIT TEXT
                     var laserEdit = getLayerSet(laser, "9, 10, 11"); 
                     if (!laserEdit) laserEdit = getLayerSet(laser, "\"9, 10, 11\"Laser Edit Text");
                     
                     if (laserEdit) {
-                        // --- 09 SWIRL NAME ---
+                        // 09 SWIRL
                         var l09 = getLayerSet(laserEdit, "09 Laser Swirl name");
                         var l09text = getLayerSet(l09, "Name"); 
                         if (!l09text && l09.artLayers.length > 0) l09text = l09.artLayers[0];
-                        
                         if (l09text && l09text.kind == LayerKind.TEXT) {
                             var swirlTxt = data["Swirl Text 26"] || "ANNARDIESSLINANNARDIESSLIN";
-                            
-                            // CONFIG FOR SWIRL STYLE
-                            // Font: Arial (Black type usually implies 'Arial-Black' or 'ArialMT' with faux bold)
-                            // We use 'Arial-Black' if available, otherwise 'Arial-BoldMT' + Faux Bold
-                            var swirlStyle = {
-                                fontName: "Arial-Black", // Try specific black font
-                                fauxBold: true,
-                                antiAlias: "Strn" // Strong
-                            };
-
-                            log("Updating Front Swirl (Styled). Text: " + swirlTxt);
-                            var sizes = generateFrontSwirlSizes(swirlTxt.length);
-                            updateTextAtomic(l09text, swirlTxt, sizes, "px", swirlStyle);
+                            var swirlStyle = { fontName: "Arial-Black", fauxBold: true, antiAlias: "Strn" };
+                            var sizes = generateFrontSwirlSizes();
+                            updateTextAtomic(l09text, swirlTxt, sizes, "pt", swirlStyle);
                             applySwirlStyle();
-                            
-                        } else { log("ERROR: Could not find 'Name' text layer in Swirl group."); }
+                            applyTracking(-30);
+                            applyHorizontalScale(93);
+                        }
 
-                        // --- 10 BOLD ---
+                        // 10 BOLD
                         var l10 = getLayerSet(laserEdit, "10 Laser Edited BOLD Text");
                         if(l10) {
                             var l10dob = getLayerSet(l10, "DOB");
                             updateText(l10dob, "first two digits of year", data["First 2 Digits Year"]);
                             updateText(l10dob, "05/09/1959", data["Raised DOB"]); 
-
                             updateText(l10, "DL remaining characters", data["DL Remaining"]);
                             updateText(l10, "ISSUE", data["Issue Full"]);
                             updateText(l10, "EXP", data["Raised EXP"]);
-                            
                             updateText(l10, "Last Name", data["Last Name"]);
                             updateText(l10, "Front and Middle Name", data["First Middle"]);
                             updateText(l10, "Address First Line", data["Address 1"]);
                             updateText(l10, "Address Second Line", data["Address 2"]);
                         }
                         
-                        // --- 11 LIGHT ---
+                        // 11 LIGHT (Updated for Gender M/F)
                         var l11 = getLayerSet(laserEdit, "11 LIGHT");
                         if(l11) {
-                            updateText(l11, "Gender", data["Gender"]);
+                            // Note: data["Gender"] is now M or F coming from Python
+                            updateText(l11, "Gender", data["Gender"]); 
                             updateHeightPreserve(getLayerSet(l11, "Height"), data["Height"]);
                             updateText(l11, "Eye Color", data["Eyes"]);
                             updateText(l11, "Micro", data["Micro Text"]);
                         }
                     }
 
-                    // LAYER 12 AUTOMATION
-                    log("Updating 12 Laser Dob Text Under Pic...");
                     updateText(getLayerSet(laser, "12 Laser Dob Text Under Pic"), "dob", data["Dob Compact"]);
 
                     var facePath = data["Load Face Image"];
                     if (facePath && new File(facePath).exists) {
-                        replaceSmartObject(getLayerSet(laser, "13 Big Photo"), "13b made", new File(facePath), true);
-                        replaceSmartObject(getLayerSet(laser, "14 Lens Face"), "13b made copy 3", new File(facePath), true);
+                        replaceFace(getLayerSet(laser, "13 Big Photo"), "13b made", new File(facePath), true);
+                        replaceFace(getLayerSet(laser, "14 Lens Face"), "13b made copy 3", new File(facePath), true);
                     }
 
                     var l15 = getLayerSet(laser, "15 Lens Dob");
@@ -230,14 +239,15 @@ function main() {
                 }
             }
 
-            // --- EXPORTS ---
-            var outDir = data["Output Dir"];
+            // --- EXPORTS (UPDATED FOLDERS) ---
             var baseName = data["Base Name"];
+            // Use specific subfolders defined in Python
+            var outDirFront = data["Output Dir Front"]; 
+            var outDirMain = data["Output Dir"]; // Used for PSD
 
-            // --- ADDITIONAL EXPORT REQUIREMENTS (FRONT) ---
             log("--- Exporting Full Front PNGs ---");
 
-            // 1st Full PNG Front: VISIBLE ONLY: 01, 02, 03, 04, 05, 09, 10, 11, 12, 13
+            // 1st Full PNG Front
             hideAllInSet(frontGroup);
             showLayerPath(laser, "01, 02, 03, 04, 05");
             showLayerPath(laserEdit, "09 Laser Swirl name");
@@ -245,31 +255,29 @@ function main() {
             showLayerPath(laserEdit, "11 LIGHT");
             showLayerPath(laser, "12 Laser Dob Text Under Pic");
             showLayerPath(laser, "13 Big Photo");
-            exportPNG(new File(outDir + "\\1st_Full_PNG_Front.png"));
+            exportPNG(new File(outDirFront + "\\1st_Full_PNG_Front.png"));
 
-            // 2nd Full PNG Front: VISIBLE ONLY: RAISED
+            // 2nd Full PNG Front (ENSURE SIGNATURE IS VISIBLE)
             hideAllInSet(frontGroup);
             showLayerPath(frontGroup, "Raised");
-            exportPNG(new File(outDir + "\\2nd_Full_PNG_Front.png"));
+            // Note: Raised group layer visibility was handled in the Raised Logic section above
+            exportPNG(new File(outDirFront + "\\2nd_Full_PNG_Front.png"));
   
-            // exportPNG(new File(outDir + "\\Front_" + baseName + ".png"));
-
             log("--- Exporting Layers ---");
             if (laserEdit) {
-                exportLayer(doc, getLayerSet(laserEdit, "09 Laser Swirl name"), outDir + "\\09 Laser Swirl name.png");
-                exportLayer(doc, getLayerSet(laserEdit, "10 Laser Edited BOLD Text"), outDir + "\\10 Laser Edited BOLD Text.png");
-                exportLayer(doc, getLayerSet(laserEdit, "11 LIGHT"), outDir + "\\11 LIGHT.png");
+                exportLayer(doc, getLayerSet(laserEdit, "09 Laser Swirl name"), outDirFront + "\\09 Laser Swirl name.png");
+                exportLayer(doc, getLayerSet(laserEdit, "10 Laser Edited BOLD Text"), outDirFront + "\\10 Laser Edited BOLD Text.png");
+                exportLayer(doc, getLayerSet(laserEdit, "11 LIGHT"), outDirFront + "\\11 LIGHT.png");
             }
             if (laser) {
-                exportLayer(doc, getLayerSet(laser, "12 Laser Dob Text Under Pic"), outDir + "\\12 Laser Dob Text Under Pic.png");
-                exportLayer(doc, getLayerSet(laser, "13 Big Photo"), outDir + "\\13 Big Photo.png");
-                exportLayer(doc, getLayerSet(laser, '"14" Lens Face'), outDir + "\\14 Lens Face.png");
-                exportLayer(doc, getLayerSet(laser, '"15" Lens Dob'), outDir + "\\15 Lens Dob.png");
+                exportLayer(doc, getLayerSet(laser, "12 Laser Dob Text Under Pic"), outDirFront + "\\12 Laser Dob Text Under Pic.png");
+                exportLayer(doc, getLayerSet(laser, "13 Big Photo"), outDirFront + "\\13 Big Photo.png");
+                exportLayer(doc, getLayerSet(laser, '"14" Lens Face'), outDirFront + "\\14 Lens Face.png");
+                exportLayer(doc, getLayerSet(laser, '"15" Lens Dob'), outDirFront + "\\15 Lens Dob.png");
             }
-            exportLayer(doc, getLayerSet(frontGroup, "Raised"), outDir + "\\Raised.png");
+            exportLayer(doc, getLayerSet(frontGroup, "Raised"), outDirFront + "\\Raised.png");
 
-            doc.saveAs(new File(outDir + "\\" + baseName + ".psd"));
-            // doc.close(SaveOptions.DONOTSAVECHANGES);
+            doc.saveAs(new File(outDirFront + "\\" + baseName + ".psd"));
             log("Front Processing Complete.");
         }
 
@@ -281,6 +289,41 @@ function main() {
 // =============================================================================
 // HELPERS
 // =============================================================================
+
+function applyHorizontalScale(amount) {
+    try {
+        log("Applying Horizontal Scale: " + amount + "%");
+        var desc = new ActionDescriptor();
+        var ref = new ActionReference();
+        ref.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("TxtS"));
+        ref.putEnumerated(charIDToTypeID("TxLr"), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
+        desc.putReference(charIDToTypeID("null"), ref);
+        
+        var textStyle = new ActionDescriptor();
+        // 'HrzS' is the key for Horizontal Scale
+        textStyle.putDouble(charIDToTypeID("HrzS"), amount);
+        
+        desc.putObject(charIDToTypeID("T   "), charIDToTypeID("TxtS"), textStyle);
+        executeAction(charIDToTypeID("setd"), desc, DialogModes.NO);
+    } catch(e) { log("Error setting horizontal scale: " + e); }
+}
+
+function applyTracking(amount) {
+    try {
+        log("Applying Tracking: " + amount);
+        var desc = new ActionDescriptor();
+        var ref = new ActionReference();
+        ref.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("TxtS"));
+        ref.putEnumerated(charIDToTypeID("TxLr"), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
+        desc.putReference(charIDToTypeID("null"), ref);
+        
+        var textStyle = new ActionDescriptor();
+        textStyle.putInteger(charIDToTypeID("Trck"), amount);
+        
+        desc.putObject(charIDToTypeID("T   "), charIDToTypeID("TxtS"), textStyle);
+        executeAction(charIDToTypeID("setd"), desc, DialogModes.NO);
+    } catch(e) { log("Error setting tracking: " + e); }
+}
 
 /**
  * Hides all immediate children (layers and sets) within a LayerSet.
@@ -458,23 +501,13 @@ function applySwirlStyle() {
     } catch(e) { log("Error in applySwirlStyle: " + e); }
 }
 
-function generateFrontSwirlSizes(len) {
-    var arr = [];
-    var increment = 16.67;
-    var startSize = 100.0;
-    var peakIndex = 13;
-    for (var i = 0; i < len; i++) {
-        var size;
-        if (i < 2) size = 100.0;
-        else if (i <= peakIndex) size = startSize + ((i - 1) * increment);
-        else {
-            var peakSize = startSize + ((peakIndex - 1) * increment);
-            size = peakSize - ((i - peakIndex) * increment);
-        }
-        if (size < 10) size = 10;
-        arr.push(size);
-    }
-    return arr;
+function generateFrontSwirlSizes() {
+    // Hardcoded "Original" character sizes in pt
+    return [
+        6.00, 7.00, 8.00, 9.00, 10.00, 11.00, 12.00, 12.00, 13.00, 15.00, 
+        16.00, 17.00, 18.00, 17.00, 15.00, 14.00, 13.00, 12.00, 12.00, 12.00, 
+        11.00, 10.00, 9.00, 7.50, 6.50, 6.20, 5.80, 5.80
+    ];
 }
 
 function updateTextAtomic(layer, textContent, sizesArray, unitStr) {
@@ -611,6 +644,61 @@ function exportLayer(doc, group, savePath) {
     }
 }
 
+function replaceFace(parentSet, layerName, fileRef) {
+    if (!parentSet || !fileRef.exists) return;
+
+    try {
+        var targetName = layerName.toLowerCase();
+        var foundLayer = null;
+
+        for (var i = 0; i < parentSet.artLayers.length; i++) {
+            if (parentSet.artLayers[i].name.toLowerCase() == targetName) {
+                foundLayer = parentSet.artLayers[i];
+                break;
+            }
+        }
+
+        if (foundLayer && foundLayer.kind == LayerKind.SMARTOBJECT) {
+            app.activeDocument.activeLayer = foundLayer;
+            executeAction(stringIDToTypeID("placedLayerEditContents"), new ActionDescriptor(), DialogModes.NO);
+            
+            var soDoc = app.activeDocument;
+            
+            // 1. Place Embedded
+            var idPlc = charIDToTypeID("Plc ");
+            var desc = new ActionDescriptor();
+            desc.putPath(charIDToTypeID("null"), fileRef);
+            desc.putEnumerated(charIDToTypeID("FTcs"), charIDToTypeID("QCSt"), charIDToTypeID("Qcsa"));
+            executeAction(idPlc, desc, DialogModes.NO);
+            
+            var newLayer = soDoc.activeLayer;
+            var docH = soDoc.height.as("px");
+            
+            // 2. ZOOM 1.15x (115%)
+            // This simply increases the size by 15% from the center
+            newLayer.resize(115, 115, AnchorPosition.MIDDLECENTER);
+            
+            // 3. MOVE DOWN 10%
+            // Calculates 10% of the document height and moves the layer down
+            newLayer.translate(0, docH * 0.10);
+            
+            // 4. Cleanup old layers
+            for (var j = soDoc.layers.length - 1; j >= 0; j--) {
+                if (soDoc.layers[j] != newLayer) soDoc.layers[j].remove();
+            }
+            
+            soDoc.close(SaveOptions.SAVECHANGES);
+            log("Face processed: Zoomed 1.15x, Moved down 10%.");
+            
+        }
+    } catch(e) {
+        log("Error in replaceFace: " + e);
+        if (app.activeDocument != parentSet.parent) {
+            try { app.activeDocument.close(SaveOptions.DONOTSAVECHANGES); } catch(err) {}
+        }
+    }
+}
+
 function replaceSmartObject(parentSet, layerName, fileRef, doBg) {
     if (!parentSet || !fileRef.exists) return;
     try {
@@ -669,11 +757,21 @@ function replaceSmartObject(parentSet, layerName, fileRef, doBg) {
 
 function exportPNG(fileRef) {
     try {
+        // 1. Ensure Directory Exists
+        var folder = fileRef.parent;
+        if (!folder.exists) {
+            log("Directory missing. Creating: " + folder.fsName);
+            folder.create();
+        }
+
+        // 2. Save
         var pngOpts = new PNGSaveOptions();
         pngOpts.compression = 9;
         pngOpts.interlaced = false;
         app.activeDocument.saveAs(fileRef, pngOpts, true, Extension.LOWERCASE);
-    } catch(e) { log("PNG Export Error: " + e); }
+    } catch(e) { 
+        log("PNG Export Error: " + e + "\n- Path was: " + fileRef.fsName); 
+    }
 }
 
 function openDocument(path, name) {

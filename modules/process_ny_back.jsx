@@ -135,7 +135,8 @@ function main() {
                     log("Updating Back Raised Text (Atomic): " + backRaisedTxt);
                     updateTextAtomic(b5text, backRaisedTxt, raisedSizes, "pt");
                     applySwirlStyle();
-                    applyTracking(200);
+                    applyTracking(300);
+                    applyHorizontalScale(85);
                 } else { log("ERROR: Back Raised Text layer not found."); }
 
                 // --- 4 SWIRL ---
@@ -148,7 +149,19 @@ function main() {
                     updateText(b4edit, "Month - Third Character", data["Back Swirl Month 3"]);
                     updateText(b4edit, "Day", data["Back Swirl Day"]);
                     updateText(b4edit, "Year", data["Back Swirl Year"]);
-                    updateText(b4edit, "DL", data["Raw DL"]);
+                   
+                    // DL Atomic Sizing, Tracking, and Color
+                    var dlLayer = getLayerSet(b4edit, "DL");
+                    if (dlLayer && dlLayer.kind == LayerKind.TEXT) {
+                        var dlTxt = data["Raw DL"] || "00000000";
+                        var dlSizes = [9.00, 10.00, 11.00, 12.00, 12.00, 12.00, 12.00, 12.00, 12.00, 12.00, 12.00, 12.00];
+                        
+                        log("Updating Swirl DL (Atomic): " + dlTxt);
+                        updateTextAtomic(dlLayer, dlTxt, dlSizes, "pt");
+                        applySwirlStyle()
+                        applyWhiteColor();
+                        applyTracking(130);
+                    }
                 }
 
 
@@ -177,6 +190,7 @@ function main() {
             } else { log("CRITICAL ERROR: 'Back' master group not found in PSD."); }
 
             // --- EXPORTS ---
+            var outDirBack = data["Output Dir Back"]; 
             var outDir = data["Output Dir"];
             var baseName = data["Base Name"];
 
@@ -193,25 +207,26 @@ function main() {
             showLayerPath(backGroup, "4 Regular Print Swirl");
             showLayerPath(backGroup, "6 Regular Print Light Black");
             showLayerPath(backGroup, "7 Bottom Barcode");
-            exportPNG(new File(outDir + "\\1st_Full_PNG_BACK.png"));
+            exportPNG(new File(outDirBack + "\\1st_Full_PNG_BACK.png"));
 
             // 2nd Full PNG BACK: VISIBLE ONLY: 5
             hideAllInSet(backGroup);
             showLayerPath(backGroup, "5 Raised text");
-            exportPNG(new File(outDir + "\\2nd_Full_PNG_BACK.png"));
+            exportPNG(new File(outDirBack + "\\2nd_Full_PNG_BACK.png"));
 
             // 2. Export Layers
             log("--- Exporting Layers ---");
             if (backGroup) {
-                exportLayer(doc, getLayerSet(backGroup, "1 Barcode"), outDir + "\\1 Barcode.png");
-                exportLayer(doc, getLayerSet(backGroup, "2 Regular Print Doc#"), outDir + "\\2 Regular Print Doc#.png");
-                exportLayer(doc, getLayerSet(backGroup, "3 Regular Print Top Window"), outDir + "\\3 Regular Print Top Window.png");
-                exportLayer(doc, getLayerSet(backGroup, "4 Regular Print Swirl"), outDir + "\\4 Regular Print Swirl.png");
-                exportLayer(doc, getLayerSet(backGroup, "5 Raised text"), outDir + "\\5 Raised text.png");
-                exportLayer(doc, getLayerSet(backGroup, "6 Regular Print Light Black"), outDir + "\\6 Regular Print Light Black.png");
+                exportLayer(doc, getLayerSet(backGroup, "1 Barcode"), outDirBack + "\\1 Barcode.png");
+                exportLayer(doc, getLayerSet(backGroup, "2 Regular Print Doc#"), outDirBack + "\\2 Regular Print Doc#.png");
+                exportLayer(doc, getLayerSet(backGroup, "3 Regular Print Top Window"), outDirBack + "\\3 Regular Print Top Window.png");
+                exportLayer(doc, getLayerSet(backGroup, "4 Regular Print Swirl"), outDirBack + "\\4 Regular Print Swirl.png");
+                exportLayer(doc, getLayerSet(backGroup, "5 Raised text"), outDirBack + "\\5 Raised text.png");
+                exportLayer(doc, getLayerSet(backGroup, "6 Regular Print Light Black"), outDirBack + "\\6 Regular Print Light Black.png");
+                exportLayer(doc, getLayerSet(backGroup, "7 Bottom Barcode"), outDirBack + "\\7 Bottom Barcode");
             }
             
-            doc.saveAs(new File(outDir + "\\" + baseName + ".psd"));
+            doc.saveAs(new File(outDirBack + "\\" + baseName + ".psd"));
             // doc.close(SaveOptions.SAVECHANGES);
             log("Back Processing Complete.");
         } else {
@@ -296,6 +311,24 @@ function applyWhiteColor() {
         
         executeAction(charIDToTypeID("setd"), desc, DialogModes.NO);
     } catch(e) { log("Error setting white color: " + e); }
+}
+
+function applyHorizontalScale(amount) {
+    try {
+        log("Applying Horizontal Scale: " + amount + "%");
+        var desc = new ActionDescriptor();
+        var ref = new ActionReference();
+        ref.putProperty(charIDToTypeID("Prpr"), charIDToTypeID("TxtS"));
+        ref.putEnumerated(charIDToTypeID("TxLr"), charIDToTypeID("Ordn"), charIDToTypeID("Trgt"));
+        desc.putReference(charIDToTypeID("null"), ref);
+        
+        var textStyle = new ActionDescriptor();
+        // 'HrzS' is the key for Horizontal Scale
+        textStyle.putDouble(charIDToTypeID("HrzS"), amount);
+        
+        desc.putObject(charIDToTypeID("T   "), charIDToTypeID("TxtS"), textStyle);
+        executeAction(charIDToTypeID("setd"), desc, DialogModes.NO);
+    } catch(e) { log("Error setting horizontal scale: " + e); }
 }
 
 function applySwirlStyle() {
@@ -622,11 +655,21 @@ function replaceSmartObject(parentSet, layerName, fileRef, doBg) {
 
 function exportPNG(fileRef) {
     try {
+        // 1. Ensure Directory Exists
+        var folder = fileRef.parent;
+        if (!folder.exists) {
+            log("Directory missing. Creating: " + folder.fsName);
+            folder.create();
+        }
+
+        // 2. Save
         var pngOpts = new PNGSaveOptions();
         pngOpts.compression = 9;
         pngOpts.interlaced = false;
         app.activeDocument.saveAs(fileRef, pngOpts, true, Extension.LOWERCASE);
-    } catch(e) { log("PNG Export Error: " + e); }
+    } catch(e) { 
+        log("PNG Export Error: " + e + "\n- Path was: " + fileRef.fsName); 
+    }
 }
 
 function openDocument(path, name) {

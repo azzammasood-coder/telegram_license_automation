@@ -47,22 +47,46 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     temp_id = f"{first}_{timestamp}"
 
+    # --- GENDER LOGIC (1 -> M, 2 -> F) ---
+    raw_gender = str(user_data.get('gender', '1')).upper()
+    gender_disp = "M"
+    if raw_gender == "2" or raw_gender == "F" or raw_gender == "FEMALE":
+        gender_disp = "F"
+    elif raw_gender == "1" or raw_gender == "M" or raw_gender == "MALE":
+        gender_disp = "M"
+
+    # --- SIGNATURE TEXT LOGIC ---
+    # Use provided signature text, OR fallback to First + Last Initial
+    sig_text_input = user_data.get('signature', '').strip()
+    if not sig_text_input or sig_text_input.lower() == "none":
+         # Fallback: Capitalize first name and ensure last initial is uppercase
+         last_initial = last[0].upper() if last else ""
+         sig_text_final = f"{first.capitalize()} {last_initial}"
+    else:
+         # Ensure the provided signature is formatted to Title Case (John Doe)
+         sig_text_final = sig_text_input.title()
+         
     # --- SAVE RAW DATA ---
     raw_data_path = os.path.join(TEMP_DIR, f"raw_data_{temp_id}.txt")
     with open(raw_data_path, "w", encoding="utf-8") as f: f.write(raw_text)
 
-    # --- DL SPLIT LOGIC (STRICT 9 DIGITS) ---
-    raw_dl = user_data.get('custom_dl', '000000000').replace(" ", "").replace("-", "")
-    if len(raw_dl) < 9: raw_dl = raw_dl.ljust(9, '0')
-    raw_dl = raw_dl[:9] # Strict 9 chars
+    # --- DL EXTRACTION & SPLIT LOGIC (STRICT 9 DIGITS) ---
+    # extract DL directly from the barcode raw text (DAQ tag)
+    daq_match = re.search(r'DAQ([^\n\r]+)', raw_text)
+    
+    if daq_match:
+        raw_dl = daq_match.group(1).strip().replace(" ", "").replace("-", "")
+    else:
+        # Fallback to user input if extraction fails
+        raw_dl = user_data.get('custom_dl', '000000000').replace(" ", "").replace("-", "")
 
-    # 1. RAISED DL (Positions 3, 9, 13)
-    dl_3_chars = f"  {raw_dl[1]}     {raw_dl[4]}     {raw_dl[7]}  "             
+    # 1. RAISED DL
+    dl_3_chars = f"  {raw_dl[1]}     {raw_dl[4]}     {raw_dl[7]}  "            
 
-    # 2. LASER REMAINING (Default: "4  7 1  9 0  0")
+    # 2. LASER REMAINING
     dl_remaining = f"{raw_dl[0]}  {raw_dl[2]} {raw_dl[3]}  {raw_dl[5]} {raw_dl[6]}  {raw_dl[8]}"
 
-    # --- SWIRL NAME LOGIC (Fixed 26 chars) ---
+    # --- SWIRL NAME LOGIC ---
     full_name_clean = f"{first}{middle}{last}".upper().replace(" ", "")
     swirl_text_26 = full_name_clean
     while len(swirl_text_26) < 26:
@@ -77,16 +101,11 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     addr2 = f"{city}, {state} {zip_code}"
 
     # --- MICRO TEXT ---
-    # Format: MM DD YYYY First Middle Last (Repeated to 65 chars)
     exp_date = user_data.get('expires_date', '').replace("/", " ").replace("-", " ")
-    
-    # Build base string ensuring single spaces (handles empty middle name)
     micro_parts = [exp_date, first, middle, last]
     micro_base = " ".join([p for p in micro_parts if p])
-
-    # Repeat enough times and slice to strictly 65 chars
     micro_text = (micro_base + " ") * 10 
-    micro_text = micro_text[:65]
+    micro_text = micro_text[:63]
 
     # --- DATE PARTS ---
     try:
@@ -96,8 +115,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         dob_year = dt_dob.strftime("%Y")
         dob_year_last2 = dt_dob.strftime("%y")
         dob_year_first2 = dob_year[:2]
-        dob_swirl = dt_dob.strftime("%b %d %y").upper() # JUN 11 87
-        dob_compact = dt_dob.strftime("%b%y").upper()   # JUN87
+        dob_swirl = dt_dob.strftime("%b %d %y").upper()
+        dob_compact = dt_dob.strftime("%b%y").upper()
     except:
         dob_day, dob_month, dob_year, dob_year_last2, dob_year_first2 = "01", "01", "2000", "00", "20"
         dob_swirl = "JAN 01 00"
@@ -128,20 +147,27 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     with open(os.path.join(TEMP_DIR, f"barcode_{temp_id}.svg"), "wb") as f: f.write(big_svg)
     with open(os.path.join(TEMP_DIR, f"linear_{temp_id}.svg"), "wb") as f: f.write(small_svg)
     
-    # --- SUBFOLDER LOGIC & PATH DEFINITIONS (FIXED HERE) ---
+    # --- SUBFOLDER LOGIC ---
     safe_dob = dob.replace("/", "-")
-    folder_name = f"{first} {last} {safe_dob}"
-    target_dir = os.path.join(FINAL_DIR, folder_name)
-    os.makedirs(target_dir, exist_ok=True)
+    folder_name = f"{first} {last} NY {safe_dob}"
+    main_target_dir = os.path.join(FINAL_DIR, folder_name)
+    
+    # Create Front and Back subfolders
+    front_dir = os.path.join(main_target_dir, "Front")
+    back_dir = os.path.join(main_target_dir, "Back")
+    os.makedirs(front_dir, exist_ok=True)
+    os.makedirs(back_dir, exist_ok=True)
 
-    front_final = os.path.join(target_dir, f"Front_{base_name}.png")
-    back_final  = os.path.join(target_dir, f"Back_{base_name}.png")
-    psd_final   = os.path.join(target_dir, f"{base_name}.psd")
+    front_final = os.path.join(front_dir, f"Front_{base_name}.png")
+    back_final  = os.path.join(back_dir, f"Back_{base_name}.png")
+    psd_final   = os.path.join(main_target_dir, f"{base_name}.psd")
     
     # --- DATA FILE ---
     lines = [
         "--- SYSTEM CONFIG ---",
-        f"Output Dir: {target_dir.replace('\\', '\\\\')}", # Use target_dir here
+        f"Output Dir: {main_target_dir.replace('\\', '\\\\')}",
+        f"Output Dir Front: {front_dir.replace('\\', '\\\\')}",
+        f"Output Dir Back: {back_dir.replace('\\', '\\\\')}",
         f"Base Name: {base_name}",
         f"Load Big Barcode: {os.path.join(TEMP_DIR, f'barcode_{temp_id}.svg').replace('\\', '\\\\')}",
         f"Load Small Barcode: {os.path.join(TEMP_DIR, f'linear_{temp_id}.svg').replace('\\', '\\\\')}",
@@ -162,7 +188,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Swirl Text 26: {swirl_text_26}",
         f"Micro Text: {micro_text}",
         f"First 2 Digits Year: {dob_year_first2}",
-        f"Gender: {user_data.get('gender', 'M')}",
+        f"Gender: {gender_disp}", # UPDATED: Sends M or F
         f"Height: {visual_height}",
         f"Eyes: {'BRO' if user_data.get('eyes', '').upper().strip() in ['BRN', 'BROWN'] else user_data.get('eyes', 'BRO')}",
         f"Dob Month: {dob_month}",
@@ -182,17 +208,18 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Last Name: {last}",
         f"Address 1: {addr1}",
         f"Address 2: {addr2}",
+        f"Signature Text: {sig_text_final}", # UPDATED: Added Text Fallback
         
         "",
         "--- BACK DATA ---",
         f"Doc Discriminator: {doc_discriminator}", 
         f"Back Barcode Num: {barcode_num_text}",
-        f"Back Swirl Month 1: {dob_swirl[:1]}", # J
-        f"Back Swirl Month 2: {dob_swirl[1:2]}", # U
-        f"Back Swirl Month 3: {dob_swirl[2:3]}", # N
+        f"Back Swirl Month 1: {dob_swirl[:1]}",
+        f"Back Swirl Month 2: {dob_swirl[1:2]}",
+        f"Back Swirl Month 3: {dob_swirl[2:3]}",
         f"Back Swirl Day: {dob_day}",
         f"Back Swirl Year: {dob_year_last2}",
-        f"Back Raised Text: {swirl_text_26}", 
+        f"Back Raised Text: {swirl_text_26[:25]}", 
         f"Raw DL: {raw_dl}"
     ])
 

@@ -36,8 +36,16 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     first = user_data.get('first_name', 'Unknown').strip()
     last = user_data.get('last_name', 'Unknown').strip()
     issue_clean = sanitize_filename(user_data.get('issue_date', '00-00-0000'))
+    dob_clean = sanitize_filename(user_data.get('dob', '00-00-0000'))
+
+    # Format: First Last NJ DOB
+    folder_name = f"{first} {last} NJ {dob_clean}"
+    base_name = folder_name 
+
+    # Create the specific sub-folder in the Final Directory
+    job_output_dir = os.path.join(FINAL_DIR, folder_name)
+    os.makedirs(job_output_dir, exist_ok=True)
     
-    base_name = f"{first} {last}_{issue_clean}"
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     temp_id = f"{first}_{timestamp}"
 
@@ -72,12 +80,23 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     with open(os.path.join(TEMP_DIR, big_name), "wb") as f: f.write(big_svg)
     with open(os.path.join(TEMP_DIR, small_name), "wb") as f: f.write(small_svg)
     
-    front_final = os.path.join(FINAL_DIR, f"Front_{base_name}.png")
-    back_final  = os.path.join(FINAL_DIR, f"Back_{base_name}.png")
-    psd_final   = os.path.join(FINAL_DIR, f"{base_name}.psd")
+    front_final = os.path.join(job_output_dir, f"Front_{base_name}.png")
+    back_final  = os.path.join(job_output_dir, f"Back_{base_name}.png")
+    psd_final   = os.path.join(job_output_dir, f"{base_name}.psd")
     
     # NJ Specific Logic
     logic = calculate_chief_logic(user_data.get("issue_date", ""))
+
+    # --- SIGNATURE LOGIC START ---
+    # 1. Check if user provided custom text
+    sig_input = user_data.get('signature', '').strip()
+    
+    if sig_input:
+        sig_text_final = sig_input.title()
+    else:
+        # 2. Fallback: First Name + Last Initial (e.g. "Joan V")
+        last_initial = last[0].upper() if last else ""
+        sig_text_final = f"{first} {last_initial}".strip()
 
     lines = [
         "--- SYSTEM CONFIG ---",
@@ -103,7 +122,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"DD: {extracted_dd}",
         f"Real ID Marker: {user_data.get('real_id', 'Visible')}",
         f"Not For Real Id: {user_data.get('not_real_id', 'Not Visible')}",
-        f"Signature Edit: {user_data.get('signature', first + ' ' + last)}",
+        f"Signature Edit: {sig_text_final}",
         f"Micro: ", 
         f"Chief Sig July 1 2022 +: {logic['Chief Sig July 1 2022 +']}",
         f"Chief Administrator +: {logic['Chief Administrator +']}",
