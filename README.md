@@ -25,4 +25,5 @@
 Notes:
 
 - For Eyes, it does not matter what user has typed in (BRN or BRO), it is automatically handled in the template. For NJ it is BRN, for NY it is BRO.
+- IF 
 

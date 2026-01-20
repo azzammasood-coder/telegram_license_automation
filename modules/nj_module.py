@@ -115,6 +115,15 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         face_path = user_data["face_path"].replace('\\', '\\\\')
         lines.append(f"Load Face Image: {face_path}")
 
+    # Date Formatting: Replace slashes with dashes
+    issue_fmt = user_data.get('issue_date', '').replace('/', '-')
+    expires_fmt = user_data.get('expires_date', '').replace('/', '-')
+    dob_fmt = user_data.get('dob', '').replace('/', '-')
+
+    # Zip Formatting: Convert 070423819 to 07042-3819
+    zip_raw = user_data.get('zip_code', '').strip()
+    zip_fmt = f"{zip_raw[:5]}-{zip_raw[5:]}" if len(zip_raw) == 9 and '-' not in zip_raw else zip_raw
+
     lines.extend([
         "",
         "--- FRONT DATA ---",
@@ -129,8 +138,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Chief Sig July 1 2022 -: {logic['Chief Sig July 1 2022 -']}",
         f"Chief administrator -: {logic['Chief administrator -']}",
         f"Class edit: {user_data.get('class', 'D')}",
-        f"Issue edit: {user_data.get('issue_date', '')}",
-        f"Expires edit: {user_data.get('expires_date', '')}",
+        f"Issue edit: {issue_fmt}",
+        f"Expires edit: {expires_fmt}",
         f"Last Edit: {last}",
         f"First Edit: {full_first_name}",
         f"Address Edit: {user_data.get('address', '')}",
@@ -144,7 +153,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         "--- BACK DATA ---",
         f"Ic Line 1: {ic_line_1}", 
         f"Ic Line 2: {ic_line_2}", 
-        f"Dob: {user_data.get('dob', '')}",
+        f"Dob: {dob_fmt}",
     ])
 
     data_file_path = os.path.join(TEMP_DIR, f"data_{temp_id}.txt")
