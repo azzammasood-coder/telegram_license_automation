@@ -256,7 +256,11 @@ function main() {
 
         updateText(editable, "Ic Line 1", data["Ic Line 1"]);
         updateText(editable, "Ic Line 2", data["Ic Line 2"]);
-        updateText(editable, "Dob", data["Dob"]);
+        
+        // Add Initials before DOB
+        var fInit = (data["First Edit"] || "").charAt(0).toUpperCase();
+        var lInit = (data["Last Edit"]  || "").charAt(0).toUpperCase();
+        updateText(editable, "Dob", fInit + lInit + data["Dob"]);
 
         // 7. PLACE BARCODES
         var pathBig = data["Load Big Barcode"];
@@ -326,8 +330,13 @@ function main() {
 // HELPERS
 // =============================================================================
 
-function replaceFace(parentSet, layerName, fileRef) {
-    if (!parentSet || !fileRef.exists) return;
+function replaceFace(parentSet, layerName, filePath) {
+    // Convert string path to File object
+    var fileRef = new File(filePath);
+    if (!fileRef.exists) {
+        log("Error: Face File not found: " + filePath);
+        return;
+    }
 
     try {
         var targetName = layerName.toLowerCase();
@@ -343,50 +352,61 @@ function replaceFace(parentSet, layerName, fileRef) {
         if (foundLayer && foundLayer.kind == LayerKind.SMARTOBJECT) {
             app.activeDocument.activeLayer = foundLayer;
             executeAction(stringIDToTypeID("placedLayerEditContents"), new ActionDescriptor(), DialogModes.NO);
-            
+
             var soDoc = app.activeDocument;
-            
+
             // 1. Place Embedded
             var idPlc = charIDToTypeID("Plc ");
             var desc = new ActionDescriptor();
             desc.putPath(charIDToTypeID("null"), fileRef);
             desc.putEnumerated(charIDToTypeID("FTcs"), charIDToTypeID("QCSt"), charIDToTypeID("Qcsa"));
             executeAction(idPlc, desc, DialogModes.NO);
-            
+
             var newLayer = soDoc.activeLayer;
             var docW = soDoc.width.as("px");
             var docH = soDoc.height.as("px");
-            
+
             var bounds = newLayer.bounds;
             var layerW = bounds[2].as("px") - bounds[0].as("px");
-            
-            // 2. SCALE TO WIDTH + 0.1x ZOOM
-            // (docW / layerW) * 100 makes it touch the sides perfectly.
-            // Using 110 adds the requested 10% (0.1x) extra zoom.
-            var scaleFactor = (docW / layerW) * 105; 
+            var layerH = bounds[3].as("px") - bounds[1].as("px");
+
+            // 2. SMART SCALE & ZOOM (Cover Style + 110%)
+            // Calculate ratios for both width and height
+            var ratioW = docW / layerW;
+            var ratioH = docH / layerH;
+
+            // Use the LARGER ratio. This ensures the image covers the entire canvas 
+            // without leaving empty gaps on the shorter side.
+            var baseRatio = Math.max(ratioW, ratioH);
+
+            // Convert to percentage (x100) and apply the 1.1x zoom (110 total)
+            var scaleFactor = baseRatio * 110;
+
             newLayer.resize(scaleFactor, scaleFactor, AnchorPosition.MIDDLECENTER);
-            
+
             // 3. ALIGN TO TOP
             // Get new bounds after resize to find the current top position
             var newBounds = newLayer.bounds;
             var currentTopY = newBounds[1].as("px");
-            
+
             // Move the image so the top (currentTopY) becomes 0 (top of canvas)
             newLayer.translate(0, -currentTopY);
-            
+
             // 4. Cleanup old layers
             for (var j = soDoc.layers.length - 1; j >= 0; j--) {
                 if (soDoc.layers[j] != newLayer) soDoc.layers[j].remove();
             }
-            
+
             soDoc.close(SaveOptions.SAVECHANGES);
-            log("Face processed: Fit to width + 0.1x zoom, aligned to top.");
-            
+            log("Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.");
+
         }
-    } catch(e) {
+    } catch (e) {
         log("Error in replaceFace: " + e);
         if (app.activeDocument != parentSet.parent) {
-            try { app.activeDocument.close(SaveOptions.DONOTSAVECHANGES); } catch(err) {}
+            try {
+                app.activeDocument.close(SaveOptions.DONOTSAVECHANGES);
+            } catch (err) {}
         }
     }
 }

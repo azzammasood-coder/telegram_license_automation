@@ -20,8 +20,7 @@ from telegram.ext import (
 )
 
 # --- IMPORT JURISDICTION MODULES ---
-from modules import nj_module, ny_module
-
+from modules import nj_module, ny_module, fl_module  # <--- Added fl_module
 
 # ==============================================================================
 #  CONFIGURATION & SETTINGS
@@ -90,14 +89,20 @@ class MockContext:
 
 # States
 (
+    STATE_SELECT,       # <--- New State
     BULK_INPUT, 
     CUSTOM_DL_CHECK, 
     CUSTOM_DL_INPUT, 
     SIGNATURE_CHECK, 
     SIGNATURE_UPLOAD,
+    FL_REAL_ID,         # <--- FL Specific State
+    FL_RESTRICTION,     # <--- FL Specific State
+    FL_ENDORSEMENT,     # <--- FL Specific State
+    FL_SAFE_DRIVER,     # <--- FL Specific State
+    FL_REPLACED,        # <--- FL Specific State
     FACE_CHECK,      
     FACE_UPLOAD       
-) = range(7)
+) = range(13)           # <--- Updated Range
 
 # Logging
 logging.basicConfig(format="%(asctime)s - [BOT] - %(message)s", level=logging.INFO)
@@ -219,11 +224,34 @@ def format_date_for_api(date_str: str) -> str:
         return f"{clean[4:]}-{clean[0:2]}-{clean[2:4]}"
     return date_str
 
+def parse_fl_data(text: str) -> dict | None:
+    data = {}
+    lines = text.split('\n')
+    key_map = {
+        "First Name": "first_name", "Middle Name": "middle_name", "Last Name": "last_name",
+        "Address": "address", "City": "city", "State Code": "state_code",
+        "Full Zip Code + 4 Digits": "zip_code", "Dob": "dob", "Gender": "gender",
+        "Height": "height", "Eyes": "eyes", "Issue Date": "issue_date",
+        "Expires Date": "expires_date", "Class": "class", "Signature": "signature_text",
+        "Driver License Number": "custom_dl", "DL Number": "custom_dl" 
+    }
+    for line in lines:
+        if ":" in line:
+            parts = line.split(":", 1)
+            key, val = parts[0].strip(), parts[1].strip()
+            if key in key_map:
+                data[key_map[key]] = val
+
+    # Basic validation so we don't proceed with empty data
+    if not data.get("last_name") or not data.get("dob"):
+        return None
+    return data
+
 def parse_bulk_input(text: str) -> dict | None:
     data = {}
     lines = text.split('\n')
     key_map = {
-        "jurisdiction": "jurisdiction", "urisdiction": "jurisdiction", "state": "jurisdiction",
+        "jurisdiction": "jurisdiction", "state": "jurisdiction",
         "first name": "first_name", "middle name": "middle_name", "last name": "last_name",
         "address": "address", "city": "city", "state code": "state_code", 
         "full zip code + 4 digits": "zip_code", "zip code": "zip_code",
@@ -247,7 +275,8 @@ def parse_bulk_input(text: str) -> dict | None:
                     elif val_low in ["2", "f", "female"]: value = "2"
                 data[mapped_key] = value
 
-    required = ["jurisdiction", "first_name", "last_name", "dob", "gender"]
+    # REMOVED "jurisdiction" from required list
+    required = ["first_name", "last_name", "dob", "gender"]
     for req in required:
         if req not in data:
             return None
@@ -257,88 +286,165 @@ def parse_bulk_input(text: str) -> dict | None:
 #  CORE LOGIC (API)
 # ==============================================================================
 
+import random # Add this import at top if missing
+
 def generate_barcodes(user_data: dict, api_height: str):
     headers = {"Authorization": f"Bearer {FIS_API_KEY}", "Content-Type": "application/x-www-form-urlencoded"}
     state = user_data.get("jurisdiction", "NJ").upper().strip()
+    if state == "FL": state = "FL"
 
-    # --- 1. EYE COLOR MAPPING ---
-    # Maps common user inputs to strict AAMVA (3-char) codes
+    # --- COMMON PREP ---
     eye_map = {
-        "BRN": "BRO", "BROWN": "BRO",
-        "BLU": "BLU", "BLUE": "BLU",
-        "GRN": "GRN", "GREEN": "GRN",
-        "HZL": "HAZ", "HAZEL": "HAZ", "HAZ": "HAZ",
-        "BLK": "BLK", "BLACK": "BLK",
-        "GRY": "GRY", "GRAY": "GRY", "GREY": "GRY"
+        "BRN": "BRO", "BROWN": "BRO", "BLU": "BLU", "BLUE": "BLU",
+        "GRN": "GRN", "GREEN": "GRN", "HZL": "HAZ", "HAZEL": "HAZ", 
+        "BLK": "BLK", "BLACK": "BLK", "GRY": "GRY", "GRAY": "GRY"
     }
     raw_eyes = user_data.get("eyes", "BRO").upper().strip()
-    api_eyes = eye_map.get(raw_eyes, raw_eyes)[:3] # Default to raw if not found, max 3 chars
+    api_eyes = eye_map.get(raw_eyes, raw_eyes)[:3] 
 
-    # --- 2. REAL ID LOGIC ---
-    # AAMVA Standard: F = Compliant (Real ID), N = Non-Compliant
-    real_id_status = "N"
-    if "visible" in user_data.get("real_id", "").lower():
-        real_id_status = "F" 
-
-    # 3. TRUNCATION LOGIC (T = Single Letter/Initial, N = Full Name/Empty)
+    # Truncation Calculation (Common)
     fn_len = len(user_data.get("first_name", "").strip())
     mn_len = len(user_data.get("middle_name", "").strip())
     ln_len = len(user_data.get("last_name", "").strip())
-
     trunc_first = "T" if fn_len == 1 else "N"
     trunc_last = "T" if ln_len == 1 else "N"
+    trunc_middle = "T" if mn_len == 1 else "N" if mn_len > 1 else ""
 
-    # Middle Name Logic: If empty -> Blank. If 1 char -> T. Else -> N.
-    if mn_len == 0:
-        trunc_middle = ""
-    elif mn_len == 1:
-        trunc_middle = "T"
+    # Real ID (Common)
+    real_id_status = "N"
+    if "VISIBLE" in user_data.get("real_id", "").upper() or "YES" in user_data.get("real_id", "").upper():
+        real_id_status = "F"
+
+    # ==========================================================================
+    #  FLORIDA SPECIFIC LOGIC (Strict Ordering + Safe Driver Fix)
+    # ==========================================================================
+    if state == "FL":
+        # 1. FL Specific Variables
+        safe_driver_val = "2"
+        val_safe = user_data.get("safe_driver", "").strip().upper()
+        if val_safe == "YES" or val_safe == "VISIBLE":
+            safe_driver_val = "1"
+
+        replaced_date_val = ""
+        if user_data.get("replaced", "").upper() == "YES":
+            replaced_date_val = format_date_for_api(user_data.get("issue_date", ""))
+
+        customer_id = f"{random.randint(0, 9999999999):010d}"
+
+        # 2. FL Payload Construction
+        payload = {
+            "jurisdiction": state, 
+            "document": "DL", 
+            "save": "true",
+            
+            # Standard D-Fields
+            "data[DAC]": user_data.get("first_name", "").upper(),
+            "data[DCS]": user_data.get("last_name", "").upper(),
+            "data[DAG]": user_data.get("address", "").upper(), 
+            "data[DAI]": user_data.get("city", "").upper(),
+            "data[DAJ]": user_data.get("state_code", state).upper(), 
+            "data[DAK]": user_data.get("zip_code", ""),
+            "data[DBC]": "1" if user_data.get("gender", "M").upper() in ["M", "1", "MALE"] else "2", 
+            "data[DBB]": format_date_for_api(user_data.get("dob", "")),
+            "data[DAU]": api_height, 
+            "data[DAY]": api_eyes,              
+            "data[DDA]": real_id_status,        
+            "data[DDF]": trunc_first,   
+            "data[DDE]": trunc_last,    
+            "data[DCA]": user_data.get("class", "E").upper(), 
+            "data[DCB]": user_data.get("restrictions", "NONE").upper(),
+            "data[DCD]": user_data.get("endorsements", "NONE").upper(),
+            "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
+            "data[DBD]": format_date_for_api(user_data.get("issue_date", "")),
+            "data[DCK]": user_data.get("inventory_control", "")
+        }
+
+        # Optional D-Fields (MUST be added BEFORE Z-Fields)
+        if user_data.get("custom_dl"):
+            payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
+
+        if mn_len > 0:
+            payload["data[DAD]"] = user_data.get("middle_name", "").upper()
+            payload["data[DDG]"] = trunc_middle
+
+        # Auxiliary Z-Fields (Strict Order)
+        payload["data[ZFA]"] = replaced_date_val     
+        payload["data[ZFB]"] = ""                    
+        payload["data[ZFC]"] = safe_driver_val       
+        payload["data[ZFD]"] = "N"                   
+        payload["data[ZFE]"] = "N"                   
+        payload["data[ZFF]"] = "N"                   
+        payload["data[ZFG]"] = "N"                   
+        payload["data[ZFH]"] = "N"                   
+        payload["data[ZFI]"] = "None"                
+        payload["data[ZFJ]"] = customer_id           
+        payload["data[ZFK]"] = ""                    
+
+        # Manufacturer Data (Using ORI to fix Safe Driver)
+        payload["data[ZNA]"] = "WX"
+        payload["data[ZNB]"] = "11.00"
+        payload["data[ZNC]"] = "ORI" 
+
+    # ==========================================================================
+    #  NJ / NY SPECIFIC LOGIC (Legacy Payload)
+    # ==========================================================================
     else:
-        trunc_middle = "N"
+        payload = {
+            "jurisdiction": state, 
+            "document": "DL", "save": "true",
+            "data[DAC]": user_data.get("first_name", "").upper(),
+            "data[DCS]": user_data.get("last_name", "").upper(),
+            "data[DAG]": user_data.get("address", "").upper(), 
+            "data[DAI]": user_data.get("city", "").upper(),
+            "data[DAJ]": user_data.get("state_code", state).upper(), 
+            "data[DAK]": user_data.get("zip_code", ""),
+            # NJ/NY logic often passes '1' or '2' directly or defaults to '1'
+            "data[DBC]": user_data.get("gender", "1"),
+            "data[DBB]": format_date_for_api(user_data.get("dob", "")),
+            "data[DAU]": api_height, 
+            "data[DAY]": api_eyes,              
+            "data[DDA]": real_id_status,        
+            "data[DDF]": trunc_first,  
+            "data[DDE]": trunc_last,   
+            "data[DCA]": user_data.get("class", "D").upper(), 
+            "data[DCB]": user_data.get("restrictions", "NONE").upper(),
+            "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
+            "data[DBD]": format_date_for_api(user_data.get("issue_date", "")),
+            
+            # Legacy Manufacturer Data
+            "data[ZNA]": "WX", 
+            "data[ZNB]": "11.00", 
+            "data[ZNC]": "DUP", 
+            "data[DDC]": "1"
+        }
 
-    payload = {
-        "jurisdiction": state, 
-        "document": "DL", "save": "true",
-        "data[DAC]": user_data.get("first_name", "").upper(),
-        "data[DCS]": user_data.get("last_name", "").upper(),
-        "data[DAG]": user_data.get("address", "").upper(), 
-        "data[DAI]": user_data.get("city", "").upper(),
-        "data[DAJ]": user_data.get("state_code", state).upper(), 
-        "data[DAK]": user_data.get("zip_code", ""),
-        "data[DBC]": user_data.get("gender", "1"),
-        "data[DBB]": format_date_for_api(user_data.get("dob", "")),
-        "data[DAU]": api_height, 
-        "data[DAY]": api_eyes,              # <--- UPDATED
-        "data[DDA]": real_id_status,        # <--- ADDED
-        "data[DDF]": trunc_first,  # First Name Truncation
-        "data[DDE]": trunc_last,   # Family Name Truncation
-        "data[DCA]": user_data.get("class", "D").upper(), 
-        "data[DCB]": user_data.get("restrictions", "NONE").upper(),
-        "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
-        "data[DBD]": format_date_for_api(user_data.get("issue_date", "")),
-        "data[ZNA]": "WX", "data[ZNB]": "11.00", "data[ZNC]": "DUP", "data[DDC]": "1"
-    }
+        if user_data.get("custom_dl"):
+            payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
 
-    if user_data.get("custom_dl"):
-        payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
-
-    if mn_len > 0:
-        payload["data[DAD]"] = user_data.get("middle_name", "").upper(),
-        payload["data[DDG]"] = trunc_middle
-        
+        if mn_len > 0:
+            # Note: I removed the trailing comma from your snippet that would have created a tuple bug
+            payload["data[DAD]"] = user_data.get("middle_name", "").upper()
+            payload["data[DDG]"] = trunc_middle
 
     logging.info(f"payload: {payload}")
 
+    # --- EXECUTE REQUEST ---
     resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=60)
     resp.raise_for_status()
     barcode_id = resp.headers.get("X-Barcode-ID")
 
+    # Fetch all formats
     params = {"barcode_id": barcode_id}
+    
     big_svg = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/svg+xml"}, params=params, timeout=60).content
-    raw_text = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "text/plain"}, params=params, timeout=60).text
     small_svg = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/svg+xml"}, params=params, timeout=60).content
+    
+    big_tiff = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/tiff"}, params=params, timeout=60).content
+    small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/tiff"}, params=params, timeout=60).content
+    
+    raw_text = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "text/plain"}, params=params, timeout=60).text
 
-    return barcode_id, big_svg, small_svg, raw_text
+    return barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff
 
 # ==============================================================================
 #  TELEGRAM FLOW
@@ -350,75 +456,115 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def new_barcode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
 
+    if OFFLINE_TEST_MODE and TEST_JSX_ONLY:
+        await update.message.reply_text("⏩ FAST FORWARD: Skipping Input/Parsing. Jumping to Photoshop...")
+        return await execute_generation(update, context)
+
     # --- OFFLINE TEST MODE LOGIC ---
     if OFFLINE_TEST_MODE:
         await update.message.reply_text("🤖 OFFLINE MODE: Reading from 'offline_test_data.txt'...")
-        
         data_file = os.path.join(BASE_DIR, "offline_test_data.txt")
         if not os.path.exists(data_file):
             await update.message.reply_text(f"❌ Error: File not found at {data_file}")
             return ConversationHandler.END
-
         try:
             with open(data_file, "r", encoding="utf-8") as f:
                 content = f.read()
-            
             parsed_data = parse_bulk_input(content)
             if not parsed_data:
                 await update.message.reply_text("❌ Error: Could not parse data format in text file.")
                 return ConversationHandler.END
-            
             context.user_data.update(parsed_data)
             context.user_data["signature_path"] = None 
             context.user_data["face_path"] = None
-            
             return await execute_generation(update, context)
-
         except Exception as e:
             await update.message.reply_text(f"❌ File Read Error: {e}")
             return ConversationHandler.END
 
-    # --- NORMAL MODE ---
-    template = (
-        "📋 **Please send your details below:**\n\n"
-        "Jurisdiction: (NJ or NY)\nFirst Name: JOHN\nMiddle Name: ROBERT\nLast Name: DOE\nAddress: 123 MAIN ST\n"
-        "City: NEWARK\nState Code: NJ\nFull Zip Code + 4 Digits: 07101\nGender: M\nDob: 01/01/1980\n"
-        "Height: 5'-11\"\nEyes: BRN\nClass: D\nEndorsements: NONE\nRestrictions: NONE\n"
-        "Issue Date: 01/01/2023\nExpires Date: 01/01/2030\nReal ID: Visible\n"
-        "Not Real ID: Not Visible\nSignature: JOHN DOE"
+    # --- ASK FOR JURISDICTION ---
+    keyboard = [["FL", "NJ", "NY"]]
+    await update.message.reply_text(
+        "**=== License Bot Started ===**\n\nWhat State?\n\nCurrent options: NJ, NY, FL",
+        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True),
+        parse_mode="Markdown"
     )
-    await update.message.reply_text(template, reply_markup=ReplyKeyboardRemove(), parse_mode="Markdown")
+    return STATE_SELECT
+
+async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    selected = update.message.text.upper()
+    
+    # LOGGING
+    logger.info(f"🔘 State Button Pressed: '{selected}'")
+
+    if selected not in ["FL", "NJ", "NY"]:
+        await update.message.reply_text("Please select FL, NJ, or NY.")
+        return STATE_SELECT
+    
+    context.user_data['jurisdiction'] = selected
+    # LOGGING
+    logger.info(f"💾 Saved to context.user_data['jurisdiction']: {context.user_data['jurisdiction']}")
+    
+    if selected == "FL":
+        msg = ("🐊 **FL Selected**\nPlease enter details in this format::\n\n"
+               "First Name: ...\nMiddle Name: ...\nLast Name: ...\nAddress: ...\n"
+               "City: ...\nState Code: FL\nFull Zip Code + 4 Digits: ...\n"
+               "Dob: MM/DD/YYYY\nGender: M\nHeight: 5'-09\nEyes: BRO\n"
+               "Issue Date: ...\nExpires Date: ...\nClass: E\n"
+               "Real ID: Visible\nNot Real ID: Not Visible\nSignature: ...")
+    else:
+        msg = (
+            f"📋 **{selected} Selected**\nPlease enter details in this format:\n\n"
+            "First Name: JOHN\nMiddle Name: ROBERT\nLast Name: DOE\nAddress: 123 MAIN ST\n"
+            "City: NEWARK\nState Code: NJ\nFull Zip Code + 4 Digits: 07101\nGender: M\nDob: 01/01/1980\n"
+            "Height: 5'-11\"\nEyes: BRN\nClass: D\nEndorsements: NONE\nRestrictions: NONE\n"
+            "Issue Date: 01/01/2023\nExpires Date: 01/01/2030\nReal ID: Visible\n"
+            "Not Real ID: Not Visible\nSignature: JOHN DOE"
+        )
+        
+    await update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove(), parse_mode="Markdown")
     return BULK_INPUT
 
-# ... (Existing Handlers: handle_bulk_input, ask_custom_dl, etc. Keep them as is) ...
 async def handle_bulk_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    parsed_data = parse_bulk_input(update.message.text)
+    current_state = context.user_data.get('jurisdiction') # Already set from the button
+    raw_text = update.message.text
+
+    if current_state == "FL":
+        parsed_data = parse_fl_data(raw_text)
+    else:
+        parsed_data = parse_bulk_input(raw_text)
+
     if not parsed_data:
-        await update.message.reply_text("🤔 I couldn't understand that format. Please check template.")
+        await update.message.reply_text("🤔 I couldn't understand that format. Maybe you typed something wrong.\nPlease check the template and try again.")
         return BULK_INPUT
+    
+    # Merge the parsed data, but ensure the button-selected jurisdiction remains
     context.user_data.update(parsed_data)
+    context.user_data['jurisdiction'] = current_state 
+
     reply_keyboard = [["Yes", "No"]]
-    await update.message.reply_text("Custom DL Number? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
+    await update.message.reply_text("Custom DL Number? (Yes or No)", 
+                                   reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
     return CUSTOM_DL_CHECK
 
 async def ask_custom_dl(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text.lower()
     if text == "yes":
         await update.message.reply_text(
-            "Enter DL in this format:\nNJ: S0000 00000 00000\nNY: 123456789", 
+            "Enter DL Number:", 
             reply_markup=ReplyKeyboardRemove()
         )
         return CUSTOM_DL_INPUT
     else:
         reply_keyboard = [["Yes", "No"]]
-        await update.message.reply_text("Upload Signature? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
+        await update.message.reply_text("Upload Signature Image? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
         return SIGNATURE_CHECK
 
 async def get_custom_dl_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     dl_input = update.message.text.strip()
     context.user_data["custom_dl"] = dl_input
     reply_keyboard = [["Yes", "No"]]
-    await update.message.reply_text("Upload Signature? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
+    await update.message.reply_text("Upload Signature Image? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
     return SIGNATURE_CHECK
 
 async def ask_signature(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -427,6 +573,12 @@ async def ask_signature(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text("Please upload the signature image.", reply_markup=ReplyKeyboardRemove())
         return SIGNATURE_UPLOAD
     else:
+        # CHECK JURISDICTION FOR FL FLOW
+        if context.user_data.get('jurisdiction') == "FL":
+             await update.message.reply_text("FL: Real ID? (YES / NO)", 
+                reply_markup=ReplyKeyboardMarkup([["YES", "NO"]], resize_keyboard=True))
+             return FL_REAL_ID
+        
         reply_keyboard = [["Yes", "No"]]
         await update.message.reply_text("Upload Face Picture? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
         return FACE_CHECK
@@ -462,8 +614,47 @@ async def get_signature_upload(update: Update, context: ContextTypes.DEFAULT_TYP
     else:
         await update.message.reply_text("Couldn't download image.")
     
+    # CHECK JURISDICTION FOR FL FLOW
+    if context.user_data.get('jurisdiction') == "FL":
+         await update.message.reply_text("FL: Real ID? (YES / NO)", 
+            reply_markup=ReplyKeyboardMarkup([["YES", "NO"]], resize_keyboard=True))
+         return FL_REAL_ID
+
     reply_keyboard = [["Yes", "No"]]
     await update.message.reply_text("Upload Face Picture? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
+    return FACE_CHECK
+
+# --- FL SPECIFIC HANDLERS ---
+async def fl_ask_real_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['real_id'] = update.message.text.upper() 
+    await update.message.reply_text("FL: Restriction? (A / B / NONE)", 
+        reply_markup=ReplyKeyboardMarkup([["A", "B", "NONE"]], resize_keyboard=True))
+    return FL_RESTRICTION
+
+async def fl_ask_restriction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['restrictions'] = update.message.text.upper()
+    await update.message.reply_text("FL: Endorsement? (A / NONE)", 
+        reply_markup=ReplyKeyboardMarkup([["A", "NONE"]], resize_keyboard=True))
+    return FL_ENDORSEMENT
+
+async def fl_ask_endorsement(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['endorsements'] = update.message.text.upper()
+    await update.message.reply_text("FL: Safe Driver? (YES / NO)", 
+        reply_markup=ReplyKeyboardMarkup([["YES", "NO"]], resize_keyboard=True))
+    return FL_SAFE_DRIVER
+
+async def fl_ask_safe_driver(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['safe_driver'] = update.message.text.upper()
+    await update.message.reply_text("FL: Replaced? (YES / NO)", 
+        reply_markup=ReplyKeyboardMarkup([["YES", "NO"]], resize_keyboard=True))
+    return FL_REPLACED
+
+async def fl_ask_replaced(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['replaced'] = update.message.text.upper()
+    # FL Options done, go to Face Check
+    reply_keyboard = [["Yes", "No"]]
+    await update.message.reply_text("Upload Face Picture? (Yes or No)", 
+        reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
     return FACE_CHECK
 
 async def ask_face(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -513,12 +704,13 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # MODE A: JSX ONLY (Skip generation, run existing job)
     # ---------------------------------------------------------
     if TEST_JSX_ONLY:
-        await update.message.reply_text("🧪 TEST MODE: JSX ONLY. Skipping API & Data Generation...")
+        await update.message.reply_text("🧪 TEST MODE: JSX ONLY. Reading 'active_job.txt'...")
         
         if not os.path.exists(JOB_TICKET_PATH):
              await update.message.reply_text("❌ Error: active_job.txt not found.")
              return ConversationHandler.END
 
+        # 1. Get Path from Ticket
         with open(JOB_TICKET_PATH, "r") as f:
             existing_data_path = f.read().strip()
 
@@ -526,28 +718,48 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
              await update.message.reply_text(f"❌ Error: Data file listed in job ticket not found: {existing_data_path}")
              return ConversationHandler.END
 
+        # 2. Parse the File to get Configs
+        # [UPDATED] FL is now a Text file, just like NJ/NY. 
+        # We use standard parsing for all.
         data_map = {}
-        with open(existing_data_path, "r", encoding="utf-8") as f:
-            for line in f:
-                if ":" in line:
-                    k, v = line.split(":", 1)
-                    data_map[k.strip()] = v.strip()
+        try:
+            with open(existing_data_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if ":" in line:
+                        k, v = line.split(":", 1)
+                        data_map[k.strip()] = v.strip()
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error reading data file: {e}")
+            return ConversationHandler.END
         
-        jurisdiction = context.user_data.get('jurisdiction', 'NJ').strip().upper()
+        # 3. Determine Jurisdiction
+        # FL uses "State Code", NJ/NY use "Jurisdiction"
+        file_jurisdiction = data_map.get("Jurisdiction", data_map.get("State Code", "")).strip().upper()
         
-        if jurisdiction == 'NY':
+        # Fallback Heuristics
+        if not file_jurisdiction:
+            if "Real ID Star" in data_map or "Safe Driver Color" in data_map:
+                file_jurisdiction = "FL"
+            else:
+                file_jurisdiction = "NJ"
+
+        if file_jurisdiction == 'NY':
             jsx_paths = [
                 os.path.join(BASE_DIR, "modules", "process_ny_front.jsx"),
                 os.path.join(BASE_DIR, "modules", "process_ny_back.jsx")
+            ]
+        elif file_jurisdiction == 'FL':
+            jsx_paths = [
+                os.path.join(BASE_DIR, "modules", "process_fl.jsx")
             ]
         else:
             jsx_paths = [
                 os.path.join(BASE_DIR, "modules", "process_nj.jsx")
             ]
 
-        await update.message.reply_text(f"🚀 Re-triggering Photoshop on: {os.path.basename(existing_data_path)}")
+        await update.message.reply_text(f"🚀 Re-triggering Photoshop ({file_jurisdiction}) on: {os.path.basename(existing_data_path)}")
         
-        # Pass the LIST (jsx_paths) instead of the single string (jsx_path)
+        # 4. Add to Queue
         await processing_queue.put((
             update, context, "TEST_RERUN", existing_data_path, 
             data_map.get("Output Front"), data_map.get("Output Back"), data_map.get("Output PSD"), 
@@ -563,17 +775,34 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         raw_height = context.user_data.get('height', '5-00')
         api_height, visual_height = parse_height_logic(raw_height)
         
-        # 1. Generate Barcodes
-        barcode_id, big_svg, small_svg, raw_text = generate_barcodes(context.user_data, api_height)
+        # 1. Generate Barcodes (Now returns 6 items)
+        barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff = generate_barcodes(context.user_data, api_height)
         
-        # 2. Select Module
+        # 2. Select Module & Prepare Files
         jurisdiction = context.user_data.get('jurisdiction', 'NJ').strip().upper()
-        module = ny_module if jurisdiction == 'NY' else nj_module
-            
-        # 3. Prepare Files
-        results = module.prepare_job_files(
-            context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR
-        )
+        
+        if jurisdiction == 'FL':
+            # FL: Pass TIFFs
+            results = fl_module.prepare_job_files(
+                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,
+                big_tiff=big_tiff, small_tiff=small_tiff
+            )
+            module = fl_module # Set for logging/reference
+        
+        elif jurisdiction == 'NY':
+            # NY: Standard call (Ignore TIFFs)
+            results = ny_module.prepare_job_files(
+                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR
+            )
+            module = ny_module
+        
+        else:
+            # NJ: Standard call (Ignore TIFFs)
+            results = nj_module.prepare_job_files(
+                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR
+            )
+            module = nj_module
+
         # Capture first 5 standard items
         unique_id, data_path, front_path, back_path, psd_path = results[:5]
         # Capture all remaining items as the JSX paths tuple
@@ -667,10 +896,22 @@ def main():
     else:
         app = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(post_init).build()
         yes_no_filter = filters.Regex(r"(?i)^(yes|no)$")
+        fl_opts = filters.Regex(r"(?i)^(A|B|NONE|YES|NO)$")
+
         conv_handler = ConversationHandler(
-            entry_points=[CommandHandler("newbarcode", new_barcode)],
+            entry_points=[CommandHandler(["newbarcode", "n"], new_barcode)],
             states={
+                STATE_SELECT: [MessageHandler(filters.Regex(r"^(FL|NJ|NY)$"), select_state)],
                 BULK_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_bulk_input)],
+                
+                # FL SPECIFIC FLOW
+                FL_REAL_ID: [MessageHandler(fl_opts, fl_ask_real_id)],
+                FL_RESTRICTION: [MessageHandler(fl_opts, fl_ask_restriction)],
+                FL_ENDORSEMENT: [MessageHandler(fl_opts, fl_ask_endorsement)],
+                FL_SAFE_DRIVER: [MessageHandler(fl_opts, fl_ask_safe_driver)],
+                FL_REPLACED: [MessageHandler(fl_opts, fl_ask_replaced)],
+
+                # STANDARD FLOW
                 CUSTOM_DL_CHECK: [MessageHandler(yes_no_filter, ask_custom_dl)],
                 CUSTOM_DL_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_dl_input)],
                 SIGNATURE_CHECK: [MessageHandler(yes_no_filter, ask_signature)],
@@ -679,9 +920,15 @@ def main():
                 FACE_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, get_face_upload)]
             },
             fallbacks=[CommandHandler("cancel", cancel)],
+            allow_reentry=True
         )
+
         app.add_handler(CommandHandler("start", start))
         app.add_handler(conv_handler)
+        
+        print(f"✅ Bot is active and polling! (Token ends in: ...{TELEGRAM_BOT_TOKEN[-5:]})")
+        print("📝 Waiting for messages in Telegram...")
+        
         app.run_polling()
 
 if __name__ == "__main__":

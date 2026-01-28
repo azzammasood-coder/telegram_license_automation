@@ -644,8 +644,13 @@ function exportLayer(doc, group, savePath) {
     }
 }
 
-function replaceFace(parentSet, layerName, fileRef) {
-    if (!parentSet || !fileRef.exists) return;
+function replaceFace(parentSet, layerName, filePath) {
+    // Convert string path to File object
+    var fileRef = new File(filePath);
+    if (!fileRef.exists) {
+        log("Error: Face File not found: " + filePath);
+        return;
+    }
 
     try {
         var targetName = layerName.toLowerCase();
@@ -661,40 +666,61 @@ function replaceFace(parentSet, layerName, fileRef) {
         if (foundLayer && foundLayer.kind == LayerKind.SMARTOBJECT) {
             app.activeDocument.activeLayer = foundLayer;
             executeAction(stringIDToTypeID("placedLayerEditContents"), new ActionDescriptor(), DialogModes.NO);
-            
+
             var soDoc = app.activeDocument;
-            
+
             // 1. Place Embedded
             var idPlc = charIDToTypeID("Plc ");
             var desc = new ActionDescriptor();
             desc.putPath(charIDToTypeID("null"), fileRef);
             desc.putEnumerated(charIDToTypeID("FTcs"), charIDToTypeID("QCSt"), charIDToTypeID("Qcsa"));
             executeAction(idPlc, desc, DialogModes.NO);
-            
+
             var newLayer = soDoc.activeLayer;
+            var docW = soDoc.width.as("px");
             var docH = soDoc.height.as("px");
-            
-            // 2. ZOOM 1.15x (115%)
-            // This simply increases the size by 15% from the center
-            newLayer.resize(115, 115, AnchorPosition.MIDDLECENTER);
-            
-            // 3. MOVE DOWN 10%
-            // Calculates 10% of the document height and moves the layer down
-            newLayer.translate(0, docH * 0.10);
-            
+
+            var bounds = newLayer.bounds;
+            var layerW = bounds[2].as("px") - bounds[0].as("px");
+            var layerH = bounds[3].as("px") - bounds[1].as("px");
+
+            // 2. SMART SCALE & ZOOM (Cover Style + 110%)
+            // Calculate ratios for both width and height
+            var ratioW = docW / layerW;
+            var ratioH = docH / layerH;
+
+            // Use the LARGER ratio. This ensures the image covers the entire canvas 
+            // without leaving empty gaps on the shorter side.
+            var baseRatio = Math.max(ratioW, ratioH);
+
+            // Convert to percentage (x100) and apply the 1.1x zoom (110 total)
+            var scaleFactor = baseRatio * 110;
+
+            newLayer.resize(scaleFactor, scaleFactor, AnchorPosition.MIDDLECENTER);
+
+            // 3. ALIGN TO TOP
+            // Get new bounds after resize to find the current top position
+            var newBounds = newLayer.bounds;
+            var currentTopY = newBounds[1].as("px");
+
+            // Move the image so the top (currentTopY) becomes 0 (top of canvas)
+            newLayer.translate(0, -currentTopY);
+
             // 4. Cleanup old layers
             for (var j = soDoc.layers.length - 1; j >= 0; j--) {
                 if (soDoc.layers[j] != newLayer) soDoc.layers[j].remove();
             }
-            
+
             soDoc.close(SaveOptions.SAVECHANGES);
-            log("Face processed: Zoomed 1.15x, Moved down 10%.");
-            
+            log("Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.");
+
         }
-    } catch(e) {
+    } catch (e) {
         log("Error in replaceFace: " + e);
         if (app.activeDocument != parentSet.parent) {
-            try { app.activeDocument.close(SaveOptions.DONOTSAVECHANGES); } catch(err) {}
+            try {
+                app.activeDocument.close(SaveOptions.DONOTSAVECHANGES);
+            } catch (err) {}
         }
     }
 }

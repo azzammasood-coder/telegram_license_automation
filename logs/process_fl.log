@@ -1,0 +1,153 @@
+[Tuesday, January 27 2026 22:29:14] ==================================================
+[Tuesday, January 27 2026 22:29:14] SCRIPT STARTED: process_fl.jsx
+[Tuesday, January 27 2026 22:29:14] Configuration loaded. Root: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/
+[Tuesday, January 27 2026 22:29:14] Data file read successfully: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation\temp_files\fl_job_HARROLD FINCH 11-07-1990.txt
+[Tuesday, January 27 2026 22:29:14] Opening PSD: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/PSDs/FL Revision 2020 For Poly.psd
+[Tuesday, January 27 2026 22:29:15] --- Editing Black Layer Group ---
+[Tuesday, January 27 2026 22:29:15] Set Text [Top Micro Text]: HF90
+[Tuesday, January 27 2026 22:29:16] Set Text [Driver License Number]: 
+[Tuesday, January 27 2026 22:29:16] Set Text [License Class]: E
+[Tuesday, January 27 2026 22:29:17] Set Text [Last Name]: FINCH
+[Tuesday, January 27 2026 22:29:17] Set Text [First Middle]: HARROLD EYES
+[Tuesday, January 27 2026 22:29:18] Set Text [Street Address Apt/Unit]: 100 EYES RD
+[Tuesday, January 27 2026 22:29:18] Set Text [City State Zip]: MIAMI FL 32779
+[Tuesday, January 27 2026 22:29:19] Set Text [Dob]: 11/07/1990
+[Tuesday, January 27 2026 22:29:19] Set Text [Sex]: M
+[Tuesday, January 27 2026 22:29:20] Set Text [Exp]: 11/07/2030
+[Tuesday, January 27 2026 22:29:20] Height Preserve Update: 5  01 -> 5  09
+[Tuesday, January 27 2026 22:29:21] Set Text [Restriction = A, B, NONE]: A
+[Tuesday, January 27 2026 22:29:21] Set Text [End = A, NONE]: NONE
+[Tuesday, January 27 2026 22:29:23] Set Text [Issue Date]: 11/07/2023
+[Tuesday, January 27 2026 22:29:24] Set Text [DD]: E852311079303
+[Tuesday, January 27 2026 22:29:24] Set Text [Bottom Micro Text]: HF90
+[Tuesday, January 27 2026 22:29:25] Set Text [REPLACED DATE]: 11/07/2023
+[Tuesday, January 27 2026 22:29:25] Set Visibility [Safe Driver]: false
+[Tuesday, January 27 2026 22:29:30] Replaced/Edited Smart Object: Signature
+[Tuesday, January 27 2026 22:29:30] Set Visibility [Signature]: true
+[Tuesday, January 27 2026 22:29:30] Set Visibility [Signature Text]: false
+[Tuesday, January 27 2026 22:29:30] --- Editing Color Layer Group ---
+[Tuesday, January 27 2026 22:29:31] Set Visibility [SAFE DRIVER]: true
+[Tuesday, January 27 2026 22:29:31] Set Visibility [REAL ID STAR]: true
+[Tuesday, January 27 2026 22:29:32] Set Visibility [REPLACED]: false
+[Tuesday, January 27 2026 22:29:41] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[Tuesday, January 27 2026 22:29:47] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[Tuesday, January 27 2026 22:29:47] --- Starting Export Process ---
+[Tuesday, January 27 2026 22:30:01] Saved: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/Final_Documents/HARROLD FINCH 11-07-1990/Front_Color_Only.tif
+[Tuesday, January 27 2026 22:30:15] Saved: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/Final_Documents/HARROLD FINCH 11-07-1990/Front_Black_Only.tif
+[Tuesday, January 27 2026 22:30:15] Job Complete. Document Closed.
+[Tuesday, January 27 2026 22:30:15] ==================================================
+[Tuesday, January 27 2026 22:31:48] ==================================================
+[Tuesday, January 27 2026 22:31:48] SCRIPT STARTED: process_fl.jsx
+[Tuesday, January 27 2026 22:31:48] Configuration loaded. Root: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/
+[Tuesday, January 27 2026 22:31:48] Data file read successfully: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation\temp_files\fl_job_HARROLD FINCH 11-07-1990.txt
+[Tuesday, January 27 2026 22:31:48] Opening PSD: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/PSDs/FL Revision 2020 For Poly.psd
+[Tuesday, January 27 2026 22:31:48] --- Editing Black Layer Group ---
+[Tuesday, January 27 2026 22:31:49] Set Text [Top Micro Text]: HF90
+[Tuesday, January 27 2026 22:31:49] Set Text [Driver License Number]: 
+[Tuesday, January 27 2026 22:31:49] Set Text [License Class]: E
+[Tuesday, January 27 2026 22:31:50] Set Text [Last Name]: FINCH
+[Tuesday, January 27 2026 22:31:50] Set Text [First Middle]: HARROLD EYES
+[Tuesday, January 27 2026 22:31:51] Set Text [Street Address Apt/Unit]: 100 EYES RD
+[Tuesday, January 27 2026 22:31:51] Set Text [City State Zip]: MIAMI FL 32779
+[Tuesday, January 27 2026 22:31:51] Set Text [Dob]: 11/07/1990
+[Tuesday, January 27 2026 22:31:52] Set Text [Sex]: M
+[Tuesday, January 27 2026 22:31:52] Set Text [Exp]: 11/07/2030
+[Tuesday, January 27 2026 22:31:52] Height Preserve Update: 5  01 -> 5  09
+[Tuesday, January 27 2026 22:31:53] Set Text [Restriction = A, B, NONE]: A
+[Tuesday, January 27 2026 22:31:54] Set Text [End = A, NONE]: NONE
+[Tuesday, January 27 2026 22:31:54] Set Text [Issue Date]: 11/07/2023
+[Tuesday, January 27 2026 22:31:54] Set Text [DD]: E852311079303
+[Tuesday, January 27 2026 22:31:55] Set Text [Bottom Micro Text]: HF90
+[Tuesday, January 27 2026 22:31:55] Set Text [REPLACED DATE]: 11/07/2023
+[Tuesday, January 27 2026 22:31:56] Set Visibility [Safe Driver]: false
+[Tuesday, January 27 2026 22:31:56] No Signature Image found. Attempting to set Signature Text: 
+[Tuesday, January 27 2026 22:31:56] Set Text [Signature Text]: 
+[Tuesday, January 27 2026 22:31:56] Set Visibility [Signature Text]: true
+[Tuesday, January 27 2026 22:31:57] Set Visibility [Signature]: false
+[Tuesday, January 27 2026 22:31:57] --- Editing Color Layer Group ---
+[Tuesday, January 27 2026 22:31:58] Set Visibility [SAFE DRIVER]: true
+[Tuesday, January 27 2026 22:31:58] Set Visibility [REAL ID STAR]: true
+[Tuesday, January 27 2026 22:31:59] Set Visibility [REPLACED]: false
+[Tuesday, January 27 2026 22:32:04] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[Tuesday, January 27 2026 22:32:10] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[Tuesday, January 27 2026 22:32:10] --- Starting Export Process ---
+[Tuesday, January 27 2026 22:32:22] Saved: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/Final_Documents/HARROLD FINCH 11-07-1990/Front_Color_Only.tif
+[Tuesday, January 27 2026 22:32:40] Saved: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/Final_Documents/HARROLD FINCH 11-07-1990/Front_Black_Only.tif
+[Tuesday, January 27 2026 22:32:40] Job Complete. Document Closed.
+[Tuesday, January 27 2026 22:32:40] ==================================================
+[Tuesday, January 27 2026 22:34:18] ==================================================
+[Tuesday, January 27 2026 22:34:18] SCRIPT STARTED: process_fl.jsx
+[Tuesday, January 27 2026 22:34:18] Configuration loaded. Root: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/
+[Tuesday, January 27 2026 22:34:18] Data file read successfully: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation\temp_files\fl_job_HARROLD FINCH 11-07-1990.txt
+[Tuesday, January 27 2026 22:34:18] Opening PSD: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/PSDs/FL Revision 2020 For Poly.psd
+[Tuesday, January 27 2026 22:34:19] --- Editing Black Layer Group ---
+[Tuesday, January 27 2026 22:34:19] Set Text [Top Micro Text]: HF90
+[Tuesday, January 27 2026 22:34:20] Set Text [Driver License Number]: 
+[Tuesday, January 27 2026 22:34:20] Set Text [License Class]: E
+[Tuesday, January 27 2026 22:34:20] Set Text [Last Name]: FINCH
+[Tuesday, January 27 2026 22:34:21] Set Text [First Middle]: HARROLD EYES
+[Tuesday, January 27 2026 22:34:21] Set Text [Street Address Apt/Unit]: 100 EYES RD
+[Tuesday, January 27 2026 22:34:21] Set Text [City State Zip]: MIAMI FL 32779
+[Tuesday, January 27 2026 22:34:22] Set Text [Dob]: 11/07/1990
+[Tuesday, January 27 2026 22:34:22] Set Text [Sex]: M
+[Tuesday, January 27 2026 22:34:23] Set Text [Exp]: 11/07/2030
+[Tuesday, January 27 2026 22:34:23] Height Preserve Update: 5  01 -> 5  09
+[Tuesday, January 27 2026 22:34:23] Set Text [Restriction = A, B, NONE]: A
+[Tuesday, January 27 2026 22:34:24] Set Text [End = A, NONE]: NONE
+[Tuesday, January 27 2026 22:34:24] Set Text [Issue Date]: 11/07/2023
+[Tuesday, January 27 2026 22:34:25] Set Text [DD]: E852311079303
+[Tuesday, January 27 2026 22:34:25] Set Text [Bottom Micro Text]: HF90
+[Tuesday, January 27 2026 22:34:25] Set Text [REPLACED DATE]: 11/07/2023
+[Tuesday, January 27 2026 22:34:26] Set Visibility [Safe Driver]: false
+[Tuesday, January 27 2026 22:34:26] No Signature Image found. Attempting to set Signature Text: Harrold F
+[Tuesday, January 27 2026 22:34:26] Set Text [Signature Text]: Harrold F
+[Tuesday, January 27 2026 22:34:26] Set Visibility [Signature Text]: true
+[Tuesday, January 27 2026 22:34:27] Set Visibility [Signature]: false
+[Tuesday, January 27 2026 22:34:27] --- Editing Color Layer Group ---
+[Tuesday, January 27 2026 22:34:27] Set Visibility [SAFE DRIVER]: true
+[Tuesday, January 27 2026 22:34:27] Set Visibility [REAL ID STAR]: true
+[Tuesday, January 27 2026 22:34:28] Set Visibility [REPLACED]: false
+[Tuesday, January 27 2026 22:34:34] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[Tuesday, January 27 2026 22:34:41] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[Tuesday, January 27 2026 22:34:41] --- Starting Export Process ---
+[Tuesday, January 27 2026 22:34:57] Saved: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/Final_Documents/HARROLD FINCH 11-07-1990/Front_Color_Only.tif
+[Tuesday, January 27 2026 22:35:15] Saved: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/Final_Documents/HARROLD FINCH 11-07-1990/Front_Black_Only.tif
+[Tuesday, January 27 2026 22:35:15] Job Complete. Document Closed.
+[Tuesday, January 27 2026 22:35:15] ==================================================
+[Tuesday, January 27 2026 22:41:26] ==================================================
+[Tuesday, January 27 2026 22:41:26] SCRIPT STARTED: process_fl.jsx
+[Tuesday, January 27 2026 22:41:26] Configuration loaded. Root: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/
+[Tuesday, January 27 2026 22:41:26] Data file read successfully: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation\temp_files\fl_job_HARROLD FINCH 11-07-1990.txt
+[Tuesday, January 27 2026 22:41:26] Opening PSD: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/PSDs/FL Revision 2020 For Poly.psd
+[Tuesday, January 27 2026 22:41:27] --- Editing Black Layer Group ---
+[Tuesday, January 27 2026 22:41:28] Set Text [Top Micro Text]: HF90
+[Tuesday, January 27 2026 22:41:28] Set Text [Driver License Number]: F520-325-90-407-0
+[Tuesday, January 27 2026 22:41:29] Set Text [License Class]: E
+[Tuesday, January 27 2026 22:41:30] Set Text [Last Name]: FINCH
+[Tuesday, January 27 2026 22:41:30] Set Text [First Middle]: HARROLD EYES
+[Tuesday, January 27 2026 22:41:31] Set Text [Street Address Apt/Unit]: 100 EYES RD
+[Tuesday, January 27 2026 22:41:31] Set Text [City State Zip]: MIAMI FL 32779
+[Tuesday, January 27 2026 22:41:32] Set Text [Dob]: 11/07/1990
+[Tuesday, January 27 2026 22:41:32] Set Text [Sex]: M
+[Tuesday, January 27 2026 22:41:33] Set Text [Exp]: 11/07/2030
+[Tuesday, January 27 2026 22:41:33] Height Preserve Update: 5  01 -> 5  09
+[Tuesday, January 27 2026 22:41:34] Set Text [Restriction = A, B, NONE]: B
+[Tuesday, January 27 2026 22:41:35] Set Text [End = A, NONE]: A
+[Tuesday, January 27 2026 22:41:35] Set Text [Issue Date]: 11/07/2023
+[Tuesday, January 27 2026 22:41:37] Set Text [DD]: G762311077905
+[Tuesday, January 27 2026 22:41:37] Set Text [Bottom Micro Text]: HF90
+[Tuesday, January 27 2026 22:41:38] Set Text [REPLACED DATE]: 11/07/2023
+[Tuesday, January 27 2026 22:41:38] Set Visibility [Safe Driver]: false
+[Tuesday, January 27 2026 22:41:38] No Signature Image found. Attempting to set Signature Text: Harrold Fi
+[Tuesday, January 27 2026 22:41:39] Set Text [Signature Text]: Harrold Fi
+[Tuesday, January 27 2026 22:41:39] Set Visibility [Signature Text]: true
+[Tuesday, January 27 2026 22:41:40] Set Visibility [Signature]: false
+[Tuesday, January 27 2026 22:41:40] --- Editing Color Layer Group ---
+[Tuesday, January 27 2026 22:41:40] Set Visibility [SAFE DRIVER]: true
+[Tuesday, January 27 2026 22:41:40] Set Visibility [REAL ID STAR]: true
+[Tuesday, January 27 2026 22:41:41] Set Visibility [REPLACED]: true
+[Tuesday, January 27 2026 22:41:41] --- Starting Export Process ---
+[Tuesday, January 27 2026 22:42:01] Saved: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/Final_Documents/HARROLD FINCH 11-07-1990/Front_Color_Only.tif
+[Tuesday, January 27 2026 22:42:15] Saved: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/Final_Documents/HARROLD FINCH 11-07-1990/Front_Black_Only.tif
+[Tuesday, January 27 2026 22:42:15] Job Complete. Document Closed.
+[Tuesday, January 27 2026 22:42:15] ==================================================

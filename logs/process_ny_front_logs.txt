@@ -1,18 +1,35 @@
 --- NY FRONT LOG START ---
-[23:49:47] Starting Front Process...
-[23:49:47] Opening Front Template: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\PSDs\Front NY Automation.psd
-[23:49:48] Processing 'Raised' Section...
-[23:49:49] Update Text -> Layer: 'DL 3 characters' | Org:   8     9   7   | New:   1     9     2 | Final:   1     9     2
-[23:49:50] Update Text -> Layer: 'day' | Org: 08 | New: 03 | Final: 03
-[23:49:50] Update Text -> Layer: 'month' | Org: 05 | New: 06 | Final: 06
-[23:49:51] Update Text -> Layer: 'last two digits of year' | Org: 58 | New: 90 | Final: 90
-[23:49:51] Update Text -> Layer: 'day' | Org: 08 | New: 07 | Final: 07
-[23:49:52] Update Text -> Layer: 'month' | Org: 05 | New: 06 | Final: 06
-[23:49:52] Update Text -> Layer: 'last two digits of year' | Org: 33 | New: 27 | Final: 27
-[23:49:53] Update Text -> Layer: 'dob' | Org: MAY 08 58 | New: JUN 03 90 | Final: JUN 03 90
-[23:49:53] Using Signature Text Fallback: Joan V
-[23:49:56] Update Text -> Layer: 'dob' | Org: MAY58 | New: JUN90 | Final: JUN90
-[23:49:56] Processing 'Laser' Section...
-[23:49:59] Applying Swirl Styles (Arial Black/FauxBold)...
-[23:50:02] Applying Tracking: -30
-[23:50:02] Applying Horizontal Scale: 93%
+[10:51:47] Starting Front Process...
+[10:51:48] Opening Front Template: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\PSDs\Front NY Automation.psd
+[10:52:21] Processing 'Raised' Section...
+[10:52:21] Update Text -> Layer: 'DL 3 characters' | Org:   8     9   7   | New:   8     8     3 | Final:   8     8     3
+[10:52:21] Update Text -> Layer: 'day' | Org: 08 | New: 03 | Final: 03
+[10:52:22] Update Text -> Layer: 'month' | Org: 05 | New: 06 | Final: 06
+[10:52:22] Update Text -> Layer: 'last two digits of year' | Org: 58 | New: 90 | Final: 90
+[10:52:23] Update Text -> Layer: 'day' | Org: 08 | New: 07 | Final: 07
+[10:52:23] Update Text -> Layer: 'month' | Org: 05 | New: 06 | Final: 06
+[10:52:23] Update Text -> Layer: 'last two digits of year' | Org: 33 | New: 27 | Final: 27
+[10:52:23] Update Text -> Layer: 'dob' | Org: MAY 08 58 | New: JUN 03 90 | Final: JUN 03 90
+[10:52:23] Using Signature Text Fallback: Joan V
+[10:52:24] Update Text -> Layer: 'dob' | Org: MAY58 | New: JUN90 | Final: JUN90
+[10:52:24] Processing 'Laser' Section...
+[10:52:26] Applying Swirl Styles (Arial Black/FauxBold)...
+[10:52:28] Applying Tracking: -30
+[10:52:28] Applying Horizontal Scale: 93%
+[10:52:29] Update Text -> Layer: 'first two digits of year' | Org: 19 | New: 19 | Final: 19
+[10:52:29] Update Text -> Layer: '06/03/1990' | Org: 05/09/1959 | New: 06/03/1990 | Final: 06/03/1990
+[10:52:30] Update Text -> Layer: 'DL remaining characters' | Org: 6  9 9  5 6  7 | New: 0  7 1  3 4  5 | Final: 0  7 1  3 4  5
+[10:52:30] Update Text -> Layer: 'ISSUE' | Org: 01/03/2025 | New: 05/06/2023 | Final: 05/06/2023
+[10:52:31] WARNING: Text Layer matching 'EXP' NOT FOUND in 10 Laser Edited BOLD Text
+[10:52:31] Update Text -> Layer: 'Last Name' | Org: VALENTE | New: VALENTE | Final: VALENTE
+[10:52:31] Update Text -> Layer: 'Front and Middle Name' | Org: JO ANN | New: JOAN N | Final: JOAN N
+[10:52:32] Update Text -> Layer: 'Address First Line' | Org: 100 STERLING PL APT 2F | New: 110 YETMAN AVE | Final: 110 YETMAN AVE
+[10:52:32] Update Text -> Layer: 'Address Second Line' | Org: BROOKLYN, NY 11217 | New: STATEN ISLAND, NY 10307 | Final: STATEN ISLAND, NY 10307
+[10:52:32] Update Text -> Layer: 'Gender' | Org: F | New: F | Final: F
+[10:52:32] Height Preserve Update: 5 -04 -> 5 -04
+[10:52:33] Update Text -> Layer: 'Eye Color' | Org: BRO | New: BRO | Final: BRO
+[10:52:33] Update Text -> Layer: 'Micro' | Org: 05 08 2033 JO ANN VALENTE 05 08 2033 JO ANN VALENTE05 08 2033   | New: 06 07 2027 JOAN N VALENTE 06 07 2027 JOAN N VALENTE 06 07 2027 | Final: 06 07 2027 JOAN N VALENTE 06 07 2027 JOAN N VALENTE 06 07 2027
+[10:52:34] Update Text -> Layer: 'dob' | Org: MAY58 | New: JUN90 | Final: JUN90
+[10:53:02] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[10:53:02] Error in replaceFace: TypeError: null is not an object
+[10:53:02] FATAL ERROR: TypeError: null is not an object line: 720
