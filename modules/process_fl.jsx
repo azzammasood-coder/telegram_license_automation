@@ -39,6 +39,8 @@ if (!LOG_DIR.exists) {
     LOG_DIR.create();
 }
 var LOG_FILE  = new File(ROOT_PATH + "logs/process_fl.log");
+LOG_FILE.open("w");
+LOG_FILE.close();
 
 // PSD Selection (Adapted for FL)
 var PSD_NAME = (config.filenames && config.filenames.fl_psd) ? config.filenames.fl_psd : "FL Revision 2020 For Poly.psd";
@@ -453,42 +455,69 @@ function main() {
         log("ERROR: 'Color' group not found.");
     }
 
-    // 6. Export Process
+    // =========================================================================
+    // 6. EXPORT PROCESS (Strict Visibility)
+    // =========================================================================
     log("--- Starting Export Process ---");
+
     var historyStateFilled = doc.activeHistoryState;
 
-    // A. Export Front Color
+    // -------------------------------------------------------------------------
+    // A. EXPORT FRONT COLOR ONLY (TIFF, RGB)
+    // -------------------------------------------------------------------------
     try {
+        // 1. Set Visibility: SHOW Color, HIDE Black
+        colorGroup.visible = true;
+        blackGroup.visible = false;
+
+        // 2. Convert Profile (Adobe RGB 1998)
         doc.convertProfile("Adobe RGB (1998)", Intent.PERCEPTUAL, true, true);
+
+        // 3. Save TIFF (No Layers, Transparent)
         var tiffOpts = new TiffSaveOptions();
-        
-        // --- FIX HERE: Change TiffEncoding to TIFFEncoding ---
         tiffOpts.imageCompression = TIFFEncoding.NONE; 
         tiffOpts.layers = false; 
+        tiffOpts.transparency = true; // <--- ENABLE TRANSPARENCY
         
         var colorFile = new File(data["Output Color"]);
         doc.saveAs(colorFile, tiffOpts, true, Extension.LOWERCASE);
-        log("Saved: " + data["Output Color"]);
+        log("Saved Front Color: " + data["Output Color"]);
+
     } catch(e) {
         log("ERROR saving Color: " + e);
     }
 
-    // Undo
+    // RESET STATE
     doc.activeHistoryState = historyStateFilled;
 
-    // B. Export Front Black
+    // -------------------------------------------------------------------------
+    // B. EXPORT FRONT BLACK ONLY (TIFF, Grayscale, Dot Grain)
+    // -------------------------------------------------------------------------
     try {
+        // 1. Set Visibility: HIDE Color, SHOW Black
+        colorGroup.visible = false;
+        blackGroup.visible = true;
+
+        // 2. Convert to Grayscale
         doc.changeMode(ChangeMode.GRAYSCALE);
-        // Note: Re-declare options or reuse. If reusing, ensure TIFFEncoding is uppercase.
-        tiffOpts.imageCompression = TIFFEncoding.NONE; 
-        tiffOpts.embedColorProfile = true; 
+        
+        // 3. Save TIFF (No Layers, Embed Profile, Transparent)
+        var tiffOptsGray = new TiffSaveOptions();
+        tiffOptsGray.imageCompression = TIFFEncoding.NONE; 
+        tiffOptsGray.layers = false;
+        tiffOptsGray.embedColorProfile = true; 
+        tiffOptsGray.transparency = true; // <--- ENABLE TRANSPARENCY
         
         var blackFile = new File(data["Output Black"]);
-        doc.saveAs(blackFile, tiffOpts, true, Extension.LOWERCASE);
-        log("Saved: " + data["Output Black"]);
+        doc.saveAs(blackFile, tiffOptsGray, true, Extension.LOWERCASE);
+        log("Saved Front Black: " + data["Output Black"]);
+
     } catch(e) {
         log("ERROR saving Black: " + e);
     }
+
+    // RESET STATE
+    doc.activeHistoryState = historyStateFilled;
 
     // 7. Finish
     // doc.close(SaveOptions.DONOTSAVECHANGES);

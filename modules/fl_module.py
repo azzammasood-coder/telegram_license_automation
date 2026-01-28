@@ -118,19 +118,16 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     final_sig_path = ""
     final_sig_text = ""
     
-    # Signature Decision Tree
+    ## Signature Decision Tree
     if sig_path_source and os.path.exists(sig_path_source):
-        # A. Use Image
-        dest_sig = clean_path(os.path.join(job_output_dir, "signature.png"))
-        shutil.copy(sig_path_source, dest_sig)
-        final_sig_path = dest_sig
+        # Use existing temp path directly
+        final_sig_path = clean_path(sig_path_source)
     else:
-        # B. Use Text (User provided or Fallback)
+        # Use Text
         raw_sig = user_data.get('signature_text', '') or user_data.get('signature', '')
         if raw_sig and raw_sig.upper() not in ["SKIP", "NO", "NONE"]:
             final_sig_text = raw_sig
         else:
-            # C. Fallback: First Name + Last Initial (Title Case)
             fn = user_data.get('first_name', '').strip().title()
             ln = user_data.get('last_name', '').strip().title()
             li = ln[0] if ln else ""
@@ -138,16 +135,23 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
 
     final_face_path = ""
     if face_path_source and os.path.exists(face_path_source):
-        dest_face = clean_path(os.path.join(job_output_dir, "face.png"))
-        shutil.copy(face_path_source, dest_face)
-        final_face_path = dest_face
+        # Use existing temp path directly
+        final_face_path = clean_path(face_path_source)
 
-    # 5. Save Barcodes
+    # 5. Save Barcodes (4 Files Total)
+    # [UPDATED] Save Big+Small as both TIFF+SVG with specific names
     if big_tiff:
-        with open(os.path.join(job_output_dir, "barcode_big.tiff"), "wb") as f:
+        with open(os.path.join(job_output_dir, "barcode.tiff"), "wb") as f:
             f.write(big_tiff)
+    if big_svg:
+        with open(os.path.join(job_output_dir, "barcode.svg"), "wb") as f:
+            f.write(big_svg)
+            
+    if small_tiff:
+        with open(os.path.join(job_output_dir, "linear barcode.tiff"), "wb") as f:
+            f.write(small_tiff)
     if small_svg:
-        with open(os.path.join(job_output_dir, "barcode_small.svg"), "wb") as f:
+        with open(os.path.join(job_output_dir, "linear barcode.svg"), "wb") as f:
             f.write(small_svg)
 
     dd_value = extract_dd_from_raw(raw_text)
