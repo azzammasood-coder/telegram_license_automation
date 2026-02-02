@@ -1,0 +1,40 @@
+[Monday, February 02 2026 22:26:11] ==================================================
+[Monday, February 02 2026 22:26:11] SCRIPT STARTED: process_pa.jsx
+[Monday, February 02 2026 22:26:11] Data file read successfully: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation\temp_files\pa_job_Ahmad Masood 09-08-1998.txt
+[Monday, February 02 2026 22:26:11] Opening PSD: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation/PSDs/FRONT PA POLY.psd
+[Monday, February 02 2026 22:26:11] --- Editing Color Group ---
+[Monday, February 02 2026 22:26:11] Updated Text [MICRO TOP]: 'AN54 - NA04 - 1028' -> 'AM98'
+[Monday, February 02 2026 22:26:11] Set 'star' visibility: true
+[Monday, February 02 2026 22:26:11] Set 'Not Visible' layer visibility: false
+[Monday, February 02 2026 22:26:11] --- Editing Black Group (Edit Text) ---
+[Monday, February 02 2026 22:26:12] Updated Text [TOP MICRO INITIALS- FIRST NAME INITIAL / LAST NAME INITIAL/ BIRTH YEAR LAST TWO DIGITS]: 'NA54' -> 'AM98'
+[Monday, February 02 2026 22:26:12] Updated Text [DL]: '19 059 959' -> '96 762 905'
+[Monday, February 02 2026 22:26:12] Updated Text [DOB]: '04/09/1954' -> '09/08/1998'
+[Monday, February 02 2026 22:26:12] Updated Text [LAST NAME]: 'ALSTON' -> 'MASOOD'
+[Monday, February 02 2026 22:26:12] Updated Text [FIRST MIDDLE]: 'NATHAN  W' -> 'AHMAD A'
+[Monday, February 02 2026 22:26:13] Updated Text [STREET 1]: '1108 rock creek Dr' -> '100 EYES RD'
+[Monday, February 02 2026 22:26:13] Updated Text [CITY STATE ZIP]: 'Wyncote, PA 19095' -> 'WYNCOTE, PA 19095'
+[Monday, February 02 2026 22:26:13] Updated Text [EXP DATE]: '04/10/2028' -> '09/09/2026'
+[Monday, February 02 2026 22:26:13] Updated Text [ISS DATE]: '12/30/2024' -> '09/04/2022'
+[Monday, February 02 2026 22:26:14] Updated Text [Sex]: 'M' -> 'M'
+[Monday, February 02 2026 22:26:14] Updated Text [EYE COLOR]: 'BRO' -> 'BRO'
+[Monday, February 02 2026 22:26:14] Updated Text [HEIGHT]: '5'-08''' -> '5’ 11”'
+[Monday, February 02 2026 22:26:15] Updated Text [CLASS]: 'C' -> 'C'
+[Monday, February 02 2026 22:26:15] Updated Text [DD LINE 1]: '2436501301403' -> '2224701001105'
+[Monday, February 02 2026 22:26:16] Updated Text [DD LINE 2]: '600000067459' -> '700000064310'
+[Monday, February 02 2026 22:26:16] Updated Text [BOTTOM MICRO INITIALS- FIRST NAME INITIAL / LAST NAME INITIAL/ BIRTH YEAR LAST TWO DIGITS]: 'NA54' -> 'AM98'
+[Monday, February 02 2026 22:26:16] --- Processing Signature ---
+[Monday, February 02 2026 22:26:17] Visible: Sig Text (Updated 'Nathan A' -> 'Ahmad Ma')
+[Monday, February 02 2026 22:26:17] Positioned Sig Text to X: 241, Y: 2155
+[Monday, February 02 2026 22:26:17] Set 'Not Visible' layer visibility to: false
+[Monday, February 02 2026 22:26:17] --- Starting Export Process ---
+[Monday, February 02 2026 22:26:17] Configuring for Color Export...
+[Monday, February 02 2026 22:26:17] Converting Profile to sRGB IEC61966-2.1 (Relative Colorimetric)...
+[Monday, February 02 2026 22:26:36] Saving Color TIFF to: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\Final_Documents\Ahmad Masood 09-08-1998\Front Color Only.tif
+[Monday, February 02 2026 22:26:36] SUCCESS: Color Exported.
+[Monday, February 02 2026 22:26:36] Configuring for Black Export...
+[Monday, February 02 2026 22:26:36] Converting Profile to sRGB IEC61966-2.1 (Relative Colorimetric)...
+[Monday, February 02 2026 22:26:36] Saving Black PNG to: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\Final_Documents\Ahmad Masood 09-08-1998\Front Black Only.png
+[Monday, February 02 2026 22:26:37] SUCCESS: Black Exported.
+[Monday, February 02 2026 22:26:37] Reverting History State...
+[Monday, February 02 2026 22:26:37] ==================================================

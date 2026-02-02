@@ -10,17 +10,8 @@ import json
 import base64
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    ContextTypes,
-    ConversationHandler,
-    MessageHandler,
-    filters,
-)
-
-# --- IMPORT JURISDICTION MODULES ---
-from modules import nj_module, ny_module, fl_module  # <--- Added fl_module
+from telegram.ext import (Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters,)
+from modules import nj_module, ny_module, fl_module, pa_module
 
 # ==============================================================================
 #  CONFIGURATION & SETTINGS
@@ -100,9 +91,16 @@ class MockContext:
     FL_ENDORSEMENT,     # <--- FL Specific State
     FL_SAFE_DRIVER,     # <--- FL Specific State
     FL_REPLACED,        # <--- FL Specific State
+    # --- PA Specific States ---
+    PA_DL_CHECK, PA_DL_INPUT,
+    PA_ISS_CHECK, PA_ISS_INPUT,
+    PA_EXP_CHECK, PA_EXP_INPUT,
+    PA_SIG_CHECK, PA_SIG_UPLOAD,
+    PA_REAL_ID,
+    # --- Common ---
     FACE_CHECK,      
     FACE_UPLOAD       
-) = range(13)           # <--- Updated Range
+) = range(22)           # <--- Updated Range to 22
 
 # Logging
 logging.basicConfig(format="%(asctime)s - [BOT] - %(message)s", level=logging.INFO)
@@ -443,8 +441,11 @@ def generate_barcodes(user_data: dict, api_height: str):
     small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/tiff"}, params=params, timeout=60).content
     
     raw_text = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "text/plain"}, params=params, timeout=60).text
+    
+    big_png = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/png"}, params=params, timeout=60).content
+    small_png = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/png"}, params=params, timeout=60).content
 
-    return barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff
+    return barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png
 
 # ==============================================================================
 #  TELEGRAM FLOW
@@ -483,9 +484,9 @@ async def new_barcode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             return ConversationHandler.END
 
     # --- ASK FOR JURISDICTION ---
-    keyboard = [["FL", "NJ", "NY"]]
+    keyboard = [["FL", "NJ", "NY", "PA"]]
     await update.message.reply_text(
-        "**=== License Bot Started ===**\n\nWhat State?\n\nCurrent options: NJ, NY, FL",
+        "**=== License Bot Started ===**\n\nWhat State?\n\nCurrent options: NJ, NY, FL, PA",
         reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True),
         parse_mode="Markdown"
     )
@@ -497,16 +498,23 @@ async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     # LOGGING
     logger.info(f"🔘 State Button Pressed: '{selected}'")
 
-    if selected not in ["FL", "NJ", "NY"]:
+    if selected not in ["FL", "NJ", "NY", "PA"]:
         await update.message.reply_text("Please select FL, NJ, or NY.")
         return STATE_SELECT
     
     context.user_data['jurisdiction'] = selected
     # LOGGING
     logger.info(f"💾 Saved to context.user_data['jurisdiction']: {context.user_data['jurisdiction']}")
+
+    if selected == "PA":
+        msg = ("**PA Selected**\nPlease enter details in this format:\n\n"
+               "First Name: Harrold\nMiddle Name: Eyes\nLast Name: Finch\nAddress: 100 Eyes Rd\n"
+               "City: wyncote\nState Code: PA\nFull Zip Code + 4 Digits: 190950000\n"
+               "Dob: 04/09/1954\nGender: M\nHeight: 5-08\nEyes: BRO\n"
+               "Class: C\nSignature:")
     
-    if selected == "FL":
-        msg = ("🐊 **FL Selected**\nPlease enter details in this format::\n\n"
+    elif selected == "FL":
+        msg = ("**FL Selected**\nPlease enter details in this format::\n\n"
                "First Name: ...\nMiddle Name: ...\nLast Name: ...\nAddress: ...\n"
                "City: ...\nState Code: FL\nFull Zip Code + 4 Digits: ...\n"
                "Dob: MM/DD/YYYY\nGender: M\nHeight: 5'-09\nEyes: BRO\n"
@@ -514,7 +522,7 @@ async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                "Real ID: Visible\nNot Real ID: Not Visible\nSignature: ...")
     else:
         msg = (
-            f"📋 **{selected} Selected**\nPlease enter details in this format:\n\n"
+            f"**{selected} Selected**\nPlease enter details in this format:\n\n"
             "First Name: JOHN\nMiddle Name: ROBERT\nLast Name: DOE\nAddress: 123 MAIN ST\n"
             "City: NEWARK\nState Code: NJ\nFull Zip Code + 4 Digits: 07101\nGender: M\nDob: 01/01/1980\n"
             "Height: 5'-11\"\nEyes: BRN\nClass: D\nEndorsements: NONE\nRestrictions: NONE\n"
@@ -542,6 +550,13 @@ async def handle_bulk_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     context.user_data.update(parsed_data)
     context.user_data['jurisdiction'] = current_state 
 
+    # --- PA SPECIFIC ROUTING ---
+    if current_state == "PA":
+         await update.message.reply_text("Custom DL? (Yes / No)", 
+            reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], one_time_keyboard=True, resize_keyboard=True))
+         return PA_DL_CHECK
+
+    # --- STANDARD ROUTING ---
     reply_keyboard = [["Yes", "No"]]
     await update.message.reply_text("Custom DL Number? (Yes or No)", 
                                    reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
@@ -656,6 +671,67 @@ async def fl_ask_replaced(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.message.reply_text("Upload Face Picture? (Yes or No)", 
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
     return FACE_CHECK
+
+# ================= PA SPECIFIC HANDLERS =================
+
+async def pa_dl_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.text.lower() == "yes":
+        await update.message.reply_text("Enter Custom DL:", reply_markup=ReplyKeyboardRemove())
+        return PA_DL_INPUT
+    await update.message.reply_text("Custom Iss Date? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    return PA_ISS_CHECK
+
+async def pa_dl_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["custom_dl"] = update.message.text.strip()
+    await update.message.reply_text("Custom Iss Date? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    return PA_ISS_CHECK
+
+async def pa_iss_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.text.lower() == "yes":
+        await update.message.reply_text("Enter Custom Issue Date (MM/DD/YYYY):", reply_markup=ReplyKeyboardRemove())
+        return PA_ISS_INPUT
+    await update.message.reply_text("Custom Exp Date? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    return PA_EXP_CHECK
+
+async def pa_iss_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["issue_date"] = update.message.text.strip()
+    await update.message.reply_text("Custom Exp Date? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    return PA_EXP_CHECK
+
+async def pa_exp_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.text.lower() == "yes":
+        await update.message.reply_text("Enter Custom Exp Date (MM/DD/YYYY):", reply_markup=ReplyKeyboardRemove())
+        return PA_EXP_INPUT
+    await update.message.reply_text("Custom Signature? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    return PA_SIG_CHECK
+
+async def pa_exp_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["expires_date"] = update.message.text.strip()
+    await update.message.reply_text("Custom Signature? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    return PA_SIG_CHECK
+
+async def pa_sig_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.text.lower() == "yes":
+        await update.message.reply_text("Upload Signature Image:", reply_markup=ReplyKeyboardRemove())
+        return PA_SIG_UPLOAD
+    await update.message.reply_text("Real ID? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    return PA_REAL_ID
+
+async def pa_sig_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # Handle upload using shared logic
+    await get_signature_upload(update, context) 
+    # Logic note: get_signature_upload normally returns FACE_CHECK or FL_REAL_ID. 
+    # We need to manually advance to PA_REAL_ID here.
+    await update.message.reply_text("Real ID? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    return PA_REAL_ID
+
+async def pa_real_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data['real_id'] = "YES" if update.message.text.lower() == "yes" else "NO"
+    # PA flow ends, go to FACE
+    await update.message.reply_text("Upload Face Picture? (Yes or No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    return FACE_CHECK
+
+# ========================================================
 
 async def ask_face(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text.lower()
@@ -775,32 +851,24 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         raw_height = context.user_data.get('height', '5-00')
         api_height, visual_height = parse_height_logic(raw_height)
         
-        # 1. Generate Barcodes (Now returns 6 items)
-        barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff = generate_barcodes(context.user_data, api_height)
+        # 1. Generate Barcodes (Now returns 7 items)
+        barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png = generate_barcodes(context.user_data, api_height)
         
         # 2. Select Module & Prepare Files
         jurisdiction = context.user_data.get('jurisdiction', 'NJ').strip().upper()
         
-        if jurisdiction == 'FL':
-            # FL: Pass TIFFs
+        if jurisdiction == 'PA':
+             results = pa_module.prepare_job_files(
+                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,  big_png=big_png, small_png=small_png)
+        elif jurisdiction == 'FL':
             results = fl_module.prepare_job_files(
-                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,
-                big_tiff=big_tiff, small_tiff=small_tiff
-            )
+                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,big_tiff=big_tiff, small_tiff=small_tiff)
             module = fl_module # Set for logging/reference
-        
         elif jurisdiction == 'NY':
-            # NY: Standard call (Ignore TIFFs)
-            results = ny_module.prepare_job_files(
-                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR
-            )
+            results = ny_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
             module = ny_module
-        
-        else:
-            # NJ: Standard call (Ignore TIFFs)
-            results = nj_module.prepare_job_files(
-                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR
-            )
+        else: # NJ
+            results = nj_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
             module = nj_module
 
         # Capture first 5 standard items
@@ -901,8 +969,19 @@ def main():
         conv_handler = ConversationHandler(
             entry_points=[CommandHandler(["newbarcode", "n"], new_barcode)],
             states={
-                STATE_SELECT: [MessageHandler(filters.Regex(r"^(FL|NJ|NY)$"), select_state)],
+                STATE_SELECT: [MessageHandler(filters.Regex(r"^(FL|NJ|NY|PA)$"), select_state)],
                 BULK_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_bulk_input)],
+
+                # PA SPECIFIC FLOW
+                PA_DL_CHECK: [MessageHandler(yes_no_filter, pa_dl_check)],
+                PA_DL_INPUT: [MessageHandler(filters.TEXT, pa_dl_input)],
+                PA_ISS_CHECK: [MessageHandler(yes_no_filter, pa_iss_check)],
+                PA_ISS_INPUT: [MessageHandler(filters.TEXT, pa_iss_input)],
+                PA_EXP_CHECK: [MessageHandler(yes_no_filter, pa_exp_check)],
+                PA_EXP_INPUT: [MessageHandler(filters.TEXT, pa_exp_input)],
+                PA_SIG_CHECK: [MessageHandler(yes_no_filter, pa_sig_check)],
+                PA_SIG_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, pa_sig_upload)],
+                PA_REAL_ID: [MessageHandler(yes_no_filter, pa_real_id)],
                 
                 # FL SPECIFIC FLOW
                 FL_REAL_ID: [MessageHandler(fl_opts, fl_ask_real_id)],
