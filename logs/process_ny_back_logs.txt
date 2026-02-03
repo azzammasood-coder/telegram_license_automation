@@ -1,36 +1,36 @@
 --- NY BACK LOG START ---
-[10:53:03] Starting Back Process...
-[10:53:03] Opening Back Template: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\PSDs\Back NY Automation.psd
-[10:53:05] Found 'Back' Group. Starting Updates...
-[10:53:06] Update Text -> Layer: 'Number' | Org: XF1F6X3S93 | New: XF9F0N3S55 | Final: XF9F0N3S55
-[10:53:06] Updating Back Window DOB (Atomic): JUN 03 90
-[10:53:07] Applying Swirl Styles (Arial Black/FauxBold)...
-[10:53:08] Applying White Color...
-[10:53:08] Applying Tracking: -40
-[10:53:09] Updating Back Raised Text (Atomic): JOANNVALENTEJOANNVALENTEJ
-[10:53:10] Applying Swirl Styles (Arial Black/FauxBold)...
-[10:53:11] Applying Tracking: 300
-[10:53:12] Applying Horizontal Scale: 85%
-[10:53:12] Processing Back Swirl Edit Group...
-[10:53:12] Update Text -> Layer: 'Month - First character' | Org: J | New: J | Final: J
-[10:53:13] Update Text -> Layer: 'Month - Second Characer' | Org: U | New: U | Final: U
-[10:53:13] Update Text -> Layer: 'Month - Third Character' | Org: N | New: N | Final: N
-[10:53:13] Update Text -> Layer: 'Day' | Org: 11 | New: 03 | Final: 03
-[10:53:14] Update Text -> Layer: 'Year' | Org: 87 | New: 90 | Final: 90
-[10:53:14] Updating Swirl DL (Atomic): 087183435
-[10:53:14] Applying Swirl Styles (Arial Black/FauxBold)...
-[10:53:15] Applying White Color...
-[10:53:15] Applying Tracking: 130
-[10:53:15] Update Text -> Layer: 'Barcode number' | Org: 01223 003211301 94 | New: 01223 087183435 94 | Final: 01223 087183435 94
-[10:53:15] Replacing SO: barcode
-[10:53:25] Replacing SO: barcode
-[10:53:27] --- Exporting Full Back PNGs ---
-[10:53:50] --- Exporting Layers ---
-[10:53:50] Fast Exporting: 1 Barcode
-[10:53:59] Fast Exporting:  2 Regular Print Doc#
-[10:54:08] Fast Exporting: 3 Regular Print Top Window
-[10:54:16] Fast Exporting: 4 Regular Print Swirl
-[10:54:24] Fast Exporting: 5 Raised text
-[10:54:33] Fast Exporting: 6 Regular Print Light Black
-[10:54:41] Fast Exporting: 7 Bottom Barcode
-[10:54:50] Back Processing Complete.
+[21:07:14] Starting Back Process...
+[21:07:14] Opening Back Template: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\PSDs\Back NY Automation.psd
+[21:07:16] Found 'Back' Group. Starting Updates...
+[21:07:17] Update Text -> Layer: 'Number' | Org: XF1F6X3S93 | New: XF0Y7V3S68 | Final: XF0Y7V3S68
+[21:07:17] Updating Back Window DOB (Atomic): JAN 01 80
+[21:07:17] Applying Swirl Styles (Arial Black/FauxBold)...
+[21:07:18] Applying White Color...
+[21:07:18] Applying Tracking: -40
+[21:07:19] Updating Back Raised Text (Atomic): JOHNROBERTDOEJOHNROBERTDO
+[21:07:20] Applying Swirl Styles (Arial Black/FauxBold)...
+[21:07:21] Applying Tracking: 300
+[21:07:22] Applying Horizontal Scale: 85%
+[21:07:22] Processing Back Swirl Edit Group...
+[21:07:22] Update Text -> Layer: 'Month - First character' | Org: J | New: J | Final: J
+[21:07:23] Update Text -> Layer: 'Month - Second Characer' | Org: U | New: A | Final: A
+[21:07:23] Update Text -> Layer: 'Month - Third Character' | Org: N | New: N | Final: N
+[21:07:23] Update Text -> Layer: 'Day' | Org: 11 | New: 01 | Final: 01
+[21:07:24] Update Text -> Layer: 'Year' | Org: 87 | New: 80 | Final: 80
+[21:07:24] Updating Swirl DL (Atomic): 672042739
+[21:07:24] Applying Swirl Styles (Arial Black/FauxBold)...
+[21:07:25] Applying White Color...
+[21:07:25] Applying Tracking: 130
+[21:07:26] Update Text -> Layer: 'Barcode number' | Org: 01223 003211301 94 | New: 01223 672042739 94 | Final: 01223 672042739 94
+[21:07:26] Replacing SO: barcode
+[21:07:38] Replacing SO: barcode
+[21:07:43] --- Exporting Full Back PNGs ---
+[21:08:07] --- Exporting Layers ---
+[21:08:07] Fast Exporting: 1 Barcode
+[21:08:26] Fast Exporting:  2 Regular Print Doc#
+[21:08:38] Fast Exporting: 3 Regular Print Top Window
+[21:08:49] Fast Exporting: 4 Regular Print Swirl
+[21:08:57] Fast Exporting: 5 Raised text
+[21:09:11] Fast Exporting: 6 Regular Print Light Black
+[21:09:23] Fast Exporting: 7 Bottom Barcode
+[21:09:39] Back Processing Complete.

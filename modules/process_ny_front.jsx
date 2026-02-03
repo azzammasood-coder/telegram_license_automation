@@ -227,15 +227,17 @@ function main() {
 
                     updateText(getLayerSet(laser, "12 Laser Dob Text Under Pic"), "dob", data["Dob Compact"]);
 
+                    var l15 = getLayerSet(laser, '"15" Lens Dob');
+                    var mAbbrs = ["", "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+                    updateText(l15, "month", mAbbrs[parseInt(data["Dob Month"], 10)] || data["Dob Month"]);
+                    updateText(l15, "day", data["Dob Day"]);
+
                     var facePath = data["Load Face Image"];
                     if (facePath && new File(facePath).exists) {
-                        replaceFace(getLayerSet(laser, "13 Big Photo"), "13b made", new File(facePath), true);
-                        replaceFace(getLayerSet(laser, "14 Lens Face"), "13b made copy 3", new File(facePath), true);
+                        replaceFace(getLayerSet(laser, "13 Big Photo"), "13b made", new File(facePath), 103);
+                        replaceFace(getLayerSet(laser, '"14" Lens Face'), "13b made copy 3", new File(facePath), 110);
                     }
 
-                    var l15 = getLayerSet(laser, "15 Lens Dob");
-                    updateText(l15, "month", data["Dob Month"]);
-                    updateText(l15, "day", data["Dob Day"]);
                 }
             }
 
@@ -644,7 +646,7 @@ function exportLayer(doc, group, savePath) {
     }
 }
 
-function replaceFace(parentSet, layerName, filePath) {
+function replaceFace(parentSet, layerName, filePath, zoomAmount) {
     // Convert string path to File object
     var fileRef = new File(filePath);
     if (!fileRef.exists) {
@@ -693,8 +695,8 @@ function replaceFace(parentSet, layerName, filePath) {
             // without leaving empty gaps on the shorter side.
             var baseRatio = Math.max(ratioW, ratioH);
 
-            // Convert to percentage (x100) and apply the 1.1x zoom (110 total)
-            var scaleFactor = baseRatio * 110;
+            // Convert to percentage (x100) and apply zoom
+            var scaleFactor = baseRatio * zoomAmount;
 
             newLayer.resize(scaleFactor, scaleFactor, AnchorPosition.MIDDLECENTER);
 
