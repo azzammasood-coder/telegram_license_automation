@@ -234,7 +234,7 @@ function main() {
 
                     var facePath = data["Load Face Image"];
                     if (facePath && new File(facePath).exists) {
-                        replaceFace(getLayerSet(laser, "13 Big Photo"), "13b made", new File(facePath), 103);
+                        replaceFace(getLayerSet(laser, "13 Big Photo"), "13b made", new File(facePath), 118);
                         replaceFace(getLayerSet(laser, '"14" Lens Face'), "13b made copy 3", new File(facePath), 110);
                     }
 
