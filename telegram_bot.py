@@ -11,7 +11,7 @@ import base64
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters,)
-from modules import nj_module, ny_module, fl_module, pa_module
+from modules import nj_module, ny_module, fl_module, pa_module, va_module
 
 # ==============================================================================
 #  CONFIGURATION & SETTINGS
@@ -484,9 +484,9 @@ async def new_barcode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             return ConversationHandler.END
 
     # --- ASK FOR JURISDICTION ---
-    keyboard = [["FL", "NJ", "NY", "PA"]]
+    keyboard = [["FL", "NJ", "NY", "PA", "VA"]]
     await update.message.reply_text(
-        "**=== License Bot Started ===**\n\nWhat State?\n\nCurrent options: NJ, NY, FL, PA",
+        "**=== License Bot Started ===**\n\nWhat State?\n\nCurrent options: NJ, NY, FL, PA, VA",
         reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True),
         parse_mode="Markdown"
     )
@@ -498,8 +498,8 @@ async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     # LOGGING
     logger.info(f"🔘 State Button Pressed: '{selected}'")
 
-    if selected not in ["FL", "NJ", "NY", "PA"]:
-        await update.message.reply_text("Please select FL, NJ, or NY.")
+    if selected not in ["FL", "NJ", "NY", "PA", "VA"]:
+        await update.message.reply_text("Please select FL, NJ, NY, PA or VA.")
         return STATE_SELECT
     
     context.user_data['jurisdiction'] = selected
@@ -520,6 +520,17 @@ async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
                "Dob: MM/DD/YYYY\nGender: M\nHeight: 5'-09\nEyes: BRO\n"
                "Issue Date: ...\nExpires Date: ...\nClass: E\n"
                "Real ID: Visible\nNot Real ID: Not Visible\nSignature: ...")
+    elif selected == "VA":
+        msg = (
+            "**VA Selected**\nPlease enter details in this format:\n\n"
+            "First Name: ARTHUR\nMiddle Name: S\nLast Name: JAR\nAddress: 4301 W BROAD ST\n"
+            "City: RICHMOND\nState Code: VA\nFull Zip Code + 4 Digits: 23230-0000\n"
+            "Gender: M\nDob: 01/16/1980\nHeight: 5'-08\"\nEyes: BRN\n"
+            "Class: D\nEndorsements: NONE\nRestrictions: NONE\n"
+            "Issue Date: 01/16/2023\nExpires Date: 01/16/2032\n"
+            "Real ID: Visible\nNot Real ID: Not Visible\n"
+            "Signature: Arthur S Jar"
+        )
     else:
         msg = (
             f"**{selected} Selected**\nPlease enter details in this format:\n\n"
@@ -828,6 +839,11 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             jsx_paths = [
                 os.path.join(BASE_DIR, "modules", "process_fl.jsx")
             ]
+        # In execute_generation() inside the jurisdiction check:
+        elif jurisdiction == 'VA':
+            results = va_module.prepare_job_files(
+                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
+            jsx_paths = results[5:] # [process_va_front.jsx, process_va_back.jsx]
         else:
             jsx_paths = [
                 os.path.join(BASE_DIR, "modules", "process_nj.jsx")
@@ -867,6 +883,9 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         elif jurisdiction == 'NY':
             results = ny_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
             module = ny_module
+        elif jurisdiction == 'VA':
+            results = va_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
+            module = va_module
         else: # NJ
             results = nj_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
             module = nj_module
@@ -969,7 +988,7 @@ def main():
         conv_handler = ConversationHandler(
             entry_points=[CommandHandler(["newbarcode", "n"], new_barcode)],
             states={
-                STATE_SELECT: [MessageHandler(filters.Regex(r"^(FL|NJ|NY|PA)$"), select_state)],
+                STATE_SELECT: [MessageHandler(filters.Regex(r"^(FL|NJ|NY|PA|VA)$"), select_state)],
                 BULK_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_bulk_input)],
 
                 # PA SPECIFIC FLOW

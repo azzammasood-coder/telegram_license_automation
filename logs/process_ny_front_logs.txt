@@ -1,31 +1,25 @@
 --- NY FRONT LOG START ---
-[21:43:23] Starting Front Process...
-[21:43:24] Opening Front Template: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\PSDs\Front NY Automation.psd
-[21:43:25] Processing 'Raised' Section...
-[21:43:26] Update Text -> Layer: 'DL 3 characters' | Org:   8     9   7   | New:   7     4     3 | Final:   7     4     3
-[21:43:27] Update Text -> Layer: 'day' | Org: 08 | New: 01 | Final: 01
-[21:43:27] Update Text -> Layer: 'month' | Org: 05 | New: 05 | Final: 05
-[21:43:28] Update Text -> Layer: 'last two digits of year' | Org: 58 | New: 80 | Final: 80
-[21:43:29] Update Text -> Layer: 'day' | Org: 08 | New: 01 | Final: 01
-[21:43:29] Update Text -> Layer: 'month' | Org: 05 | New: 01 | Final: 01
-[21:43:30] Update Text -> Layer: 'last two digits of year' | Org: 33 | New: 30 | Final: 30
-[21:43:31] Update Text -> Layer: 'dob' | Org: MAY 08 58 | New: JAN 01 80 | Final: JAN 01 80
-[21:43:32] Using Signature Text Fallback: John Doe
-[21:43:35] Update Text -> Layer: 'dob' | Org: MAY58 | New: JAN80 | Final: JAN80
-[21:43:35] Processing 'Laser' Section...
-[21:44:37] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
-[21:45:42] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
-[21:45:43] Applying Swirl Styles (Arial Black/FauxBold)...
-[21:45:46] Applying Tracking: -30
-[21:45:47] Applying Horizontal Scale: 93%
-[21:45:49] Update Text -> Layer: 'first two digits of year' | Org: 19 | New: 19 | Final: 19
-[21:45:50] Update Text -> Layer: '01/01/1980' | Org: 05/09/1959 | New: 01/01/1980 | Final: 01/01/1980
-[21:45:50] Update Text -> Layer: 'DL remaining characters' | Org: 6  9 9  5 6  7 | New: 6  2 0  2 7  9 | Final: 6  2 0  2 7  9
-[21:45:51] Update Text -> Layer: 'ISSUE' | Org: 01/03/2025 | New: 01/01/2023 | Final: 01/01/2023
-[21:45:52] WARNING: Text Layer matching 'EXP' NOT FOUND in 10 Laser Edited BOLD Text
-[21:45:52] Update Text -> Layer: 'Last Name' | Org: VALENTE | New: DOE | Final: DOE
-[21:45:53] Update Text -> Layer: 'Front and Middle Name' | Org: JO ANN | New: JOHN ROBERT | Final: JOHN ROBERT
-[21:45:54] Update Text -> Layer: 'Address First Line' | Org: 100 STERLING PL APT 2F | New: 123 MAIN ST | Final: 123 MAIN ST
-[21:45:55] Update Text -> Layer: 'Address Second Line' | Org: BROOKLYN, NY 11217 | New: NEWARK, NJ 07101 | Final: NEWARK, NJ 07101
-[21:45:56] Update Text -> Layer: 'Gender' | Org: F | New: M | Final: M
-[21:45:57] Height Preserve Update: 5 -04 -> 5 -11
+[14:16:33] Starting Front Process...
+[14:16:33] Opening Front Template: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\PSDs\Front NY Automation.psd
+[14:16:43] Processing 'Raised' Section...
+[14:16:43] Update Text -> Layer: 'day' | Org: 08 | New: 09 | Final: 09
+[14:16:44] Update Text -> Layer: 'month' | Org: 05 | New: 08 | Final: 08
+[14:16:44] Update Text -> Layer: 'last two digits of year' | Org: 58 | New: 98 | Final: 98
+[14:16:44] Update Text -> Layer: 'month' | Org: 05 | New: 08 | Final: 08
+[14:16:44] Update Text -> Layer: 'last two digits of year' | Org: 33 | New: 32 | Final: 32
+[14:16:44] Using Signature Text Fallback: Ahmad A
+[14:16:44] Processing 'Laser' Section...
+[14:16:45] Applying Swirl Styles (Arial Black/FauxBold)...
+[14:16:46] Applying Tracking: -30
+[14:16:46] Applying Horizontal Scale: 93%
+[14:16:47] Update Text -> Layer: 'Last Name' | Org: VALENTE | New: Masood | Final: Masood
+[14:16:47] Update Text -> Layer: 'Front and Middle Name' | Org: JO ANN | New: Ahmad A | Final: Ahmad A
+[14:16:47] Update Text -> Layer: 'Address First Line' | Org: 100 STERLING PL APT 2F | New: 4301 W BROAD ST | Final: 4301 W BROAD ST
+[14:16:48] Update Text -> Layer: 'Address Second Line' | Org: BROOKLYN, NY 11217 | New: RICHMOND, VA 23230-0000 | Final: RICHMOND, VA 23230-0000
+[14:16:48] Update Text -> Layer: 'Gender' | Org: F | New: M | Final: M
+[14:16:48] Height Preserve Update: 5 -04 -> 5 -11
+[14:16:48] Update Text -> Layer: 'Eye Color' | Org: BRO | New: BRN | Final: BRN
+[14:16:48] Update Text -> Layer: 'Micro' | Org: 05 08 2033 JO ANN VALENTE 05 08 2033 JO ANN VALENTE05 08 2033   | New: 08092032AHMADAMASOOD08092032AHMADAMASOOD | Final: 08092032AHMADAMASOOD08092032AHMADAMASOOD
+[14:16:49] Update Text -> Layer: 'month' | Org: MAY | New: AUG | Final: AUG
+[14:16:49] Update Text -> Layer: 'day' | Org: 08 | New: 09 | Final: 09
+[14:16:49] --- Exporting Full Front PNGs ---
