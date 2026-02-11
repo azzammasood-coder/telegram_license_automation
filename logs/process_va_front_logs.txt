@@ -219,3 +219,261 @@
 [14:57:52] Applying White Color...
 [14:57:52] Applying Tracking: 300
 [14:58:38] Applying Tracking: 100
+[16:22:26] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[16:22:27] Update Text (Preserve Spacing) -> Layer: 'Second character of DL' | Org: [      6] | New: [      1]
+[16:22:27] Update Text (Preserve Spacing) -> Layer: 'Third character of DL' | Org: [      7] | New: [      2]
+[16:22:28] Update Text (Preserve Spacing) -> Layer: 'Fourth character of DL' | Org: [   2] | New: [   3]
+[16:22:28] Update Text (Preserve Spacing) -> Layer: 'Eighth character of DL' | Org: [7] | New: [7]
+[16:22:29] Update Text (Preserve Spacing) -> Layer: 'Ninth character of DL' | Org: [    0] | New: [    8]
+[16:22:29] Update Text -> Layer: 'Dob month short form (like JAN or MAY) and 2 digits of year' | Org: JAN54 | New: AUG98 | Final: AUG98
+[16:22:30] Update Text -> Layer: '2 digits of dob month and last 2 digits of dob year' | Org: 01         54 | New: 08         98 | Final: 08         98
+[16:22:30] Update Text -> Layer: '2 digits of exp month' | Org: 01           | New: 08            | Final: 08           
+[16:22:31] Update Text (Preserve Spacing) -> Layer: 'Last 2 digits of exp year' | Org: [          33] | New: [          32]
+[16:22:34] Applying White Color...
+[16:22:37] Applying White Color...
+[16:22:38] Applying Tracking: 300
+[16:22:40] Applying Tracking: 86
+[16:22:41] Update Text -> Layer: 'Last name' | Org: JARING | New: Masood | Final: Masood
+[16:22:42] Update Text -> Layer: 'First and middle name' | Org: ARTHUR s | New: Ahmad A | Final: Ahmad A
+[16:22:42] Update Text -> Layer: 'Address first line' | Org: 1621 WICOMICO LANE | New: 4301 W BROAD ST | Final: 4301 W BROAD ST
+[16:22:43] Update Text -> Layer: 'Address second line' | Org: VIRGINIA BEACH, VA 33464-7866 | New: RICHMOND, VA 23230-0000 | Final: RICHMOND, VA 23230-0000
+[16:22:43] Update Text -> Layer: 'Restrictions (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[16:22:44] Update Text -> Layer: 'End (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[16:22:44] Update Text -> Layer: 'First character of DL' | Org: T | New: T | Final: T
+[16:22:45] Update Text -> Layer: 'Fifth character of DL' | Org: 5 | New: 4 | Final: 4
+[16:22:46] Update Text -> Layer: 'Sixth character of DL' | Org: 6 | New: 5 | Final: 5
+[16:22:46] Update Text -> Layer: 'Seventh character of DL' | Org: 3 | New: 6 | Final: 6
+[16:22:47] Update Text -> Layer: 'Eye' | Org: BLU | New: BRN | Final: BRN
+[16:22:50] Applying Tracking: 1300
+[16:22:55] Update Text -> Layer: 'DD' | Org: 084393837 | New: 071070115 | Final: 071070115
+[16:22:56] Update Text -> Layer: 'Issue date' | Org: 10/18/2024 | New: 07/06/2023 | Final: 07/06/2023
+[16:22:57] Update Text -> Layer: 'Height' | Org: 6 -00 | New: 5 -11 | Final: 5 -11
+[16:22:58] Update Text -> Layer: 'Class' | Org: D | New: D | Final: D
+[16:22:59] Update Text -> Layer: 'Expiry date' | Org: /16/20 | New: /09/20 | Final: /09/20
+[16:23:01] Update Text -> Layer: 'Sex' | Org: M | New: M | Final: M
+[16:23:02] Update Text -> Layer: 'Dob' | Org: /16/19 | New: /09/19 | Final: /09/19
+[16:23:02] Update Text -> Layer: 'Micro' | Org: 01162032ARTHURSJARING01162032ARTHURSJAR | New: 08092032AHMADAMASOOD08092032AHMADAMASOOD | Final: 08092032AHMADAMASOOD08092032AHMADAMASOOD
+[16:23:03] Update Text -> Layer: 'Dob month and last 2 digits of dob year' | Org: JAN54 | New: AUG 98 | Final: AUG 98
+[16:23:04] Update Text -> Layer: 'First initial + Last initial' | Org: AJ | New: AM | Final: AM
+[16:23:05] Update Text -> Layer: 'Dob month and full year' | Org: JAN
+1954 | New: AUG
+1998 | Final: AUG
+1998
+[16:23:05] --- Exporting Layers ---
+[16:23:05] Fast Exporting: 12- 17 RAISED
+[16:23:07] Directory missing. Creating: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\Final_Documents\Ahmad Masood VA 08-09-1998
+[16:23:10] Fast Exporting: 18 -21
+[16:23:14] Fast Exporting: 4 Laser Edited Bold Text
+[16:23:19] Fast Exporting: 5 Laser Edited Semi Bold
+[16:23:23] Fast Exporting: 6 Laser Exp Name Micro
+[16:23:28] Fast Exporting: 10 Lens Image Face
+[16:23:33] Fast Exporting: 1 Laser Light Text DO Not Touch
+[16:23:40] VA Front Processing Complete.
+[16:41:17] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[16:41:17] Update Text (Preserve Spacing) -> Layer: 'Second character of DL' | Org: [      6] | New: [      1]
+[16:41:17] Update Text (Preserve Spacing) -> Layer: 'Third character of DL' | Org: [      7] | New: [      2]
+[16:41:18] Update Text (Preserve Spacing) -> Layer: 'Fourth character of DL' | Org: [   2] | New: [   3]
+[16:41:18] Update Text (Preserve Spacing) -> Layer: 'Eighth character of DL' | Org: [7] | New: [7]
+[16:41:19] Update Text (Preserve Spacing) -> Layer: 'Ninth character of DL' | Org: [    0] | New: [    8]
+[16:41:19] Update Text -> Layer: 'Dob month short form (like JAN or MAY) and 2 digits of year' | Org: JAN54 | New: AUG98 | Final: AUG98
+[16:41:20] Update Text -> Layer: '2 digits of dob month and last 2 digits of dob year' | Org: 01         54 | New: 08         98 | Final: 08         98
+[16:41:20] Update Text -> Layer: '2 digits of exp month' | Org: 01           | New: 08            | Final: 08           
+[16:41:20] Update Text (Preserve Spacing) -> Layer: 'Last 2 digits of exp year' | Org: [          33] | New: [          32]
+[16:41:23] Applying White Color...
+[16:41:26] Applying White Color...
+[16:41:26] Applying Tracking: 300
+[16:41:29] Applying Tracking: 86
+[16:41:30] Update Text -> Layer: 'Last name' | Org: JARING | New: Masood | Final: Masood
+[16:41:30] Update Text -> Layer: 'First and middle name' | Org: ARTHUR s | New: Ahmad A | Final: Ahmad A
+[16:41:31] Update Text -> Layer: 'Address first line' | Org: 1621 WICOMICO LANE | New: 4301 W BROAD ST | Final: 4301 W BROAD ST
+[16:41:31] Update Text -> Layer: 'Address second line' | Org: VIRGINIA BEACH, VA 33464-7866 | New: RICHMOND, VA 23230-0000 | Final: RICHMOND, VA 23230-0000
+[16:41:32] Update Text -> Layer: 'Restrictions (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[16:41:33] Update Text -> Layer: 'End (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[16:41:33] Update Text -> Layer: 'First character of DL' | Org: T | New: T | Final: T
+[16:41:34] Update Text -> Layer: 'Fifth character of DL' | Org: 5 | New: 4 | Final: 4
+[16:41:35] Update Text -> Layer: 'Sixth character of DL' | Org: 6 | New: 5 | Final: 5
+[16:41:35] Update Text -> Layer: 'Seventh character of DL' | Org: 3 | New: 6 | Final: 6
+[16:41:36] Update Text -> Layer: 'Eye' | Org: BLU | New: BRN | Final: BRN
+[16:41:39] Applying Tracking: 1300
+[16:41:42] Update Text -> Layer: 'DD' | Org: 084393837 | New: 071070115 | Final: 071070115
+[16:41:43] Update Text -> Layer: 'Issue date' | Org: 10/18/2024 | New: 07/06/2023 | Final: 07/06/2023
+[16:41:43] Update Text -> Layer: 'Height' | Org: 6 -00 | New: 5 -11 | Final: 5 -11
+[16:41:44] Update Text -> Layer: 'Class' | Org: D | New: D | Final: D
+[16:41:45] Update Text -> Layer: 'Expiry date' | Org: /16/20 | New: /09/20 | Final: /09/20
+[16:41:45] Update Text -> Layer: 'Sex' | Org: M | New: M | Final: M
+[16:41:46] Update Text -> Layer: 'Dob' | Org: /16/19 | New: /09/19 | Final: /09/19
+[16:41:46] Update Text -> Layer: 'Micro' | Org: 01162032ARTHURSJARING01162032ARTHURSJAR | New: 08092032AHMADAMASOOD08092032AHMADAMASOOD | Final: 08092032AHMADAMASOOD08092032AHMADAMASOOD
+[16:41:47] Update Text -> Layer: 'Dob month and last 2 digits of dob year' | Org: JAN54 | New: AUG 98 | Final: AUG 98
+[16:41:48] Update Text -> Layer: 'First initial + Last initial' | Org: AJ | New: AM | Final: AM
+[16:41:48] Update Text -> Layer: 'Dob month and full year' | Org: JAN
+1954 | New: AUG
+1998 | Final: AUG
+1998
+[16:51:18] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[16:51:18] Update Text (Preserve Spacing) -> Layer: 'Second character of DL' | Org: [      6] | New: [      1]
+[16:51:19] Update Text (Preserve Spacing) -> Layer: 'Third character of DL' | Org: [      7] | New: [      2]
+[16:51:19] Update Text (Preserve Spacing) -> Layer: 'Fourth character of DL' | Org: [   2] | New: [   3]
+[16:51:19] Update Text (Preserve Spacing) -> Layer: 'Eighth character of DL' | Org: [7] | New: [7]
+[16:51:20] Update Text (Preserve Spacing) -> Layer: 'Ninth character of DL' | Org: [    0] | New: [    8]
+[16:51:20] Update Text -> Layer: 'Dob month short form (like JAN or MAY) and 2 digits of year' | Org: JAN54 | New: AUG98 | Final: AUG98
+[16:51:21] Update Text -> Layer: '2 digits of dob month and last 2 digits of dob year' | Org: 01         54 | New: 08         98 | Final: 08         98
+[16:51:21] Update Text -> Layer: '2 digits of exp month' | Org: 01           | New: 08            | Final: 08           
+[16:51:22] Update Text (Preserve Spacing) -> Layer: 'Last 2 digits of exp year' | Org: [          33] | New: [          32]
+[16:51:24] Applying White Color...
+[16:51:27] Applying White Color...
+[16:51:27] Applying Tracking: 300
+[16:51:30] Applying Tracking: 86
+[16:51:31] Update Text -> Layer: 'Last name' | Org: JARING | New: Masood | Final: Masood
+[16:51:31] Update Text -> Layer: 'First and middle name' | Org: ARTHUR s | New: Ahmad A | Final: Ahmad A
+[16:51:32] Update Text -> Layer: 'Address first line' | Org: 1621 WICOMICO LANE | New: 4301 W BROAD ST | Final: 4301 W BROAD ST
+[16:51:33] Update Text -> Layer: 'Address second line' | Org: VIRGINIA BEACH, VA 33464-7866 | New: RICHMOND, VA 23230-0000 | Final: RICHMOND, VA 23230-0000
+[16:51:33] Update Text -> Layer: 'Restrictions (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[16:51:34] Update Text -> Layer: 'End (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[16:51:34] Update Text -> Layer: 'First character of DL' | Org: T | New: T | Final: T
+[16:51:35] Update Text -> Layer: 'Fifth character of DL' | Org: 5 | New: 4 | Final: 4
+[16:51:36] Update Text -> Layer: 'Sixth character of DL' | Org: 6 | New: 5 | Final: 5
+[16:51:37] Update Text -> Layer: 'Seventh character of DL' | Org: 3 | New: 6 | Final: 6
+[16:51:38] Update Text -> Layer: 'Eye' | Org: BLU | New: BRN | Final: BRN
+[16:51:40] Applying Tracking: 1300
+[16:51:43] Update Text -> Layer: 'DD' | Org: 084393837 | New: 071070115 | Final: 071070115
+[16:51:44] Update Text -> Layer: 'Issue date' | Org: 10/18/2024 | New: 07/06/2023 | Final: 07/06/2023
+[16:51:45] Update Text -> Layer: 'Height' | Org: 6 -00 | New: 5 -11 | Final: 5 -11
+[16:51:45] Update Text -> Layer: 'Class' | Org: D | New: D | Final: D
+[16:51:45] Update Text -> Layer: 'Expiry date' | Org: /16/20 | New: /09/20 | Final: /09/20
+[16:51:46] Update Text -> Layer: 'Sex' | Org: M | New: M | Final: M
+[16:51:47] Update Text -> Layer: 'Dob' | Org: /16/19 | New: /09/19 | Final: /09/19
+[16:51:47] Update Text -> Layer: 'Micro' | Org: 01162032ARTHURSJARING01162032ARTHURSJAR | New: 08092032AHMADAMASOOD08092032AHMADAMASOOD | Final: 08092032AHMADAMASOOD08092032AHMADAMASOOD
+[16:51:48] Update Text -> Layer: 'Dob month and last 2 digits of dob year' | Org: JAN54 | New: AUG 98 | Final: AUG 98
+[16:51:48] Update Text -> Layer: 'First initial + Last initial' | Org: AJ | New: AM | Final: AM
+[16:51:49] Update Text -> Layer: 'Dob month and full year' | Org: JAN
+1954 | New: AUG
+1998 | Final: AUG
+1998
+[16:54:11] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[16:54:11] Update Text (Preserve Spacing) -> Layer: 'Second character of DL' | Org: [      6] | New: [      1]
+[16:54:12] Update Text (Preserve Spacing) -> Layer: 'Third character of DL' | Org: [      7] | New: [      2]
+[16:54:12] Update Text (Preserve Spacing) -> Layer: 'Fourth character of DL' | Org: [   2] | New: [   3]
+[16:54:13] Update Text (Preserve Spacing) -> Layer: 'Eighth character of DL' | Org: [7] | New: [7]
+[16:54:13] Update Text (Preserve Spacing) -> Layer: 'Ninth character of DL' | Org: [    0] | New: [    8]
+[16:54:13] Update Text -> Layer: 'Dob month short form (like JAN or MAY) and 2 digits of year' | Org: JAN54 | New: AUG98 | Final: AUG98
+[16:54:14] Update Text -> Layer: '2 digits of dob month and last 2 digits of dob year' | Org: 01         54 | New: 08         98 | Final: 08         98
+[16:54:14] Update Text -> Layer: '2 digits of exp month' | Org: 01           | New: 08            | Final: 08           
+[16:54:15] Update Text (Preserve Spacing) -> Layer: 'Last 2 digits of exp year' | Org: [          33] | New: [          32]
+[16:54:17] Applying White Color...
+[16:54:20] Applying White Color...
+[16:54:20] Applying Tracking: 300
+[16:54:23] Applying Tracking: 86
+[16:54:24] Update Text -> Layer: 'Last name' | Org: JARING | New: Masood | Final: Masood
+[16:54:24] Update Text -> Layer: 'First and middle name' | Org: ARTHUR s | New: Ahmad A | Final: Ahmad A
+[16:54:24] Update Text -> Layer: 'Address first line' | Org: 1621 WICOMICO LANE | New: 4301 W BROAD ST | Final: 4301 W BROAD ST
+[16:54:25] Update Text -> Layer: 'Address second line' | Org: VIRGINIA BEACH, VA 33464-7866 | New: RICHMOND, VA 23230-0000 | Final: RICHMOND, VA 23230-0000
+[16:54:25] Update Text -> Layer: 'Restrictions (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[16:54:26] Update Text -> Layer: 'End (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[16:54:26] Update Text -> Layer: 'First character of DL' | Org: T | New: T | Final: T
+[16:54:27] Update Text -> Layer: 'Fifth character of DL' | Org: 5 | New: 4 | Final: 4
+[16:54:27] Update Text -> Layer: 'Sixth character of DL' | Org: 6 | New: 5 | Final: 5
+[16:54:28] Update Text -> Layer: 'Seventh character of DL' | Org: 3 | New: 6 | Final: 6
+[16:54:29] Update Text -> Layer: 'Eye' | Org: BLU | New: BRN | Final: BRN
+[16:54:30] Applying Tracking: 1300
+[16:54:33] Update Text -> Layer: 'DD' | Org: 084393837 | New: 071070115 | Final: 071070115
+[16:54:33] Update Text -> Layer: 'Issue date' | Org: 10/18/2024 | New: 07/06/2023 | Final: 07/06/2023
+[16:54:34] Update Text -> Layer: 'Height' | Org: 6 -00 | New: 5 -11 | Final: 5 -11
+[16:54:34] Update Text -> Layer: 'Class' | Org: D | New: D | Final: D
+[16:54:35] Update Text -> Layer: 'Expiry date' | Org: /16/20 | New: /09/20 | Final: /09/20
+[16:54:36] Update Text -> Layer: 'Sex' | Org: M | New: M | Final: M
+[16:54:36] Update Text -> Layer: 'Dob' | Org: /16/19 | New: /09/19 | Final: /09/19
+[16:54:37] Update Text -> Layer: 'Micro' | Org: 01162032ARTHURSJARING01162032ARTHURSJAR | New: 08092032AHMADAMASOOD08092032AHMADAMASOOD | Final: 08092032AHMADAMASOOD08092032AHMADAMASOOD
+[16:54:38] Update Text -> Layer: 'Dob month and last 2 digits of dob year' | Org: JAN54 | New: AUG 98 | Final: AUG 98
+[16:54:38] Update Text -> Layer: 'First initial + Last initial' | Org: AJ | New: AM | Final: AM
+[16:54:39] Updated Group 11 to Multi-line: AUG
+1998
+[17:00:44] Replacing SO: Signature Image
+[17:00:52] Update Text (Preserve Spacing) -> Layer: 'Second character of DL' | Org: [      6] | New: [      6]
+[17:00:52] Update Text (Preserve Spacing) -> Layer: 'Third character of DL' | Org: [      7] | New: [      0]
+[17:00:52] Update Text (Preserve Spacing) -> Layer: 'Fourth character of DL' | Org: [   2] | New: [   0]
+[17:00:53] Update Text (Preserve Spacing) -> Layer: 'Eighth character of DL' | Org: [7] | New: [7]
+[17:00:53] Update Text (Preserve Spacing) -> Layer: 'Ninth character of DL' | Org: [    0] | New: [    8]
+[17:00:53] Update Text -> Layer: 'Dob month short form (like JAN or MAY) and 2 digits of year' | Org: JAN54 | New: AUG98 | Final: AUG98
+[17:00:54] Update Text -> Layer: '2 digits of dob month and last 2 digits of dob year' | Org: 01         54 | New: 08         98 | Final: 08         98
+[17:00:54] Update Text -> Layer: '2 digits of exp month' | Org: 01           | New: 08            | Final: 08           
+[17:00:54] Update Text (Preserve Spacing) -> Layer: 'Last 2 digits of exp year' | Org: [          33] | New: [          32]
+[17:00:56] Applying White Color...
+[17:00:59] Applying White Color...
+[17:00:59] Applying Tracking: 300
+[17:01:01] Applying Tracking: 86
+[17:01:02] Update Text -> Layer: 'Last name' | Org: JARING | New: Masood | Final: Masood
+[17:01:02] Update Text -> Layer: 'First and middle name' | Org: ARTHUR s | New: Ahmad Azzam | Final: Ahmad Azzam
+[17:01:03] Update Text -> Layer: 'Address first line' | Org: 1621 WICOMICO LANE | New: 1600 TYSONS BLVD | Final: 1600 TYSONS BLVD
+[17:01:03] Update Text -> Layer: 'Address second line' | Org: VIRGINIA BEACH, VA 33464-7866 | New: MCLEAN, VA 22102-4859 | Final: MCLEAN, VA 22102-4859
+[17:01:04] Update Text -> Layer: 'Restrictions (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[17:01:04] Update Text -> Layer: 'End (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[17:01:04] Update Text -> Layer: 'First character of DL' | Org: T | New: F | Final: F
+[17:01:05] Update Text -> Layer: 'Fifth character of DL' | Org: 5 | New: 0 | Final: 0
+[17:01:05] Update Text -> Layer: 'Sixth character of DL' | Org: 6 | New: 2 | Final: 2
+[17:01:06] Update Text -> Layer: 'Seventh character of DL' | Org: 3 | New: 5 | Final: 5
+[17:01:06] Update Text -> Layer: 'Eye' | Org: BLU | New: BRN | Final: BRN
+[17:01:08] Applying Tracking: 1300
+[17:01:11] Update Text -> Layer: 'DD' | Org: 084393837 | New: 076420637 | Final: 076420637
+[17:01:11] Update Text -> Layer: 'Issue date' | Org: 10/18/2024 | New: 07/06/2023 | Final: 07/06/2023
+[17:01:11] Update Text -> Layer: 'Height' | Org: 6 -00 | New: 5 -11 | Final: 5 -11
+[17:01:12] Update Text -> Layer: 'Class' | Org: D | New: D | Final: D
+[17:01:12] Update Text -> Layer: 'Expiry date' | Org: /16/20 | New: /09/20 | Final: /09/20
+[17:01:13] Update Text -> Layer: 'Sex' | Org: M | New: M | Final: M
+[17:01:13] Update Text -> Layer: 'Dob' | Org: /16/19 | New: /09/19 | Final: /09/19
+[17:01:14] Update Text -> Layer: 'Micro' | Org: 01162032ARTHURSJARING01162032ARTHURSJAR | New: 08092032AHMADAZZAMMASOOD08092032AHMADAZZ | Final: 08092032AHMADAZZAMMASOOD08092032AHMADAZZ
+[17:01:14] Update Text -> Layer: 'Dob month and last 2 digits of dob year' | Org: JAN54 | New: AUG 98 | Final: AUG 98
+[17:01:15] Update Text -> Layer: 'First initial + Last initial' | Org: AJ | New: AM | Final: AM
+[17:01:16] Updated Group 11 to Multi-line: AUG
+1998
+[17:01:20] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[17:01:24] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[17:01:24] --- Exporting Layers to: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation\\Final_Documents\\Ahmad Masood VA 08-09-1998/Front ---
+[17:01:24] Fast Exporting: 12- 17 RAISED
+[17:01:27] Fast Exporting: 18 -21
+[17:01:30] Fast Exporting: 4 Laser Edited Bold Text
+[17:01:33] Fast Exporting: 5 Laser Edited Semi Bold
+[17:01:36] Fast Exporting: 6 Laser Exp Name Micro
+[17:01:39] Fast Exporting: 10 Lens Image Face
+[17:01:41] Fast Exporting: 1 Laser Light Text DO Not Touch
+[17:01:46] VA Front Processing Complete.
+[22:06:21] Replacing SO: Signature Image
+[22:06:35] Update Text (Preserve Spacing) -> Layer: 'Second character of DL' | Org: [      6] | New: [      6]
+[22:06:35] Update Text (Preserve Spacing) -> Layer: 'Third character of DL' | Org: [      7] | New: [      0]
+[22:06:36] Update Text (Preserve Spacing) -> Layer: 'Fourth character of DL' | Org: [   2] | New: [   0]
+[22:06:36] Update Text (Preserve Spacing) -> Layer: 'Eighth character of DL' | Org: [7] | New: [7]
+[22:06:37] Update Text (Preserve Spacing) -> Layer: 'Ninth character of DL' | Org: [    0] | New: [    8]
+[22:06:37] Update Text -> Layer: 'Dob month short form (like JAN or MAY) and 2 digits of year' | Org: JAN54 | New: AUG98 | Final: AUG98
+[22:06:38] Update Text -> Layer: '2 digits of dob month and last 2 digits of dob year' | Org: 01         54 | New: 08         98 | Final: 08         98
+[22:06:38] Update Text -> Layer: '2 digits of exp month' | Org: 01           | New: 08            | Final: 08           
+[22:06:39] Update Text (Preserve Spacing) -> Layer: 'Last 2 digits of exp year' | Org: [          33] | New: [          32]
+[22:06:41] Applying White Color...
+[22:06:43] Applying Horizontal Scale: 94%
+[22:06:46] Applying White Color...
+[22:06:46] Applying Tracking: 300
+[22:06:50] Applying Tracking: 86
+[22:06:51] Update Text -> Layer: 'Last name' | Org: JARING | New: Masood | Final: Masood
+[22:06:51] Update Text -> Layer: 'First and middle name' | Org: ARTHUR s | New: Ahmad Azzam | Final: Ahmad Azzam
+[22:06:52] Update Text -> Layer: 'Address first line' | Org: 1621 WICOMICO LANE | New: 1600 TYSONS BLVD | Final: 1600 TYSONS BLVD
+[22:06:53] Update Text -> Layer: 'Address second line' | Org: VIRGINIA BEACH, VA 33464-7866 | New: MCLEAN, VA 22102-4859 | Final: MCLEAN, VA 22102-4859
+[22:06:53] Update Text -> Layer: 'Restrictions (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[22:06:54] Update Text -> Layer: 'End (NONE by default)' | Org: NONE | New: NONE | Final: NONE
+[22:06:54] Update Text -> Layer: 'First character of DL' | Org: T | New: F | Final: F
+[22:06:55] Update Text -> Layer: 'Fifth character of DL' | Org: 5 | New: 0 | Final: 0
+[22:06:56] Update Text -> Layer: 'Sixth character of DL' | Org: 6 | New: 2 | Final: 2
+[22:06:57] Update Text -> Layer: 'Seventh character of DL' | Org: 3 | New: 5 | Final: 5
+[22:06:57] Update Text -> Layer: 'Eye' | Org: BLU | New: BRN | Final: BRN
+[22:07:00] Applying Tracking: 1300
+[22:07:04] Update Text -> Layer: 'DD' | Org: 084393837 | New: 076420637 | Final: 076420637
+[22:07:05] Update Text -> Layer: 'Issue date' | Org: 10/18/2024 | New: 07/06/2023 | Final: 07/06/2023
+[22:07:05] Update Text -> Layer: 'Height' | Org: 6 -00 | New: 5 -11 | Final: 5 -11
+[22:07:06] Update Text -> Layer: 'Class' | Org: D | New: D | Final: D
+[22:07:06] Update Text -> Layer: 'Expiry date' | Org: /16/20 | New: /09/20 | Final: /09/20
+[22:07:07] Update Text -> Layer: 'Sex' | Org: M | New: M | Final: M
+[22:07:07] Update Text -> Layer: 'Dob' | Org: /16/19 | New: /09/19 | Final: /09/19
+[22:07:08] Update Text -> Layer: 'Micro' | Org: 01162032ARTHURSJARING01162032ARTHURSJAR | New: 08092032AHMADAZZAMMASOOD08092032AHMADAZZ | Final: 08092032AHMADAZZAMMASOOD08092032AHMADAZZ
+[22:07:08] Update Text -> Layer: 'Dob month and last 2 digits of dob year' | Org: JAN54 | New: AUG 98 | Final: AUG 98
+[22:07:09] Update Text -> Layer: 'First initial + Last initial' | Org: AJ | New: AM | Final: AM
+[22:07:10] Updated Group 11 to Multi-line: AUG
+1998
+[22:07:15] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[22:07:19] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.

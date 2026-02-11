@@ -17,7 +17,8 @@
         "ny_back": "Back NY Automation.psd",
         "fl_psd": "FL Revision 2020 For Poly.psd",
         "pa_psd": "FRONT PA POLY.psd",
-        "va_front": "VA Front.psd"
+        "va_front": "VA Front.psd",
+        "va_back": "VA Back.psd"
     },
     "toggles": {
         "offline_test_mode": false,

@@ -843,7 +843,7 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         elif jurisdiction == 'VA':
             results = va_module.prepare_job_files(
                 context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
-            jsx_paths = results[5:] # [process_va_front.jsx, process_va_back.jsx]
+            jsx_paths = results[5:]
         else:
             jsx_paths = [
                 os.path.join(BASE_DIR, "modules", "process_nj.jsx")
@@ -884,8 +884,9 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             results = ny_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
             module = ny_module
         elif jurisdiction == 'VA':
-            results = va_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
-            module = va_module
+            results = va_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png, small_png)
+            unique_id, data_path, front_path, back_path, psd_path = results[:5]
+            jsx_paths = results[5:]
         else: # NJ
             results = nj_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
             module = nj_module

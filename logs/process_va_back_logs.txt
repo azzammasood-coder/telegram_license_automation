@@ -1,0 +1,613 @@
+[21:16:48] Error: ReferenceError: findTemplatePath is not a function
+[21:17:30] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:17:31] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:17:31] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:17:32] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:17:32] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:17:32] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:17:33] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:17:34] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:17:34] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:17:34] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:17:35] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:17:35] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:17:36] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:17:37] Applying White Color...
+[21:20:26] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:20:26] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:20:26] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:20:27] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:20:27] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:20:27] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:20:28] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:20:28] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:20:28] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:20:29] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:20:29] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:20:29] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:20:30] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:20:53] Applying White Color...
+[21:22:37] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:22:37] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:22:38] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:22:38] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:22:38] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:22:39] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:22:39] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:22:39] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:22:40] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:22:40] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:22:40] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:22:41] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:22:41] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:23:09] Applying White Color...
+[21:27:29] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:27:30] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:27:30] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:27:30] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:27:31] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:27:31] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:27:31] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:27:32] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:27:32] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:27:32] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:27:33] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:27:33] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:27:34] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:27:35] Applying White Color...
+[21:28:20] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:28:20] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:28:21] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:28:21] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:28:21] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:28:22] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:28:22] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:28:22] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:28:23] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:28:23] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:28:23] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:28:24] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:28:24] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:28:25] Applying White Color...
+[21:28:26] Atomic Update Error: Error: Illegal argument - argument 2
+- Required value is missing
+[21:28:26] Error: ReferenceError: l is undefined
+[21:28:53] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:28:53] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:28:54] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:28:54] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:28:54] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:28:55] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:28:55] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:28:55] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:28:56] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:28:56] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:28:56] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:28:57] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:28:57] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:28:59] Applying White Color...
+[21:29:03] Atomic Update Error: Error: Illegal argument - argument 2
+- Required value is missing
+[21:29:18] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:29:18] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:29:18] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:29:19] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:29:19] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:29:19] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:29:20] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:29:20] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:29:20] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:29:21] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:29:21] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:29:21] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:29:22] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:29:23] Applying White Color...
+[21:29:27] Atomic Update Error: Error: Illegal argument - argument 2
+- Required value is missing
+[21:31:07] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:31:07] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:31:08] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:31:08] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:31:08] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:31:09] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:31:09] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:31:09] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:31:10] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:31:10] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:31:11] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:31:11] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:31:11] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:31:13] Applying White Color...
+[21:33:23] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:33:24] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:33:24] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:33:24] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:33:25] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:33:25] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:33:26] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:33:26] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:33:26] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:33:26] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:33:27] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:33:27] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:33:28] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:33:40] Applying White Color...
+[21:36:29] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:36:30] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:36:30] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:36:30] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:36:31] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:36:31] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:36:31] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:36:32] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:36:32] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:36:32] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:36:33] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:36:33] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:36:33] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:36:34] Applying Tracking: -70
+[21:36:34] Applying White Color...
+[21:41:21] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:41:21] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:41:21] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:41:22] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:41:22] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:41:22] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:41:23] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:41:23] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:41:23] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:41:24] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:41:24] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:41:25] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:41:25] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:41:26] Applying Tracking: -70
+[21:41:26] Applying White Color...
+[21:52:32] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:52:33] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:52:33] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:52:33] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:52:34] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:52:34] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:52:34] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:52:35] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:52:35] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:52:36] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:52:36] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:52:36] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:52:37] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:52:38] Applying Tracking: -70
+[21:52:38] Applying White Color...
+[21:59:47] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[21:59:48] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[21:59:48] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[21:59:49] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[21:59:49] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[21:59:50] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[21:59:50] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[21:59:50] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[21:59:51] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[21:59:51] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[21:59:52] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[21:59:52] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[21:59:53] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[21:59:53] Applying Tracking: -70
+[21:59:54] Error in setMagnesiumFont: Error: Required value is missing
+[21:59:54] Applying White Color...
+[21:59:56] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[22:07:01] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[22:07:01] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[22:07:02] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[22:07:02] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[22:07:02] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[22:07:03] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[22:07:03] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[22:07:04] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[22:07:04] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[22:07:04] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[22:07:05] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[22:07:05] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[22:07:06] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[22:07:06] Applying Tracking: -70
+[22:07:07] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[22:07:07] Applying White Color...
+[22:07:10] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[22:08:23] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[22:08:24] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[22:08:24] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[22:08:24] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[22:08:24] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[22:08:25] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[22:08:25] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[22:08:26] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[22:08:26] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[22:08:26] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[22:08:27] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[22:08:27] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[22:08:27] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[22:08:28] Applying Tracking: -70
+[22:08:29] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[22:08:29] Applying White Color...
+[22:08:32] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[11:08:17] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[11:08:17] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[11:08:18] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[11:08:18] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[11:08:18] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[11:08:19] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[11:08:19] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[11:08:20] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[11:08:20] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[11:08:20] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[11:08:21] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[11:08:21] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[11:08:21] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[11:08:22] Applying Tracking: -70
+[11:08:23] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[11:08:23] Applying White Color...
+[11:08:25] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[11:26:12] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[11:26:13] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[11:26:13] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[11:26:14] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[11:26:14] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[11:26:14] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[11:26:15] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[11:26:15] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[11:26:16] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[11:26:16] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[11:26:17] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[11:26:17] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[11:26:18] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[11:26:19] Applying Tracking: -70
+[11:26:19] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[11:26:19] Applying White Color...
+[11:26:23] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[11:37:49] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[11:37:49] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[11:37:50] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[11:37:50] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[11:37:51] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[11:37:51] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[11:37:52] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[11:37:53] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[11:37:53] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[11:37:54] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[11:37:54] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[11:37:55] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[11:37:56] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[11:37:57] Applying Tracking: -70
+[11:37:58] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[11:37:58] Applying White Color...
+[11:38:01] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[11:41:19] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[11:41:20] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[11:41:20] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[11:41:20] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[11:41:21] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[11:41:21] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[11:41:22] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[11:41:22] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[11:41:22] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[11:41:23] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[11:41:23] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[11:41:24] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[11:41:24] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[11:41:25] Applying Tracking: -70
+[11:41:26] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[11:41:26] Applying White Color...
+[11:41:28] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[11:45:35] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[11:45:36] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[11:45:36] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[11:45:37] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[11:45:37] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[11:45:38] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[11:45:38] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[11:45:38] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[11:45:39] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[11:45:39] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[11:45:39] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[11:45:40] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[11:45:40] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[11:45:41] Applying Tracking: -70
+[11:45:42] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[11:45:42] Applying White Color...
+[11:45:45] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[11:47:57] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[11:47:58] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[11:47:58] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[11:47:59] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[11:47:59] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[11:48:00] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[11:48:00] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[11:48:01] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[11:48:01] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[11:48:01] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[11:48:02] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[11:48:03] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[11:48:03] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[11:48:04] Applying Tracking: -70
+[11:48:05] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[11:48:05] Applying White Color...
+[11:48:08] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[11:49:43] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[11:49:43] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[11:49:44] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[11:49:44] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[11:49:44] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[11:49:45] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[11:49:45] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[11:49:46] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[11:49:46] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[11:49:47] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[11:49:47] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[11:49:48] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[11:49:48] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[11:49:49] Applying Tracking: -70
+[11:49:50] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[11:49:50] Applying White Color...
+[11:51:16] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[11:51:58] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[11:51:58] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[11:51:59] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[11:51:59] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[11:51:59] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[11:52:00] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[11:52:00] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[11:52:01] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[11:52:01] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[11:52:02] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[11:52:02] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[11:52:03] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[11:52:03] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[11:52:04] Applying Tracking: -70
+[11:52:05] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[11:52:05] Applying White Color...
+[11:52:08] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[11:53:46] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[11:53:47] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[11:53:47] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[11:53:48] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[11:53:48] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[11:53:49] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[11:53:49] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[11:53:49] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[11:53:50] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[11:53:50] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[11:53:51] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[11:53:51] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[11:53:51] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[11:53:52] Applying Tracking: -70
+[11:53:53] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[11:53:53] Applying White Color...
+[11:53:56] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[11:55:02] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[11:55:02] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[11:55:03] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[11:55:03] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[11:55:03] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[11:55:04] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[11:55:04] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[11:55:05] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[11:55:05] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[11:55:06] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[11:55:06] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[11:55:07] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[11:55:07] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[11:55:08] Applying Tracking: -70
+[11:55:09] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[11:55:09] Applying White Color...
+[11:55:12] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[13:04:39] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[13:04:40] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[13:04:40] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[13:04:40] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[13:04:41] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[13:04:41] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[13:04:42] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[13:04:42] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[13:04:42] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[13:04:43] Update Text -> Layer: 'dob day first digit' | Org: 0 | New: 0 | Final: 0
+[13:04:43] Update Text -> Layer: 'dob day second digit' | Org: 9 | New: 9 | Final: 9
+[13:04:43] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[13:04:44] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[13:04:45] Applying Tracking: -70
+[13:04:46] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[13:04:46] Applying White Color...
+[13:04:48] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[15:39:23] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[15:39:24] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[15:39:24] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[15:39:25] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[15:39:25] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[15:39:25] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[15:39:26] Applied Exotic Font to layer: dob month first digit
+[15:39:26] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[15:39:27] Applied Exotic Font to layer: dob month second digit
+[15:39:27] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[15:39:27] Applied Exotic Font to layer: dob day first digit
+[15:39:28] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[15:39:28] Applied Exotic Font to layer: dob day first digit
+[15:39:28] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[15:39:29] Applied Exotic Font to layer: dob year secondlast digit
+[15:39:29] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[15:39:30] Applied Exotic Font to layer: dob year last digit
+[16:33:44] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 23230 T12345678 32 | Final: 23230 T12345678 32
+[16:33:44] Update Text -> Layer: 'Signature Text' | Org: Ajaring | New: Ahmad A | Final: Ahmad A
+[16:33:45] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[16:33:45] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[16:33:46] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[16:33:46] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[16:33:46] Applied Exotic Font to layer: dob month first digit
+[16:33:47] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[16:33:47] Applied Exotic Font to layer: dob month second digit
+[16:33:48] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[16:33:48] Applied Exotic Font to layer: dob day first digit
+[16:33:49] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[16:33:49] Applied Exotic Font to layer: dob day first digit
+[16:33:50] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[16:33:50] Applied Exotic Font to layer: dob year secondlast digit
+[16:33:51] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[16:33:52] Applied Exotic Font to layer: dob year last digit
+[16:33:53] Applying Tracking: -70
+[16:33:54] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[16:33:54] Applying White Color...
+[16:33:56] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[16:33:56] --- Exporting Back Layers ---
+[16:33:56] Fast Exporting: "00" Big Barcode
+[16:34:02] Fast Exporting: "01" Small Barcode
+[16:34:06] Fast Exporting: "03" Edit Text
+[16:34:10] Fast Exporting: "02" Do Not Touch Text
+[16:34:14] Fast Exporting: "06" - Laser - Big Left Dob Circle
+[16:34:18] Fast Exporting: "09" - Laser -Swirl
+[16:34:22] Fast Exporting: "07, 08" - Raise - Raised Swirl
+[16:34:26] Fast Exporting: "04, 05" - Laser - Sig's
+[16:34:31] VA Back Processing Complete.
+[17:01:48] Replacing SO: "00" Big Barcode
+[17:01:54] Replacing SO: "01" Small Barcode
+[17:01:57] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 0061900112170102 | Final: 0061900112170102
+[17:01:58] Replacing SO: "05" - Laser Signature
+[17:02:15] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[17:02:16] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[17:02:16] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[17:02:16] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[17:02:17] Applied Exotic Font to layer: dob month first digit
+[17:02:17] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[17:02:18] Applied Exotic Font to layer: dob month second digit
+[17:02:18] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[17:02:19] Applied Exotic Font to layer: dob day first digit
+[17:02:19] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[17:02:19] Applied Exotic Font to layer: dob day first digit
+[17:02:20] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[17:02:20] Applied Exotic Font to layer: dob year secondlast digit
+[17:02:20] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[17:02:21] Applied Exotic Font to layer: dob year last digit
+[17:02:22] Applying Tracking: -70
+[17:02:23] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[17:02:23] Applying White Color...
+[17:02:25] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[17:02:25] --- Exporting Back Layers to: C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation\\Final_Documents\\Ahmad Masood VA 08-09-1998/Back ---
+[17:02:25] Fast Exporting: "00" Big Barcode
+[17:02:29] Fast Exporting: "01" Small Barcode
+[17:02:32] Fast Exporting: "03" Edit Text
+[17:02:35] Fast Exporting: "02" Do Not Touch Text
+[17:02:38] Fast Exporting: "06" - Laser - Big Left Dob Circle
+[17:02:41] Fast Exporting: "09" - Laser -Swirl
+[17:02:44] Fast Exporting: "07, 08" - Raise - Raised Swirl
+[17:02:47] Fast Exporting: "04, 05" - Laser - Sig's
+[17:02:51] VA Back Processing Complete.
+[20:46:29] Replacing SO: "00" Big Barcode
+[20:46:35] Replacing SO: "01" Small Barcode
+[20:46:38] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 0061900112170102 | Final: 0061900112170102
+[20:46:38] Replacing SO: "05" - Laser Signature
+[20:46:58] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[20:46:58] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[20:46:58] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[20:46:58] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[20:46:59] Applied Exotic Font to layer: dob month first digit
+[20:47:00] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[20:47:00] Applied Exotic Font to layer: dob month second digit
+[20:47:00] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[20:47:01] Applied Exotic Font to layer: dob day first digit
+[20:47:01] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[20:47:02] Applied Exotic Font to layer: dob day first digit
+[20:47:02] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[20:47:02] Applied Exotic Font to layer: dob year secondlast digit
+[20:47:03] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[20:47:03] Applied Exotic Font to layer: dob year last digit
+[20:47:05] Applying Tracking: -70
+[20:48:24] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[20:48:26] Applying White Color...
+[20:51:25] Replacing SO: "00" Big Barcode
+[20:51:30] Replacing SO: "01" Small Barcode
+[20:51:34] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 0061900112170102 | Final: 0061900112170102
+[20:51:34] Replacing SO: "05" - Laser Signature
+[20:51:52] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[20:51:53] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[20:51:53] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[20:51:53] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[20:51:54] Applied Exotic Font to layer: dob month first digit
+[20:51:54] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[20:51:55] Applied Exotic Font to layer: dob month second digit
+[20:51:55] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[20:51:55] Applied Exotic Font to layer: dob day first digit
+[20:51:56] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[20:51:56] Applied Exotic Font to layer: dob day first digit
+[20:51:56] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[20:51:57] Applied Exotic Font to layer: dob year secondlast digit
+[20:51:57] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[20:51:58] Applied Exotic Font to layer: dob year last digit
+[20:51:58] Applying Tracking: -50
+[20:51:59] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[20:51:59] Applying White Color...
+[20:53:31] Applying Tracking: -150
+[20:53:42] Applying Tracking: -200
+[20:53:47] Applying Tracking: -150
+[20:55:01] Replacing SO: "00" Big Barcode
+[20:55:08] Replacing SO: "01" Small Barcode
+[20:55:13] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 0061900112170102 | Final: 0061900112170102
+[20:55:13] Replacing SO: "05" - Laser Signature
+[20:55:34] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[20:55:34] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[20:55:35] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[20:55:35] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[20:55:35] Applied Exotic Font to layer: dob month first digit
+[20:55:36] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[20:55:36] Applied Exotic Font to layer: dob month second digit
+[20:55:37] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[20:55:37] Applied Exotic Font to layer: dob day first digit
+[20:55:37] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[20:55:38] Applied Exotic Font to layer: dob day first digit
+[20:55:38] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[20:55:38] Applied Exotic Font to layer: dob year secondlast digit
+[20:55:39] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[20:55:39] Applied Exotic Font to layer: dob year last digit
+[20:55:40] Applying Tracking: -50
+[20:55:41] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[20:55:41] Applying White Color...
+[21:59:55] Replacing SO: "00" Big Barcode
+[22:00:03] Replacing SO: "01" Small Barcode
+[22:00:07] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 00619 001121701 02 | Final: 00619 001121701 02
+[22:00:07] Replacing SO: "05" - Laser Signature
+[22:00:28] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[22:00:28] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[22:00:28] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[22:00:29] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[22:00:29] Applied Exotic Font to layer: dob month first digit
+[22:00:29] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[22:00:30] Applied Exotic Font to layer: dob month second digit
+[22:00:30] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[22:00:30] Applied Exotic Font to layer: dob day first digit
+[22:00:31] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[22:00:31] Applied Exotic Font to layer: dob day first digit
+[22:00:31] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[22:00:32] Applied Exotic Font to layer: dob year secondlast digit
+[22:00:32] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[22:00:33] Applied Exotic Font to layer: dob year last digit
+[22:00:34] Applying Tracking: -150
+[22:00:34] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[22:00:35] Applying White Color...
+[22:00:37] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
+[22:02:58] Replacing SO: "00" Big Barcode
+[22:03:05] Replacing SO: "01" Small Barcode
+[22:03:08] Update Text -> Layer: 'Long barcode number' | Org: 00619 001872704 23 | New: 00619 001121701 02 | Final: 00619 001121701 02
+[22:03:08] Replacing SO: "05" - Laser Signature
+[22:03:26] Update Text -> Layer: 'dob month first char' | Org: J | New: A | Final: A
+[22:03:26] Update Text -> Layer: 'dob month second char' | Org: A | New: U | Final: U
+[22:03:26] Update Text -> Layer: 'dob month third char' | Org: N | New: G | Final: G
+[22:03:26] Update Text -> Layer: 'dob month first digit' | Org: 0 | New: 0 | Final: 0
+[22:03:27] Applied Exotic Font to layer: dob month first digit
+[22:03:27] Update Text -> Layer: 'dob month second digit' | Org: 1 | New: 1 | Final: 1
+[22:03:28] Applied Exotic Font to layer: dob month second digit
+[22:03:28] Update Text -> Layer: 'dob day first digit' | Org: 1 | New: 0 | Final: 0
+[22:03:28] Applied Exotic Font to layer: dob day first digit
+[22:03:29] Update Text -> Layer: 'dob day second digit' | Org: 6 | New: 9 | Final: 9
+[22:03:29] Applied Exotic Font to layer: dob day first digit
+[22:03:29] Update Text -> Layer: 'dob year secondlast digit' | Org: 5 | New: 9 | Final: 9
+[22:03:30] Applied Exotic Font to layer: dob year secondlast digit
+[22:03:30] Update Text -> Layer: 'dob year last digit' | Org: 4 | New: 8 | Final: 8
+[22:03:30] Applied Exotic Font to layer: dob year last digit
+[22:03:31] Applying Tracking: -150
+[22:03:32] Applied Action Manager Magnesium Font to layer: "08" Raised on Swirl
+[22:03:32] Applying White Color...
+[22:03:33] Applied Action Manager Magnesium Font to layer: Raised Name Swirl
