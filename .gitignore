@@ -1,6 +1,7 @@
 # Large Assets
 *.psd
 PSDs/
+Lightburn/
 backup_files/
 find_me_files/
 temp_files/
