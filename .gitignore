@@ -22,3 +22,5 @@ offline_test_data.txt
 # Sensitive Info
 config.json
 PSUserConfig.txt
+
+test_ny_module.py

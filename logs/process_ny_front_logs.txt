@@ -1,25 +1,48 @@
 --- NY FRONT LOG START ---
-[14:16:33] Starting Front Process...
-[14:16:33] Opening Front Template: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\PSDs\Front NY Automation.psd
-[14:16:43] Processing 'Raised' Section...
-[14:16:43] Update Text -> Layer: 'day' | Org: 08 | New: 09 | Final: 09
-[14:16:44] Update Text -> Layer: 'month' | Org: 05 | New: 08 | Final: 08
-[14:16:44] Update Text -> Layer: 'last two digits of year' | Org: 58 | New: 98 | Final: 98
-[14:16:44] Update Text -> Layer: 'month' | Org: 05 | New: 08 | Final: 08
-[14:16:44] Update Text -> Layer: 'last two digits of year' | Org: 33 | New: 32 | Final: 32
-[14:16:44] Using Signature Text Fallback: Ahmad A
-[14:16:44] Processing 'Laser' Section...
-[14:16:45] Applying Swirl Styles (Arial Black/FauxBold)...
-[14:16:46] Applying Tracking: -30
-[14:16:46] Applying Horizontal Scale: 93%
-[14:16:47] Update Text -> Layer: 'Last Name' | Org: VALENTE | New: Masood | Final: Masood
-[14:16:47] Update Text -> Layer: 'Front and Middle Name' | Org: JO ANN | New: Ahmad A | Final: Ahmad A
-[14:16:47] Update Text -> Layer: 'Address First Line' | Org: 100 STERLING PL APT 2F | New: 4301 W BROAD ST | Final: 4301 W BROAD ST
-[14:16:48] Update Text -> Layer: 'Address Second Line' | Org: BROOKLYN, NY 11217 | New: RICHMOND, VA 23230-0000 | Final: RICHMOND, VA 23230-0000
-[14:16:48] Update Text -> Layer: 'Gender' | Org: F | New: M | Final: M
-[14:16:48] Height Preserve Update: 5 -04 -> 5 -11
-[14:16:48] Update Text -> Layer: 'Eye Color' | Org: BRO | New: BRN | Final: BRN
-[14:16:48] Update Text -> Layer: 'Micro' | Org: 05 08 2033 JO ANN VALENTE 05 08 2033 JO ANN VALENTE05 08 2033   | New: 08092032AHMADAMASOOD08092032AHMADAMASOOD | Final: 08092032AHMADAMASOOD08092032AHMADAMASOOD
-[14:16:49] Update Text -> Layer: 'month' | Org: MAY | New: AUG | Final: AUG
-[14:16:49] Update Text -> Layer: 'day' | Org: 08 | New: 09 | Final: 09
-[14:16:49] --- Exporting Full Front PNGs ---
+[13:09:04] Starting Front Process...
+[13:09:04] Opening Front Template: C:\Users\LENOVO\Documents\personal\Fiver\Telegram License Automation\PSDs\Front NY Automation.psd
+[13:09:37] Processing 'Raised' Section...
+[13:09:38] Update Text -> Layer: 'DL 3 characters' | Org:   8     9   7   | New:   7     8     7 | Final:   7     8     7
+[13:09:38] Update Text -> Layer: 'day' | Org: 08 | New: 03 | Final: 03
+[13:09:39] Update Text -> Layer: 'month' | Org: 05 | New: 06 | Final: 06
+[13:09:39] Update Text -> Layer: 'last two digits of year' | Org: 58 | New: 90 | Final: 90
+[13:09:39] Update Text -> Layer: 'day' | Org: 08 | New: 07 | Final: 07
+[13:09:39] Update Text -> Layer: 'month' | Org: 05 | New: 06 | Final: 06
+[13:09:40] Update Text -> Layer: 'last two digits of year' | Org: 33 | New: 27 | Final: 27
+[13:09:40] Update Text -> Layer: 'dob' | Org: MAY 08 58 | New: JUN 03 90 | Final: JUN 03 90
+[13:09:40] Using Signature Image
+[13:09:40] Replacing SO: SIG copy
+[13:09:49] Update Text -> Layer: 'dob' | Org: MAY58 | New: JUN90 | Final: JUN90
+[13:09:49] Processing 'Laser' Section...
+[13:09:50] Applying Swirl Styles (Arial Black/FauxBold)...
+[13:09:52] Applying Tracking: -30
+[13:09:52] Applying Horizontal Scale: 93%
+[13:09:52] Update Text -> Layer: 'first two digits of year' | Org: 19 | New: 19 | Final: 19
+[13:09:53] Update Text -> Layer: '06/03/1990' | Org: 05/09/1959 | New: 06/03/1990 | Final: 06/03/1990
+[13:09:53] Update Text -> Layer: 'DL remaining characters' | Org: 6  9 9  5 6  7 | New: 7  1 8  4 2  6 | Final: 7  1 8  4 2  6
+[13:09:53] Update Text -> Layer: 'ISSUE' | Org: 01/03/2025 | New: 05/06/2023 | Final: 05/06/2023
+[13:09:54] WARNING: Text Layer matching 'EXP' NOT FOUND in 10 Laser Edited BOLD Text
+[13:09:54] Update Text -> Layer: 'Last Name' | Org: VALENTE | New: VALENTE | Final: VALENTE
+[13:09:54] Update Text -> Layer: 'Front and Middle Name' | Org: JO ANN | New: JOAN N | Final: JOAN N
+[13:09:54] Update Text -> Layer: 'Address First Line' | Org: 100 STERLING PL APT 2F | New: 110 YETMAN AVE | Final: 110 YETMAN AVE
+[13:09:55] Update Text -> Layer: 'Address Second Line' | Org: BROOKLYN, NY 11217 | New: STATEN ISLAND, NY 10307 | Final: STATEN ISLAND, NY 10307
+[13:09:55] Update Text -> Layer: 'Gender' | Org: F | New: F | Final: F
+[13:09:55] Height Preserve Update: 5 -04 -> 5 -04
+[13:09:55] Update Text -> Layer: 'Eye Color' | Org: BRO | New: BRO | Final: BRO
+[13:09:56] Update Text -> Layer: 'Micro' | Org: 05 08 2033 JO ANN VALENTE 05 08 2033 JO ANN VALENTE05 08 2033   | New: 06 07 2027 JOAN N VALENTE 06 07 2027 JOAN N VALENTE 06 07 2027 | Final: 06 07 2027 JOAN N VALENTE 06 07 2027 JOAN N VALENTE 06 07 2027
+[13:09:56] Update Text -> Layer: 'dob' | Org: MAY58 | New: JUN90 | Final: JUN90
+[13:09:56] Update Text -> Layer: 'month' | Org: MAY | New: JUN | Final: JUN
+[13:09:57] Update Text -> Layer: 'day' | Org: 08 | New: 03 | Final: 03
+[13:10:28] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[13:10:54] Face processed: Smart Fit (Cover) + 0.1x zoom, aligned to top.
+[13:10:54] --- Exporting Full Front PNGs ---
+[13:11:24] --- Exporting Layers ---
+[13:11:24] Fast Exporting: 09 Laser Swirl name
+[13:11:32] Fast Exporting: 10 Laser Edited BOLD Text
+[13:11:40] Fast Exporting: 11 LIGHT
+[13:11:47] Fast Exporting: 12 Laser Dob Text Under Pic
+[13:11:54] Fast Exporting:  13 Big Photo
+[13:12:08] Fast Exporting: "14" Lens Face
+[13:12:25] Fast Exporting: "15" Lens Dob
+[13:12:32] Fast Exporting: Raised
+[13:12:45] Front Processing Complete.

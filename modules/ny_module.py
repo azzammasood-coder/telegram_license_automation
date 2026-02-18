@@ -4,6 +4,9 @@ import json
 import random
 from datetime import datetime, timezone
 from PIL import Image
+import xml.etree.ElementTree as ET
+import shutil
+import base64
 
 def sanitize_filename(text: str) -> str:
     return re.sub(r'[<>:"/\\|?*]', '-', text).strip()
@@ -230,3 +233,132 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     jsx_back  = os.path.join(BASE_DIR, "modules", "process_ny_back.jsx")
 
     return temp_id, data_file_path, front_final, back_final, psd_final, jsx_front, jsx_back
+
+def generate_lightburn_lbrn(data_map, base_dir):
+    """
+    Generates LightBurn project files with DEBUG LOGGING.
+    Fixes:
+    1. OFFSETS -> Strictly preserves XForm (Position) and W/H (Size).
+    2. INVISIBLE LAYER -> Embeds Base64 data directly.
+    3. LOGGING -> Prints detailed attributes for debugging.
+    """
+    try:
+        main_dir = data_map.get("Output Dir")
+        front_dir = data_map.get("Output Dir Front")
+        back_dir = data_map.get("Output Dir Back")
+        
+        if not main_dir or not front_dir or not back_dir:
+            print("❌ LightBurn Error: Missing directory paths.")
+            return
+
+        lb_out_dir = os.path.join(main_dir, "Lightburn")
+        os.makedirs(lb_out_dir, exist_ok=True)
+        
+        def process_template(template_name, png_dir, layer_map):
+            src_path = os.path.join(base_dir, "Lightburn", template_name)
+            dst_path = os.path.join(lb_out_dir, template_name)
+            
+            if not os.path.exists(src_path):
+                print(f"⚠️ Template missing: {src_path}")
+                return
+
+            try:
+                tree = ET.parse(src_path)
+                root = tree.getroot()
+                
+                print(f"\n🔵 --- Processing {template_name} ---")
+                
+                # Check which layers we expect vs which we found
+                found_layers = []
+                
+                for shape in root.findall(".//Shape[@Type='Bitmap']"):
+                    cut_index = int(shape.get('CutIndex', -1))
+                    found_layers.append(cut_index)
+                    
+                    if cut_index in layer_map:
+                        png_filename = layer_map[cut_index]
+                        png_full_path = os.path.join(png_dir, png_filename)
+                        
+                        # LOGGING: Check Original State
+                        orig_w = shape.get('W', 'MISSING')
+                        orig_h = shape.get('H', 'MISSING')
+                        xform = shape.find('XForm')
+                        xform_val = xform.text if xform is not None else "NONE"
+                        
+                        # print(f"   [C{cut_index:02d}] Target: {png_filename}")
+                        # print(f"          Current Size: W={orig_w}, H={orig_h}")
+                        # print(f"          Current Pos : {xform_val}")
+
+                        if not os.path.exists(png_full_path):
+                            print(f"          ⚠️ FILE MISSING: {png_full_path}")
+                            continue
+                            
+                        # 1. READ IMAGE & CONVERT TO BASE64
+                        try:
+                            with open(png_full_path, "rb") as image_file:
+                                raw_data = image_file.read()
+                                encoded_string = base64.b64encode(raw_data).decode('utf-8')
+                                size_kb = len(raw_data) / 1024
+                                # print(f"          Image Read: {size_kb:.2f} KB")
+                        except Exception as img_err:
+                            print(f"          ❌ Read Error: {img_err}")
+                            continue
+                        
+                        # 2. INJECT DATA (The Fix for Invisibility)
+                        shape.set('Data', encoded_string)
+                        
+                        # 3. UPDATE METADATA (Optional, but good for reference)
+                        # We use forward slashes just in case LB looks at it
+                        shape.set('File', os.path.abspath(png_full_path).replace("\\", "/"))
+                        
+                        # 4. CLEANUP ONLY CONFLICTS
+                        # We strictly DO NOT touch 'W', 'H', or 'XForm' -> Fixes Offsets
+                        if 'SourceHash' in shape.attrib:
+                            del shape.attrib['SourceHash']
+                        if 'RelativePath' in shape.attrib:
+                            del shape.attrib['RelativePath']
+
+                        # Remove legacy <data> tags if present
+                        for child in list(shape):
+                            if child.tag in ['data', 'Data']:
+                                shape.remove(child)
+
+                        # print(f"          ✅ Updated Successfully.")
+
+                # Check for missing layers
+                missing = [k for k in layer_map.keys() if k not in found_layers]
+                if missing:
+                    print(f"⚠️ WARNING: The following CutIndices were NOT found in the template: {missing}")
+
+                tree.write(dst_path)
+                print(f"💾 Saved: {dst_path}")
+
+            except Exception as e:
+                print(f"❌ Error processing {template_name}: {e}")
+
+        # --- CONFIGURATION ---
+        front_map = {
+            9:  "09 Laser Swirl name.png",
+            10: "10 Laser Edited BOLD Text.png",
+            11: "11 LIGHT.png",
+            12: "12 Laser Dob Text Under Pic.png",
+            15: "13 Big Photo.png",
+            16: "14 Lens Face.png",
+            17: "15 Lens Dob.png",
+            18: "2nd_Full_PNG_Front.png"
+        }
+        process_template("NY Front.lbrn2", front_dir, front_map)
+
+        back_map = {
+            1: "1 Barcode.png",
+            3: "3 Regular Print Top Window.png",
+            2: "2 Regular Print Doc#.png",
+            4: "4 Regular Print Swirl.png",
+            5: "5 Raised text.png",
+            6: "6 Regular Print Light Black.png",
+            7: "7 Bottom Barcode.png"
+        }
+        process_template("NY BACK.lbrn2", back_dir, back_map)
+
+    except Exception as e:
+        print(f"❌ LightBurn Generation Logic Failed: {e}")

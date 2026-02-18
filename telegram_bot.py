@@ -11,7 +11,7 @@ import base64
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters,)
-from modules import nj_module, ny_module, fl_module, pa_module, va_module
+from modules import nj_module, fl_module, pa_module, va_module, ny_module
 
 # ==============================================================================
 #  CONFIGURATION & SETTINGS
@@ -128,42 +128,90 @@ async def process_queue_worker(app: Application):
         chat_id = update.effective_chat.id
 
         try:
-            # Write the data file path to active_job.txt
+            # 1. Write Ticket
             with open(JOB_TICKET_PATH, "w", encoding="utf-8") as f:
                 f.write(data_path)
 
+            # 2. Parse Data File to check Jurisdiction
+            data_map = {}
+            jurisdiction = "UNKNOWN"
+            if os.path.exists(data_path):
+                with open(data_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if ":" in line:
+                            k, v = line.split(":", 1)
+                            data_map[k.strip()] = v.strip()
+            
+            # Simple heuristic for NY: presence of "Output Dir Front" or logic from execute_generation
+            if "Output Dir Front" in data_map and "NY" in os.path.basename(data_map.get("Output Dir", "")):
+                jurisdiction = "NY"
+
+            # 3. Trigger Photoshop
             if os.path.exists(PHOTOSHOP_EXE_PATH):
                 for jsx in jsx_paths:
                     subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx])
-                    await asyncio.sleep(2) # Short pause between scripts
+                    await asyncio.sleep(2)
             else:
                 await context.bot.send_message(chat_id, "⚠️ Error: Photoshop path incorrect.")
                 continue
 
+            # 4. Wait Loop
             timeout = 1800
             start_time = time.time()
             success = False
 
             while (time.time() - start_time) < timeout:
-                # Check for PSD (Primary indicator)
-                psd_ready = os.path.exists(out_psd) and os.path.getsize(out_psd) > 0
                 
-                # Check for Front/Back (Flexible matching)
-                all_files = os.listdir(FINAL_DIR)
-                found_front = any("Front" in f and unique_id.split('_')[0] in f for f in all_files)
-                found_back = any("Back" in f and unique_id.split('_')[0] in f for f in all_files)
+                # --- NY SPECIFIC SUCCESS CONDITION ---
+                if jurisdiction == "NY":
+                    # NY saves PSDs inside the Front and Back subfolders
+                    base_name = data_map.get("Base Name", "")
+                    front_dir = data_map.get("Output Dir Front", "")
+                    back_dir = data_map.get("Output Dir Back", "")
+                    
+                    psd_front = os.path.join(front_dir, f"{base_name}.psd")
+                    psd_back = os.path.join(back_dir, f"{base_name}.psd")
+                    
+                    # Check if BOTH exist
+                    if os.path.exists(psd_front) and os.path.getsize(psd_front) > 0 and \
+                       os.path.exists(psd_back) and os.path.getsize(psd_back) > 0:
+                        await asyncio.sleep(2) # Cooldown for save completion
+                        success = True
+                        break
 
-                if psd_ready and found_front and found_back:
-                    await asyncio.sleep(2)
-                    success = True
-                    break
+                # --- STANDARD SUCCESS CONDITION ---
+                else:
+                    # Check for main PSD (out_psd passed in queue)
+                    if os.path.exists(out_psd) and os.path.getsize(out_psd) > 0:
+                        
+                        # Flexible Front/Back check
+                        all_files = os.listdir(FINAL_DIR)
+                        found_front = any("Front" in f and unique_id.split('_')[0] in f for f in all_files)
+                        found_back = any("Back" in f and unique_id.split('_')[0] in f for f in all_files)
+
+                        if found_front and found_back:
+                            await asyncio.sleep(2)
+                            success = True
+                            break
                 
                 if int(time.time() - start_time) % 20 == 0:
-                    logger.info(f"⏳ Syncing {unique_id}... Found PSD: {psd_ready}")
+                    logger.info(f"⏳ Syncing {unique_id}... ({jurisdiction} Mode)")
                 
                 await asyncio.sleep(3)
 
             if success:
+                # --- NY LIGHTBURN TRIGGER ---
+                if jurisdiction == "NY":
+                    try:
+                        await context.bot.send_message(chat_id, "Generating LightBurn Files...")
+                        # Run blocking IO in executor to avoid freezing bot
+                        await asyncio.get_running_loop().run_in_executor(
+                            None, ny_module.generate_lightburn_lbrn, data_map, BASE_DIR
+                        )
+                    except Exception as e:
+                        logger.error(f"LightBurn Logic Error: {e}")
+                        await context.bot.send_message(chat_id, f"⚠️ LightBurn Error: {e}")
+
                 await context.bot.send_message(chat_id, "🎉 Job Done!")
             else:
                 await context.bot.send_message(chat_id, "😔 Job took very long...")
@@ -636,7 +684,7 @@ async def get_signature_upload(update: Update, context: ContextTypes.DEFAULT_TYP
         final_path = clean_path if success else raw_path
         
         context.user_data["signature_path"] = final_path
-        await update.message.reply_text("✍️ Signature received & processed.")
+        # await update.message.reply_text("✍️ Signature received & processed.")
     else:
         await update.message.reply_text("Couldn't download image.")
     
@@ -779,7 +827,7 @@ async def get_face_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         final_path = clean_path if success else raw_path
         
         context.user_data["face_path"] = final_path
-        await update.message.reply_text("👤 Face received & processed.")
+        # await update.message.reply_text("👤 Face received & processed.")
     else:
         await update.message.reply_text("Couldn't download face image.")
     
@@ -862,7 +910,7 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # ---------------------------------------------------------
     # STANDARD / BARCODE ONLY FLOW
     # ---------------------------------------------------------
-    await update.message.reply_text("👍 Generating documents...", reply_markup=ReplyKeyboardRemove())
+    # await update.message.reply_text("👍 Generating documents...", reply_markup=ReplyKeyboardRemove())
     try:
         raw_height = context.user_data.get('height', '5-00')
         api_height, visual_height = parse_height_logic(raw_height)
@@ -915,7 +963,8 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await processing_queue.put((update, context, unique_id, data_path, front_path, back_path, psd_path, jsx_paths))
         
         q_pos = processing_queue.qsize()
-        await update.message.reply_text(f"🚀 Processing {jurisdiction} License in Queue... Position #{q_pos}")
+        # await update.message.reply_text(f"🚀 Processing {jurisdiction} License in Queue... Position #{q_pos}")
+        await update.message.reply_text(f"🚀 Generating PSD files...")
         
     except Exception as e:
         logger.error(f"Failed: {e}")
