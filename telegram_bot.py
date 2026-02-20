@@ -8,9 +8,11 @@ import requests
 import re
 import json
 import base64
+import sqlite3
+import uuid
 from datetime import datetime
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import (Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters,)
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters,)
 from modules import nj_module, fl_module, pa_module, va_module, ny_module
 
 # ==============================================================================
@@ -38,6 +40,20 @@ ENABLE_BG_REMOVAL   = config['toggles']['enable_bg_removal']
 OFFLINE_TEST_MODE   = config['toggles']['offline_test_mode']
 TEST_BARCODE_ONLY   = config['testing']['barcode_only']
 TEST_JSX_ONLY       = config['testing']['jsx_only']
+
+ADMIN_CHAT_ID       = config['telegram'].get('admin_chat_id')
+
+# --- Database Setup ---
+DB_PATH = os.path.join(BASE_DIR, "jobs.db")
+def init_db():
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute('''CREATE TABLE IF NOT EXISTS jobs (
+                            job_id TEXT PRIMARY KEY,
+                            chat_id INTEGER,
+                            user_data TEXT,
+                            status TEXT
+                        )''')
+init_db()
 
 # ==============================================================================
 #  MOCK CLASSES (FOR OFFLINE MODE)
@@ -80,7 +96,8 @@ class MockContext:
 
 # States
 (
-    STATE_SELECT,       # <--- New State
+    STATE_SELECT, 
+    BUY_CHECK,
     BULK_INPUT, 
     CUSTOM_DL_CHECK, 
     CUSTOM_DL_INPUT, 
@@ -99,8 +116,9 @@ class MockContext:
     PA_REAL_ID,
     # --- Common ---
     FACE_CHECK,      
-    FACE_UPLOAD       
-) = range(22)           # <--- Updated Range to 22
+    FACE_UPLOAD,
+    PAYMENT_UPLOAD     
+) = range(24)           # <--- Updated Range to 24
 
 # Logging
 logging.basicConfig(format="%(asctime)s - [BOT] - %(message)s", level=logging.INFO)
@@ -124,8 +142,7 @@ async def process_queue_worker(app: Application):
     logger.info("👷 Queue Worker is active.")
     while True:
         item = await processing_queue.get()
-        update, context, unique_id, data_path, out_front, out_back, out_psd, jsx_paths = item
-        chat_id = update.effective_chat.id
+        bot, chat_id, unique_id, data_path, out_front, out_back, out_psd, jsx_paths = item
 
         try:
             # 1. Write Ticket
@@ -142,9 +159,13 @@ async def process_queue_worker(app: Application):
                             k, v = line.split(":", 1)
                             data_map[k.strip()] = v.strip()
             
-            # Simple heuristic for NY: presence of "Output Dir Front" or logic from execute_generation
-            if "Output Dir Front" in data_map and "NY" in os.path.basename(data_map.get("Output Dir", "")):
-                jurisdiction = "NY"
+            # Simple heuristic for NY: presence of "Output Dir Front"
+            if "Output Dir Front" in data_map:
+                output_dir_name = os.path.basename(data_map.get("Output Dir", ""))
+                if "NY" in output_dir_name:
+                    jurisdiction = "NY"
+                elif "VA" in output_dir_name:
+                    jurisdiction = "VA"
 
             # 3. Trigger Photoshop
             if os.path.exists(PHOTOSHOP_EXE_PATH):
@@ -152,7 +173,7 @@ async def process_queue_worker(app: Application):
                     subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx])
                     await asyncio.sleep(2)
             else:
-                await context.bot.send_message(chat_id, "⚠️ Error: Photoshop path incorrect.")
+                await bot.send_message(chat_id, "⚠️ Error: Photoshop path incorrect.")
                 continue
 
             # 4. Wait Loop
@@ -162,9 +183,9 @@ async def process_queue_worker(app: Application):
 
             while (time.time() - start_time) < timeout:
                 
-                # --- NY SPECIFIC SUCCESS CONDITION ---
-                if jurisdiction == "NY":
-                    # NY saves PSDs inside the Front and Back subfolders
+                # --- NY / VA SPECIFIC SUCCESS CONDITION ---
+                if jurisdiction in ["NY", "VA"]:
+                    # NY/VA saves PSDs inside the Front and Back subfolders
                     base_name = data_map.get("Base Name", "")
                     front_dir = data_map.get("Output Dir Front", "")
                     back_dir = data_map.get("Output Dir Back", "")
@@ -200,21 +221,30 @@ async def process_queue_worker(app: Application):
                 await asyncio.sleep(3)
 
             if success:
-                # --- NY LIGHTBURN TRIGGER ---
+                # --- LIGHTBURN TRIGGER ---
                 if jurisdiction == "NY":
                     try:
-                        await context.bot.send_message(chat_id, "Generating LightBurn Files...")
-                        # Run blocking IO in executor to avoid freezing bot
+                        await bot.send_message(chat_id, "Generating LightBurn Files...")
                         await asyncio.get_running_loop().run_in_executor(
                             None, ny_module.generate_lightburn_lbrn, data_map, BASE_DIR
                         )
                     except Exception as e:
                         logger.error(f"LightBurn Logic Error: {e}")
-                        await context.bot.send_message(chat_id, f"⚠️ LightBurn Error: {e}")
+                        await bot.send_message(chat_id, f"⚠️ LightBurn Error: {e}")
+                        
+                elif jurisdiction == "VA":
+                    try:
+                        await bot.send_message(chat_id, "Generating LightBurn Files...")
+                        await asyncio.get_running_loop().run_in_executor(
+                            None, va_module.generate_lightburn_lbrn, data_map, BASE_DIR
+                        )
+                    except Exception as e:
+                        logger.error(f"VA LightBurn Logic Error: {e}")
+                        await bot.send_message(chat_id, f"⚠️ VA LightBurn Error: {e}")
 
-                await context.bot.send_message(chat_id, "🎉 Job Done!")
+                await bot.send_message(chat_id, "🎉 Job Done!")
             else:
-                await context.bot.send_message(chat_id, "😔 Job took very long...")
+                await bot.send_message(chat_id, "😔 Job took very long...")
 
         except Exception as e:
             logger.error(f"Worker Error: {e}")
@@ -507,7 +537,8 @@ async def new_barcode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     if OFFLINE_TEST_MODE and TEST_JSX_ONLY:
         await update.message.reply_text("⏩ FAST FORWARD: Skipping Input/Parsing. Jumping to Photoshop...")
-        return await execute_generation(update, context)
+        await execute_generation(context.bot, update.effective_chat.id, context.user_data)
+        return ConversationHandler.END
 
     # --- OFFLINE TEST MODE LOGIC ---
     if OFFLINE_TEST_MODE:
@@ -526,7 +557,9 @@ async def new_barcode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             context.user_data.update(parsed_data)
             context.user_data["signature_path"] = None 
             context.user_data["face_path"] = None
-            return await execute_generation(update, context)
+            
+            await execute_generation(context.bot, update.effective_chat.id, context.user_data)
+            return ConversationHandler.END
         except Exception as e:
             await update.message.reply_text(f"❌ File Read Error: {e}")
             return ConversationHandler.END
@@ -589,6 +622,35 @@ async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             "Not Real ID: Not Visible\nSignature: JOHN DOE"
         )
         
+    # --- 1. Send Previews ---
+    preview_dir = os.path.join(BASE_DIR, "Automated Messages", "Previews", selected)
+    if os.path.exists(preview_dir):
+        images = os.listdir(preview_dir)
+        front_img = next((img for img in images if "front" in img.lower()), None)
+        back_img = next((img for img in images if "back" in img.lower()), None)
+
+        if front_img or back_img:
+            preview_msg = f"Here is a preview of the front and back for the {selected} driver's license:"
+            await update.message.reply_text(preview_msg)
+        
+        if front_img:
+            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(os.path.join(preview_dir, front_img), 'rb'))
+        if back_img:
+            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(os.path.join(preview_dir, back_img), 'rb'))
+    
+    context.user_data['bulk_prompt_msg'] = msg # Store message for next step
+    
+    reply_keyboard = [["Yes", "No"]]
+    await update.message.reply_text("Do you want to proceed and buy this? (Yes or No)", 
+                                    reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
+    return BUY_CHECK
+
+async def handle_buy_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.text.lower() != "yes":
+        await update.message.reply_text("Okay, process cancelled.", reply_markup=ReplyKeyboardRemove())
+        return ConversationHandler.END
+
+    msg = context.user_data.get('bulk_prompt_msg', "Please enter details.")
     await update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove(), parse_mode="Markdown")
     return BULK_INPUT
 
@@ -798,7 +860,7 @@ async def ask_face(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("Please upload the face image.", reply_markup=ReplyKeyboardRemove())
         return FACE_UPLOAD
     else:
-        return await execute_generation(update, context)
+        return await request_payment(update, context)
 
 async def get_face_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     file_obj = None
@@ -831,31 +893,119 @@ async def get_face_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     else:
         await update.message.reply_text("Couldn't download face image.")
     
-    return await execute_generation(update, context)
+    return await request_payment(update, context)
 
-# --- EXECUTION ---
-async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def request_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    msg_path = os.path.join(BASE_DIR, "Automated Messages", "Messages", "payment_message.txt")
+    
+    payment_msg = "Please send the payment screenshot."
+    if os.path.exists(msg_path):
+        with open(msg_path, "r", encoding="utf-8") as f:
+            payment_msg = f.read()
+            
+    await update.message.reply_text(payment_msg)
+    return PAYMENT_UPLOAD
+
+async def handle_payment_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not update.message.photo and not update.message.document:
+        await update.message.reply_text("Please upload a screenshot image of your payment.")
+        return PAYMENT_UPLOAD
+        
+    chat_id = update.effective_chat.id
+    job_id = str(uuid.uuid4())[:8]
+    
+    # Save to DB (Explicit close prevents OperationalError: database is locked)
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.execute("INSERT INTO jobs (job_id, chat_id, user_data, status) VALUES (?, ?, ?, ?)",
+                     (job_id, chat_id, json.dumps(context.user_data), "PENDING"))
+        conn.commit()
+    finally:
+        conn.close()
+                     
+    # Forward screenshot to admin
+    photo_file = update.message.photo[-1].file_id if update.message.photo else update.message.document.file_id
+    keyboard = [
+        [InlineKeyboardButton("✅ Approve", callback_data=f"approve_{job_id}"),
+         InlineKeyboardButton("❌ Reject", callback_data=f"reject_{job_id}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    admin_text = f"🚨 New Order [{job_id}]\nState: {context.user_data.get('jurisdiction')}\nName: {context.user_data.get('first_name')} {context.user_data.get('last_name')}"
+    
+    if ADMIN_CHAT_ID:
+        await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo_file, caption=admin_text, reply_markup=reply_markup)
+    
+    await update.message.reply_text("Please wait for approval.")
+    return ConversationHandler.END
+
+async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    action, job_id = query.data.split("_")
+    
+    # Check DB
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT chat_id, user_data FROM jobs WHERE job_id = ?", (job_id,))
+        row = cursor.fetchone()
+    finally:
+        conn.close()
+        
+    if not row:
+        await query.edit_message_caption(caption=f"{query.message.caption}\n\n⚠️ Job not found in database.")
+        return
+        
+    chat_id, user_data_json = row
+    user_data = json.loads(user_data_json)
+    
+    if action == "approve":
+        conn = sqlite3.connect(DB_PATH)
+        try:
+            conn.execute("UPDATE jobs SET status = 'APPROVED' WHERE job_id = ?", (job_id,))
+            conn.commit()
+        finally:
+            conn.close()
+        
+        await query.edit_message_caption(caption=f"{query.message.caption}\n\n✅ APPROVED")
+        await context.bot.send_message(chat_id, "✅ Your payment was approved! Processing has started. You will receive the files shortly.")
+        
+        # Trigger generation NON-BLOCKING so the button resolves instantly
+        asyncio.create_task(execute_generation(context.bot, chat_id, user_data))
+        
+    elif action == "reject":
+        conn = sqlite3.connect(DB_PATH)
+        try:
+            conn.execute("UPDATE jobs SET status = 'REJECTED' WHERE job_id = ?", (job_id,))
+            conn.commit()
+        finally:
+            conn.close()
+        
+        await query.edit_message_caption(caption=f"{query.message.caption}\n\n❌ REJECTED")
+        await context.bot.send_message(chat_id, "❌ Your payment was rejected or invalid. Process cancelled.")
+
+async def execute_generation(bot, chat_id, user_data):
     # ---------------------------------------------------------
     # MODE A: JSX ONLY (Skip generation, run existing job)
     # ---------------------------------------------------------
     if TEST_JSX_ONLY:
-        await update.message.reply_text("🧪 TEST MODE: JSX ONLY. Reading 'active_job.txt'...")
+        await bot.send_message(chat_id, "🧪 TEST MODE: JSX ONLY. Reading 'active_job.txt'...")
         
         if not os.path.exists(JOB_TICKET_PATH):
-             await update.message.reply_text("❌ Error: active_job.txt not found.")
-             return ConversationHandler.END
+             await bot.send_message(chat_id, "❌ Error: active_job.txt not found.")
+             return
 
         # 1. Get Path from Ticket
         with open(JOB_TICKET_PATH, "r") as f:
             existing_data_path = f.read().strip()
 
         if not os.path.exists(existing_data_path):
-             await update.message.reply_text(f"❌ Error: Data file listed in job ticket not found: {existing_data_path}")
-             return ConversationHandler.END
+             await bot.send_message(chat_id, f"❌ Error: Data file listed in job ticket not found: {existing_data_path}")
+             return
 
         # 2. Parse the File to get Configs
-        # [UPDATED] FL is now a Text file, just like NJ/NY. 
-        # We use standard parsing for all.
         data_map = {}
         try:
             with open(existing_data_path, "r", encoding="utf-8") as f:
@@ -864,11 +1014,10 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         k, v = line.split(":", 1)
                         data_map[k.strip()] = v.strip()
         except Exception as e:
-            await update.message.reply_text(f"❌ Error reading data file: {e}")
-            return ConversationHandler.END
+            await bot.send_message(chat_id, f"❌ Error reading data file: {e}")
+            return
         
         # 3. Determine Jurisdiction
-        # FL uses "State Code", NJ/NY use "Jurisdiction"
         file_jurisdiction = data_map.get("Jurisdiction", data_map.get("State Code", "")).strip().upper()
         
         # Fallback Heuristics
@@ -887,57 +1036,56 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             jsx_paths = [
                 os.path.join(BASE_DIR, "modules", "process_fl.jsx")
             ]
-        # In execute_generation() inside the jurisdiction check:
-        elif jurisdiction == 'VA':
+        elif file_jurisdiction == 'VA':
             results = va_module.prepare_job_files(
-                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
+                user_data, None, None, None, None, TEMP_DIR, FINAL_DIR, BASE_DIR)
             jsx_paths = results[5:]
         else:
             jsx_paths = [
                 os.path.join(BASE_DIR, "modules", "process_nj.jsx")
             ]
 
-        await update.message.reply_text(f"🚀 Re-triggering Photoshop ({file_jurisdiction}) on: {os.path.basename(existing_data_path)}")
+        await bot.send_message(chat_id, f"🚀 Re-triggering Photoshop ({file_jurisdiction}) on: {os.path.basename(existing_data_path)}")
         
         # 4. Add to Queue
         await processing_queue.put((
-            update, context, "TEST_RERUN", existing_data_path, 
+            bot, chat_id, "TEST_RERUN", existing_data_path, 
             data_map.get("Output Front"), data_map.get("Output Back"), data_map.get("Output PSD"), 
             jsx_paths
         ))
-        return ConversationHandler.END
+        return
 
     # ---------------------------------------------------------
     # STANDARD / BARCODE ONLY FLOW
     # ---------------------------------------------------------
-    # await update.message.reply_text("👍 Generating documents...", reply_markup=ReplyKeyboardRemove())
+    await bot.send_message(chat_id, "Generating barcode...", reply_markup=ReplyKeyboardRemove())
     try:
-        raw_height = context.user_data.get('height', '5-00')
+        # Replaced custom 'context' wrapper logic to map directly via user_data dictionary
+        raw_height = user_data.get('height', '5-00')
         api_height, visual_height = parse_height_logic(raw_height)
         
-        # 1. Generate Barcodes (Now returns 7 items)
-        barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png = generate_barcodes(context.user_data, api_height)
+        # 1. Generate Barcodes - Pushed to thread executor so it doesn't freeze the bot
+        loop = asyncio.get_running_loop()
+        barcode_results = await loop.run_in_executor(
+            None, generate_barcodes, user_data, api_height
+        )
+        barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png = barcode_results
         
         # 2. Select Module & Prepare Files
-        jurisdiction = context.user_data.get('jurisdiction', 'NJ').strip().upper()
+        jurisdiction = user_data.get('jurisdiction', 'NJ').strip().upper()
         
         if jurisdiction == 'PA':
              results = pa_module.prepare_job_files(
-                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,  big_png=big_png, small_png=small_png)
+                user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,  big_png=big_png, small_png=small_png)
         elif jurisdiction == 'FL':
             results = fl_module.prepare_job_files(
-                context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,big_tiff=big_tiff, small_tiff=small_tiff)
-            module = fl_module # Set for logging/reference
+                user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,big_tiff=big_tiff, small_tiff=small_tiff)
         elif jurisdiction == 'NY':
-            results = ny_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
-            module = ny_module
+            results = ny_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
         elif jurisdiction == 'VA':
-            results = va_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png, small_png)
-            unique_id, data_path, front_path, back_path, psd_path = results[:5]
-            jsx_paths = results[5:]
+            results = va_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png, small_png)
         else: # NJ
-            results = nj_module.prepare_job_files(context.user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
-            module = nj_module
+            results = nj_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
 
         # Capture first 5 standard items
         unique_id, data_path, front_path, back_path, psd_path = results[:5]
@@ -956,21 +1104,16 @@ async def execute_generation(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
             with open(JOB_TICKET_PATH, "w", encoding="utf-8") as f:
                 f.write(data_path)
-            await update.message.reply_text(msg)
-            return ConversationHandler.END
+            await bot.send_message(chat_id, msg)
+            return
 
         # 4. Standard Queue
-        await processing_queue.put((update, context, unique_id, data_path, front_path, back_path, psd_path, jsx_paths))
-        
-        q_pos = processing_queue.qsize()
-        # await update.message.reply_text(f"🚀 Processing {jurisdiction} License in Queue... Position #{q_pos}")
-        await update.message.reply_text(f"🚀 Generating PSD files...")
+        await processing_queue.put((bot, chat_id, unique_id, data_path, front_path, back_path, psd_path, jsx_paths))
+        await bot.send_message(chat_id, f"Generating PSD files...")
         
     except Exception as e:
         logger.error(f"Failed: {e}")
-        await update.message.reply_text(f"😓 Error: {e}")
-
-    return ConversationHandler.END
+        await bot.send_message(chat_id, f"😓 Error: {e}")
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("🚫 Cancelled.")
@@ -1001,7 +1144,7 @@ async def run_offline_mode():
     if not processing_queue.empty():
         print("📥 Picking item from queue...")
         item = await processing_queue.get()
-        update, context, unique_id, data_path, out_front, out_back, out_psd, jsx_paths = item    
+        bot, chat_id, unique_id, data_path, out_front, out_back, out_psd, jsx_paths = item
 
         try:
             with open(JOB_TICKET_PATH, "w", encoding="utf-8") as f:
@@ -1039,6 +1182,7 @@ def main():
             entry_points=[CommandHandler(["newbarcode", "n"], new_barcode)],
             states={
                 STATE_SELECT: [MessageHandler(filters.Regex(r"^(FL|NJ|NY|PA|VA)$"), select_state)],
+                BUY_CHECK: [MessageHandler(yes_no_filter, handle_buy_check)],
                 BULK_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_bulk_input)],
 
                 # PA SPECIFIC FLOW
@@ -1065,7 +1209,8 @@ def main():
                 SIGNATURE_CHECK: [MessageHandler(yes_no_filter, ask_signature)],
                 SIGNATURE_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, get_signature_upload)],
                 FACE_CHECK: [MessageHandler(yes_no_filter, ask_face)],
-                FACE_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, get_face_upload)]
+                FACE_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, get_face_upload)],
+                PAYMENT_UPLOAD: [MessageHandler(filters.ALL & ~filters.COMMAND, handle_payment_upload)]
             },
             fallbacks=[CommandHandler("cancel", cancel)],
             allow_reentry=True
@@ -1073,6 +1218,7 @@ def main():
 
         app.add_handler(CommandHandler("start", start))
         app.add_handler(conv_handler)
+        app.add_handler(CallbackQueryHandler(admin_callback))
         
         print(f"✅ Bot is active and polling! (Token ends in: ...{TELEGRAM_BOT_TOKEN[-5:]})")
         print("📝 Waiting for messages in Telegram...")

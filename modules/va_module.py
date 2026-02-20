@@ -1,5 +1,7 @@
 import os
+import base64
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from PIL import Image
 
@@ -95,11 +97,17 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     # Paths
     safe_dob = dob.replace("/", "-")
     main_target_dir = os.path.join(FINAL_DIR, f"{first} {last} VA {safe_dob}")
+    front_dir = os.path.join(main_target_dir, "Front")
+    back_dir = os.path.join(main_target_dir, "Back")
+    os.makedirs(front_dir, exist_ok=True)
+    os.makedirs(back_dir, exist_ok=True)
     os.makedirs(main_target_dir, exist_ok=True)
     
     lines = [
         "--- SYSTEM CONFIG ---",
         f"Output Dir: {main_target_dir.replace('\\', '\\\\')}",
+        f"Output Dir Front: {front_dir.replace('\\', '\\\\')}",
+        f"Output Dir Back: {back_dir.replace('\\', '\\\\')}",
         f"Base Name: {first}_{last}_VA",
         f"Load Face Image: {gray_face.replace('\\', '\\\\')}",
         f"Load PDF417: {pdf417_path.replace('\\', '\\\\')}",
@@ -163,3 +171,99 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     
     # Return 7 items so the bot can unpack jsx_paths properly
     return temp_id, data_file_path, "", "", "", jsx_front, jsx_back
+
+
+def generate_lightburn_lbrn(data_map, base_dir):
+    try:
+        main_dir = data_map.get("Output Dir")
+        front_dir = data_map.get("Output Dir Front")
+        back_dir = data_map.get("Output Dir Back")
+        
+        if not main_dir or not front_dir or not back_dir:
+            print("❌ LightBurn Error: Missing directory paths.")
+            return
+
+        lb_out_dir = os.path.join(main_dir, "Lightburn")
+        os.makedirs(lb_out_dir, exist_ok=True)
+        
+        def process_template(template_name, png_dir, layer_map):
+            src_path = os.path.join(base_dir, "Lightburn", template_name)
+            dst_path = os.path.join(lb_out_dir, template_name)
+            
+            if not os.path.exists(src_path):
+                print(f"⚠️ Template missing: {src_path}")
+                return
+
+            try:
+                tree = ET.parse(src_path)
+                root = tree.getroot()
+                
+                print(f"\n🔵 --- Processing {template_name} ---")
+                
+                for shape in root.findall(".//Shape[@Type='Bitmap']"):
+                    cut_index = int(shape.get('CutIndex', -1))
+                    
+                    if cut_index in layer_map:
+                        png_filename = layer_map[cut_index]
+                        png_full_path = os.path.join(png_dir, png_filename)
+
+                        if not os.path.exists(png_full_path):
+                            print(f"          ⚠️ FILE MISSING: {png_full_path}")
+                            continue
+                            
+                        try:
+                            with open(png_full_path, "rb") as image_file:
+                                raw_data = image_file.read()
+                                encoded_string = base64.b64encode(raw_data).decode('utf-8')
+                        except Exception as img_err:
+                            print(f"          ❌ Read Error: {img_err}")
+                            continue
+                        
+                        shape.set('Data', encoded_string)
+                        shape.set('File', os.path.abspath(png_full_path).replace("\\", "/"))
+                        
+                        if 'SourceHash' in shape.attrib:
+                            del shape.attrib['SourceHash']
+                        if 'RelativePath' in shape.attrib:
+                            del shape.attrib['RelativePath']
+
+                        for child in list(shape):
+                            if child.tag in ['data', 'Data']:
+                                shape.remove(child)
+
+                tree.write(dst_path)
+                print(f"💾 Saved: {dst_path}")
+
+            except Exception as e:
+                print(f"❌ Error processing {template_name}: {e}")
+
+        # VA FRONT TEMPLATE MAP
+        front_map = {
+            1: "1 Laser Light Text DO Not Touch.png",
+            4: "4 Laser Edited Bold Text.png",
+            5: "5 Laser Edited Semi Bold.png",
+            6: "6 Laser Exp Name Micro.png",
+            7: "7 Laser Dob Under.png",
+            8: "8 Laser Big Face.png",
+            9: "9 Small Circle Window.png",
+            10: "10 Lens Image Face.png",
+            11: "11 Lens Image Dob.png",
+            22: "12- 17 RAISED.png",
+            23: "18 -21.png"
+        }
+        process_template("VA Template Front 'ME' CIRCLE.lbrn2", front_dir, front_map)
+
+        # VA BACK TEMPLATE MAP
+        back_map = {
+            0: "00 Big Barcode.png",
+            1: "01 Small Barcode.png",
+            3: "03 Edit Text.png",
+            5: "04, 05 - Laser - Sigs.png",
+            6: "06 - Laser - Big Left Dob Circle.png",
+            7: "07, 08 - Raise - Raised Swirl.png",
+            9: "09 - Laser -Swirl.png"
+        }
+        process_template("VA Template Back.lbrn2", back_dir, back_map)
+
+    except Exception as e:
+        print(f"❌ VA LightBurn Generation Logic Failed: {e}")

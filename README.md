@@ -7,9 +7,10 @@
 
 2. Make sure python is installed. Make sure the PSDs are inside the root folder. Make sure the py files and jsx files are also inside the bot folder.
 
-3. In config.json, update the paths:
+3. In config.json, update these:
 - The base_dir is the root folder, change it.
 - photoshop_exe is the path of the Adobe Photoshop EXE file, change it.
+- Change the admin_chat_id. This is the id of your telegram user. To obtain it, on telegram, search for @IDBot, and send /start message to it, it will give you a 10-digit number with your username, this number is your id.
 - Do not change filenames unless you changed the names of the psd files.
 
 4. Place the psd files inside the PSDs folder in the root folder.

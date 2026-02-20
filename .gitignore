@@ -6,6 +6,9 @@ backup_files/
 find_me_files/
 temp_files/
 Final_Documents/
+jobs.db
+store bot guide.txt
+logs
 
 # Python
 .vscode/

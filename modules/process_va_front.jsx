@@ -342,7 +342,11 @@ function main() {
                 exportLayer(doc, getLayerSet(laserEdited, "4 Laser Edited Bold Text"), outDirFront + "\\4 Laser Edited Bold Text.png");
                 exportLayer(doc, getLayerSet(laserEdited, "5 Laser Edited Semi Bold"), outDirFront + "\\5 Laser Edited Semi Bold.png");
                 exportLayer(doc, getLayerSet(laserEdited, "6 Laser Exp Name Micro"), outDirFront + "\\6 Laser Exp Name Micro.png");
+                exportLayer(doc, getLayerSet(laserEdited, "7 Laser Dob Under"), outDirFront + "\\7 Laser Dob Under.png");
+                exportLayer(doc, getLayerSet(laserEdited, "8 Laser Big Face"), outDirFront + "\\8 Laser Big Face.png");
+                exportLayer(doc, getLayerSet(laserEdited, "9 Small Circle Window"), outDirFront + "\\9 Small Circle Window.png");
                 exportLayer(doc, getLayerSet(laserEdited, "10 Lens Image Face"), outDirFront + "\\10 Lens Image Face.png");
+                exportLayer(doc, getLayerSet(laserEdited, "11 Lens Image Dob"), outDirFront + "\\11 Lens Image Dob.png");
             }
 
             // 3. Laser No Edited Group
@@ -354,7 +358,7 @@ function main() {
             }
 
             // 4. Final Save
-            doc.saveAs(new File(outDirFront + "\\" + baseName + ".psd"));
+            doc.saveAs(new File(outDirFront + "\\Front_" + baseName + ".psd"));
             log("VA Front Processing Complete.");
         }
 

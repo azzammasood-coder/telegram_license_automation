@@ -1045,7 +1045,7 @@ function main() {
                 
                 // Final PSD Save
                 if (baseName) {
-                    doc.saveAs(new File(outDirBack + "\\" + baseName + ".psd"));
+                    doc.saveAs(new File(outDirBack + "\\Back_" + baseName + ".psd"));
                     log("VA Back Processing Complete.");
                 }
             } else {
