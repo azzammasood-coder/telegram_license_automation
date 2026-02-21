@@ -17,6 +17,8 @@
 
 5. Place the lightburn files inside the Lightburn folder in the root folder.
 
+6. The Automated Messages folder contains the Messages and Previews folder. Messages folder contains payment message and any other future message that we might add. Previews folder contains the front and back images of each state.
+
 6. ONLY IF NOT DONE BEFORE: Move the PSUserConfig.txt to C:\Users\<username>\AppData\Roaming\Adobe\<your photoshop version>\Adobe Photoshop 2021 Settings\
 
 7. ONLY IF NOT DONE BEFORE: In a terminal, navigate to the root folder, and run the command: pip install -r requirements.txt

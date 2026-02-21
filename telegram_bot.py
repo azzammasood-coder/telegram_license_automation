@@ -529,20 +529,35 @@ def generate_barcodes(user_data: dict, api_height: str):
 #  TELEGRAM FLOW
 # ==============================================================================
 
+# ==============================================================================
+#  UI HELPERS
+# ==============================================================================
+def get_yes_no_kb():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Yes", callback_data="yes"), 
+         InlineKeyboardButton("❌ No", callback_data="no")]
+    ])
+
+def get_options_kb(options):
+    return InlineKeyboardMarkup([[InlineKeyboardButton(opt, callback_data=opt)] for opt in options])
+
+# ==============================================================================
+#  TELEGRAM FLOW
+# ==============================================================================
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("👋 Hello! Use /newbarcode to start.")
+    await update.message.reply_text("👋 *Hello!* Use /newbarcode to start.", parse_mode="Markdown")
 
 async def new_barcode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
 
     if OFFLINE_TEST_MODE and TEST_JSX_ONLY:
-        await update.message.reply_text("⏩ FAST FORWARD: Skipping Input/Parsing. Jumping to Photoshop...")
+        await update.message.reply_text("⏩ *FAST FORWARD:* Skipping Input. Jumping to Photoshop...", parse_mode="Markdown")
         await execute_generation(context.bot, update.effective_chat.id, context.user_data)
         return ConversationHandler.END
 
-    # --- OFFLINE TEST MODE LOGIC ---
     if OFFLINE_TEST_MODE:
-        await update.message.reply_text("🤖 OFFLINE MODE: Reading from 'offline_test_data.txt'...")
+        await update.message.reply_text("🤖 *OFFLINE MODE:* Reading from 'offline_test_data.txt'...", parse_mode="Markdown")
         data_file = os.path.join(BASE_DIR, "offline_test_data.txt")
         if not os.path.exists(data_file):
             await update.message.reply_text(f"❌ Error: File not found at {data_file}")
@@ -564,65 +579,56 @@ async def new_barcode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             await update.message.reply_text(f"❌ File Read Error: {e}")
             return ConversationHandler.END
 
-    # --- ASK FOR JURISDICTION ---
-    keyboard = [["FL", "NJ", "NY", "PA", "VA"]]
+    keyboard = [
+        [InlineKeyboardButton("Florida (FL)", callback_data="FL"), InlineKeyboardButton("New York (NY)", callback_data="NY")],
+        [InlineKeyboardButton("New Jersey (NJ)", callback_data="NJ"), InlineKeyboardButton("Pennsylvania (PA)", callback_data="PA")],
+        [InlineKeyboardButton("Virginia (VA)", callback_data="VA")]
+    ]
+    
     await update.message.reply_text(
-        "**=== License Bot Started ===**\n\nWhat State?\n\nCurrent options: NJ, NY, FL, PA, VA",
-        reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True),
+        "🪪 *License Bot Started*\n\nPlease select the jurisdiction:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
     return STATE_SELECT
 
 async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    selected = update.message.text.upper()
+    query = update.callback_query
+    await query.answer()
+    selected = query.data.upper()
     
-    # LOGGING
     logger.info(f"🔘 State Button Pressed: '{selected}'")
-
-    if selected not in ["FL", "NJ", "NY", "PA", "VA"]:
-        await update.message.reply_text("Please select FL, NJ, NY, PA or VA.")
-        return STATE_SELECT
-    
     context.user_data['jurisdiction'] = selected
-    # LOGGING
-    logger.info(f"💾 Saved to context.user_data['jurisdiction']: {context.user_data['jurisdiction']}")
 
     if selected == "PA":
-        msg = ("**PA Selected**\nPlease enter details in this format:\n\n"
-               "First Name: Harrold\nMiddle Name: Eyes\nLast Name: Finch\nAddress: 100 Eyes Rd\n"
+        msg = ("📍 *PA Selected*\n\nPlease enter details exactly in this format:\n"
+               "```text\nFirst Name: Harrold\nMiddle Name: Eyes\nLast Name: Finch\nAddress: 100 Eyes Rd\n"
                "City: wyncote\nState Code: PA\nFull Zip Code + 4 Digits: 190950000\n"
                "Dob: 04/09/1954\nGender: M\nHeight: 5-08\nEyes: BRO\n"
-               "Class: C\nSignature:")
-    
+               "Class: C\nSignature:\n```")
     elif selected == "FL":
-        msg = ("**FL Selected**\nPlease enter details in this format::\n\n"
-               "First Name: ...\nMiddle Name: ...\nLast Name: ...\nAddress: ...\n"
+        msg = ("📍 *FL Selected*\n\nPlease enter details exactly in this format:\n"
+               "```text\nFirst Name: ...\nMiddle Name: ...\nLast Name: ...\nAddress: ...\n"
                "City: ...\nState Code: FL\nFull Zip Code + 4 Digits: ...\n"
                "Dob: MM/DD/YYYY\nGender: M\nHeight: 5'-09\nEyes: BRO\n"
                "Issue Date: ...\nExpires Date: ...\nClass: E\n"
-               "Real ID: Visible\nNot Real ID: Not Visible\nSignature: ...")
+               "Real ID: Visible\nNot Real ID: Not Visible\nSignature: ...\n```")
     elif selected == "VA":
-        msg = (
-            "**VA Selected**\nPlease enter details in this format:\n\n"
-            "First Name: ARTHUR\nMiddle Name: S\nLast Name: JAR\nAddress: 4301 W BROAD ST\n"
-            "City: RICHMOND\nState Code: VA\nFull Zip Code + 4 Digits: 23230-0000\n"
-            "Gender: M\nDob: 01/16/1980\nHeight: 5'-08\"\nEyes: BRN\n"
-            "Class: D\nEndorsements: NONE\nRestrictions: NONE\n"
-            "Issue Date: 01/16/2023\nExpires Date: 01/16/2032\n"
-            "Real ID: Visible\nNot Real ID: Not Visible\n"
-            "Signature: Arthur S Jar"
-        )
+        msg = ("📍 *VA Selected*\n\nPlease enter details exactly in this format:\n"
+               "```text\nFirst Name: ARTHUR\nMiddle Name: S\nLast Name: JAR\nAddress: 4301 W BROAD ST\n"
+               "City: RICHMOND\nState Code: VA\nFull Zip Code + 4 Digits: 23230-0000\n"
+               "Gender: M\nDob: 01/16/1980\nHeight: 5'-08\"\nEyes: BRN\n"
+               "Class: D\nEndorsements: NONE\nRestrictions: NONE\n"
+               "Issue Date: 01/16/2023\nExpires Date: 01/16/2032\n"
+               "Real ID: Visible\nNot Real ID: Not Visible\nSignature: Arthur S Jar\n```")
     else:
-        msg = (
-            f"**{selected} Selected**\nPlease enter details in this format:\n\n"
-            "First Name: JOHN\nMiddle Name: ROBERT\nLast Name: DOE\nAddress: 123 MAIN ST\n"
-            "City: NEWARK\nState Code: NJ\nFull Zip Code + 4 Digits: 07101\nGender: M\nDob: 01/01/1980\n"
-            "Height: 5'-11\"\nEyes: BRN\nClass: D\nEndorsements: NONE\nRestrictions: NONE\n"
-            "Issue Date: 01/01/2023\nExpires Date: 01/01/2030\nReal ID: Visible\n"
-            "Not Real ID: Not Visible\nSignature: JOHN DOE"
-        )
+        msg = (f"📍 *{selected} Selected*\n\nPlease enter details exactly in this format:\n"
+               "```text\nFirst Name: JOHN\nMiddle Name: ROBERT\nLast Name: DOE\nAddress: 123 MAIN ST\n"
+               "City: NEWARK\nState Code: NJ\nFull Zip Code + 4 Digits: 07101\nGender: M\nDob: 01/01/1980\n"
+               "Height: 5'-11\"\nEyes: BRN\nClass: D\nEndorsements: NONE\nRestrictions: NONE\n"
+               "Issue Date: 01/01/2023\nExpires Date: 01/01/2030\nReal ID: Visible\n"
+               "Not Real ID: Not Visible\nSignature: JOHN DOE\n```")
         
-    # --- 1. Send Previews ---
     preview_dir = os.path.join(BASE_DIR, "Automated Messages", "Previews", selected)
     if os.path.exists(preview_dir):
         images = os.listdir(preview_dir)
@@ -630,32 +636,36 @@ async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         back_img = next((img for img in images if "back" in img.lower()), None)
 
         if front_img or back_img:
-            preview_msg = f"Here is a preview of the front and back for the {selected} driver's license:"
-            await update.message.reply_text(preview_msg)
+            await query.message.reply_text(f"🔍 Here is a preview of the front and back for the {selected} driver's license:")
         
         if front_img:
-            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(os.path.join(preview_dir, front_img), 'rb'))
+            await context.bot.send_photo(chat_id=query.message.chat_id, photo=open(os.path.join(preview_dir, front_img), 'rb'))
         if back_img:
-            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(os.path.join(preview_dir, back_img), 'rb'))
+            await context.bot.send_photo(chat_id=query.message.chat_id, photo=open(os.path.join(preview_dir, back_img), 'rb'))
     
-    context.user_data['bulk_prompt_msg'] = msg # Store message for next step
+    context.user_data['bulk_prompt_msg'] = msg 
     
-    reply_keyboard = [["Yes", "No"]]
-    await update.message.reply_text("Do you want to proceed and buy this? (Yes or No)", 
-                                    reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
+    await query.message.reply_text(
+        "*Do you want to proceed and buy this?*", 
+        reply_markup=get_yes_no_kb(),
+        parse_mode="Markdown"
+    )
     return BUY_CHECK
 
 async def handle_buy_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text.lower() != "yes":
-        await update.message.reply_text("Okay, process cancelled.", reply_markup=ReplyKeyboardRemove())
+    query = update.callback_query
+    await query.answer()
+
+    if query.data.lower() != "yes":
+        await query.message.edit_text("🚫 *Process cancelled.*", parse_mode="Markdown")
         return ConversationHandler.END
 
     msg = context.user_data.get('bulk_prompt_msg', "Please enter details.")
-    await update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove(), parse_mode="Markdown")
+    await query.message.edit_text(msg, parse_mode="Markdown")
     return BULK_INPUT
 
 async def handle_bulk_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    current_state = context.user_data.get('jurisdiction') # Already set from the button
+    current_state = context.user_data.get('jurisdiction')
     raw_text = update.message.text
 
     if current_state == "FL":
@@ -664,59 +674,48 @@ async def handle_bulk_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         parsed_data = parse_bulk_input(raw_text)
 
     if not parsed_data:
-        await update.message.reply_text("🤔 I couldn't understand that format. Maybe you typed something wrong.\nPlease check the template and try again.")
+        await update.message.reply_text("🤔 *I couldn't understand that format.*\nPlease check the template and try again.", parse_mode="Markdown")
         return BULK_INPUT
     
-    # Merge the parsed data, but ensure the button-selected jurisdiction remains
     context.user_data.update(parsed_data)
     context.user_data['jurisdiction'] = current_state 
 
-    # --- PA SPECIFIC ROUTING ---
     if current_state == "PA":
-         await update.message.reply_text("Custom DL? (Yes / No)", 
-            reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], one_time_keyboard=True, resize_keyboard=True))
+         await update.message.reply_text("🔢 *Custom DL?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
          return PA_DL_CHECK
 
-    # --- STANDARD ROUTING ---
-    reply_keyboard = [["Yes", "No"]]
-    await update.message.reply_text("Custom DL Number? (Yes or No)", 
-                                   reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True))
+    await update.message.reply_text("🔢 *Custom DL Number?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return CUSTOM_DL_CHECK
 
 async def ask_custom_dl(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    text = update.message.text.lower()
-    if text == "yes":
-        await update.message.reply_text(
-            "Enter DL Number:", 
-            reply_markup=ReplyKeyboardRemove()
-        )
+    query = update.callback_query
+    await query.answer()
+
+    if query.data.lower() == "yes":
+        await query.message.edit_text("⌨️ *Enter DL Number:*", parse_mode="Markdown")
         return CUSTOM_DL_INPUT
     else:
-        reply_keyboard = [["Yes", "No"]]
-        await update.message.reply_text("Upload Signature Image? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
+        await query.message.edit_text("✍️ *Upload Signature Image?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
         return SIGNATURE_CHECK
 
 async def get_custom_dl_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    dl_input = update.message.text.strip()
-    context.user_data["custom_dl"] = dl_input
-    reply_keyboard = [["Yes", "No"]]
-    await update.message.reply_text("Upload Signature Image? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
+    context.user_data["custom_dl"] = update.message.text.strip()
+    await update.message.reply_text("✍️ *Upload Signature Image?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return SIGNATURE_CHECK
 
 async def ask_signature(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    text = update.message.text.lower()
-    if text == "yes":
-        await update.message.reply_text("Please upload the signature image.", reply_markup=ReplyKeyboardRemove())
+    query = update.callback_query
+    await query.answer()
+
+    if query.data.lower() == "yes":
+        await query.message.edit_text("📤 *Please upload the signature image.*", parse_mode="Markdown")
         return SIGNATURE_UPLOAD
     else:
-        # CHECK JURISDICTION FOR FL FLOW
         if context.user_data.get('jurisdiction') == "FL":
-             await update.message.reply_text("FL: Real ID? (YES / NO)", 
-                reply_markup=ReplyKeyboardMarkup([["YES", "NO"]], resize_keyboard=True))
+             await query.message.edit_text("🌴 *FL: Real ID?*", reply_markup=get_options_kb(["YES", "NO"]), parse_mode="Markdown")
              return FL_REAL_ID
         
-        reply_keyboard = [["Yes", "No"]]
-        await update.message.reply_text("Upload Face Picture? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
+        await query.message.edit_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
         return FACE_CHECK
 
 async def get_signature_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -727,140 +726,144 @@ async def get_signature_upload(update: Update, context: ContextTypes.DEFAULT_TYP
         file_obj = await update.message.photo[-1].get_file()
     
     if file_obj:
-        # 1. Download Original
         ext = os.path.splitext(file_obj.file_path)[1] or ".png"
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         raw_path = os.path.join(TEMP_DIR, f"sig_raw_{timestamp}{ext}")
         await file_obj.download_to_drive(raw_path)
         
-        # 2. Define Output Path (Must be PNG for transparency)
         clean_path = os.path.join(TEMP_DIR, f"sig_{timestamp}.png")
-        
-        # 3. Call OpenAI BG Removal (CONDITIONAL)
         success = False
         if ENABLE_BG_REMOVAL:
             await update.message.reply_text("🤖 Removing background (Signature)...")
             success = remove_bg_removebg(raw_path, clean_path)
         
-        # 4. Fallback if API fails OR disabled
-        final_path = clean_path if success else raw_path
-        
-        context.user_data["signature_path"] = final_path
-        # await update.message.reply_text("✍️ Signature received & processed.")
+        context.user_data["signature_path"] = clean_path if success else raw_path
     else:
-        await update.message.reply_text("Couldn't download image.")
+        await update.message.reply_text("❌ Couldn't download image.")
     
-    # CHECK JURISDICTION FOR FL FLOW
     if context.user_data.get('jurisdiction') == "FL":
-         await update.message.reply_text("FL: Real ID? (YES / NO)", 
-            reply_markup=ReplyKeyboardMarkup([["YES", "NO"]], resize_keyboard=True))
+         await update.message.reply_text("🌴 *FL: Real ID?*", reply_markup=get_options_kb(["YES", "NO"]), parse_mode="Markdown")
          return FL_REAL_ID
 
-    reply_keyboard = [["Yes", "No"]]
-    await update.message.reply_text("Upload Face Picture? (Yes or No)", reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
+    await update.message.reply_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return FACE_CHECK
 
 # --- FL SPECIFIC HANDLERS ---
 async def fl_ask_real_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['real_id'] = update.message.text.upper() 
-    await update.message.reply_text("FL: Restriction? (A / B / NONE)", 
-        reply_markup=ReplyKeyboardMarkup([["A", "B", "NONE"]], resize_keyboard=True))
+    query = update.callback_query
+    await query.answer()
+    context.user_data['real_id'] = query.data.upper()
+    await query.message.edit_text("🌴 *FL: Restriction?*", reply_markup=get_options_kb(["A", "B", "NONE"]), parse_mode="Markdown")
     return FL_RESTRICTION
 
 async def fl_ask_restriction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['restrictions'] = update.message.text.upper()
-    await update.message.reply_text("FL: Endorsement? (A / NONE)", 
-        reply_markup=ReplyKeyboardMarkup([["A", "NONE"]], resize_keyboard=True))
+    query = update.callback_query
+    await query.answer()
+    context.user_data['restrictions'] = query.data.upper()
+    await query.message.edit_text("🌴 *FL: Endorsement?*", reply_markup=get_options_kb(["A", "NONE"]), parse_mode="Markdown")
     return FL_ENDORSEMENT
 
 async def fl_ask_endorsement(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['endorsements'] = update.message.text.upper()
-    await update.message.reply_text("FL: Safe Driver? (YES / NO)", 
-        reply_markup=ReplyKeyboardMarkup([["YES", "NO"]], resize_keyboard=True))
+    query = update.callback_query
+    await query.answer()
+    context.user_data['endorsements'] = query.data.upper()
+    await query.message.edit_text("🌴 *FL: Safe Driver?*", reply_markup=get_options_kb(["YES", "NO"]), parse_mode="Markdown")
     return FL_SAFE_DRIVER
 
 async def fl_ask_safe_driver(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['safe_driver'] = update.message.text.upper()
-    await update.message.reply_text("FL: Replaced? (YES / NO)", 
-        reply_markup=ReplyKeyboardMarkup([["YES", "NO"]], resize_keyboard=True))
+    query = update.callback_query
+    await query.answer()
+    context.user_data['safe_driver'] = query.data.upper()
+    await query.message.edit_text("🌴 *FL: Replaced?*", reply_markup=get_options_kb(["YES", "NO"]), parse_mode="Markdown")
     return FL_REPLACED
 
 async def fl_ask_replaced(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['replaced'] = update.message.text.upper()
-    # FL Options done, go to Face Check
-    reply_keyboard = [["Yes", "No"]]
-    await update.message.reply_text("Upload Face Picture? (Yes or No)", 
-        reply_markup=ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True))
+    query = update.callback_query
+    await query.answer()
+    context.user_data['replaced'] = query.data.upper()
+    await query.message.edit_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return FACE_CHECK
 
-# ================= PA SPECIFIC HANDLERS =================
-
+# --- PA SPECIFIC HANDLERS ---
 async def pa_dl_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text.lower() == "yes":
-        await update.message.reply_text("Enter Custom DL:", reply_markup=ReplyKeyboardRemove())
+    query = update.callback_query
+    await query.answer()
+    if query.data.lower() == "yes":
+        await query.message.edit_text("⌨️ *Enter Custom DL:*", parse_mode="Markdown")
         return PA_DL_INPUT
-    await update.message.reply_text("Custom Iss Date? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    await query.message.edit_text("📅 *Custom Iss Date?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return PA_ISS_CHECK
 
 async def pa_dl_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["custom_dl"] = update.message.text.strip()
-    await update.message.reply_text("Custom Iss Date? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    await update.message.reply_text("📅 *Custom Iss Date?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return PA_ISS_CHECK
 
 async def pa_iss_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text.lower() == "yes":
-        await update.message.reply_text("Enter Custom Issue Date (MM/DD/YYYY):", reply_markup=ReplyKeyboardRemove())
+    query = update.callback_query
+    await query.answer()
+    if query.data.lower() == "yes":
+        await query.message.edit_text("⌨️ *Enter Custom Issue Date (MM/DD/YYYY):*", parse_mode="Markdown")
         return PA_ISS_INPUT
-    await update.message.reply_text("Custom Exp Date? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    await query.message.edit_text("📅 *Custom Exp Date?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return PA_EXP_CHECK
 
 async def pa_iss_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["issue_date"] = update.message.text.strip()
-    await update.message.reply_text("Custom Exp Date? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    await update.message.reply_text("📅 *Custom Exp Date?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return PA_EXP_CHECK
 
 async def pa_exp_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text.lower() == "yes":
-        await update.message.reply_text("Enter Custom Exp Date (MM/DD/YYYY):", reply_markup=ReplyKeyboardRemove())
+    query = update.callback_query
+    await query.answer()
+    if query.data.lower() == "yes":
+        await query.message.edit_text("⌨️ *Enter Custom Exp Date (MM/DD/YYYY):*", parse_mode="Markdown")
         return PA_EXP_INPUT
-    await update.message.reply_text("Custom Signature? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    await query.message.edit_text("✍️ *Custom Signature?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return PA_SIG_CHECK
 
 async def pa_exp_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["expires_date"] = update.message.text.strip()
-    await update.message.reply_text("Custom Signature? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    await update.message.reply_text("✍️ *Custom Signature?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return PA_SIG_CHECK
 
 async def pa_sig_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text.lower() == "yes":
-        await update.message.reply_text("Upload Signature Image:", reply_markup=ReplyKeyboardRemove())
+    query = update.callback_query
+    await query.answer()
+    if query.data.lower() == "yes":
+        await query.message.edit_text("📤 *Upload Signature Image:*", parse_mode="Markdown")
         return PA_SIG_UPLOAD
-    await update.message.reply_text("Real ID? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    await query.message.edit_text("⭐ *Real ID?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return PA_REAL_ID
 
 async def pa_sig_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # Handle upload using shared logic
     await get_signature_upload(update, context) 
-    # Logic note: get_signature_upload normally returns FACE_CHECK or FL_REAL_ID. 
-    # We need to manually advance to PA_REAL_ID here.
-    await update.message.reply_text("Real ID? (Yes / No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    await update.message.reply_text("⭐ *Real ID?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return PA_REAL_ID
 
 async def pa_real_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['real_id'] = "YES" if update.message.text.lower() == "yes" else "NO"
-    # PA flow ends, go to FACE
-    await update.message.reply_text("Upload Face Picture? (Yes or No)", reply_markup=ReplyKeyboardMarkup([["Yes", "No"]], resize_keyboard=True))
+    query = update.callback_query
+    await query.answer()
+    context.user_data['real_id'] = "YES" if query.data.lower() == "yes" else "NO"
+    await query.message.edit_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
     return FACE_CHECK
 
-# ========================================================
-
+# --- SHARED FINAL STEPS ---
 async def ask_face(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    text = update.message.text.lower()
-    if text == "yes":
-        await update.message.reply_text("Please upload the face image.", reply_markup=ReplyKeyboardRemove())
+    query = update.callback_query
+    await query.answer()
+    if query.data.lower() == "yes":
+        await query.message.edit_text("📤 *Please upload the face image.*", parse_mode="Markdown")
         return FACE_UPLOAD
     else:
-        return await request_payment(update, context)
+        # Fallback logic to transition gracefully to payment
+        msg_path = os.path.join(BASE_DIR, "Automated Messages", "Messages", "payment_message.txt")
+        payment_msg = "💳 *Please send the payment screenshot.*"
+        if os.path.exists(msg_path):
+            with open(msg_path, "r", encoding="utf-8") as f:
+                payment_msg = f.read()
+        await query.message.edit_text(payment_msg, parse_mode="Markdown")
+        return PAYMENT_UPLOAD
 
 async def get_face_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     file_obj = None
@@ -870,51 +873,41 @@ async def get_face_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         file_obj = await update.message.photo[-1].get_file()
     
     if file_obj:
-        # 1. Download Original
         ext = os.path.splitext(file_obj.file_path)[1] or ".png"
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         raw_path = os.path.join(TEMP_DIR, f"face_raw_{timestamp}{ext}")
         await file_obj.download_to_drive(raw_path)
         
-        # 2. Define Output Path (Must be PNG)
         clean_path = os.path.join(TEMP_DIR, f"face_{timestamp}.png")
-        
-        # 3. Call OpenAI BG Removal (CONDITIONAL)
         success = False
         if ENABLE_BG_REMOVAL:
             await update.message.reply_text("🤖 Removing background (Face)...")
             success = remove_bg_removebg(raw_path, clean_path)
         
-        # 4. Fallback if API fails OR disabled
-        final_path = clean_path if success else raw_path
-        
-        context.user_data["face_path"] = final_path
-        # await update.message.reply_text("👤 Face received & processed.")
+        context.user_data["face_path"] = clean_path if success else raw_path
     else:
-        await update.message.reply_text("Couldn't download face image.")
+        await update.message.reply_text("❌ Couldn't download face image.")
     
     return await request_payment(update, context)
 
 async def request_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     msg_path = os.path.join(BASE_DIR, "Automated Messages", "Messages", "payment_message.txt")
-    
-    payment_msg = "Please send the payment screenshot."
+    payment_msg = "💳 *Please send the payment screenshot.*"
     if os.path.exists(msg_path):
         with open(msg_path, "r", encoding="utf-8") as f:
             payment_msg = f.read()
-            
-    await update.message.reply_text(payment_msg)
+    await update.message.reply_text(payment_msg, parse_mode="Markdown")
     return PAYMENT_UPLOAD
 
+# --- ADMIN & EXECUTION (No Changes to Logic) ---
 async def handle_payment_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not update.message.photo and not update.message.document:
-        await update.message.reply_text("Please upload a screenshot image of your payment.")
+        await update.message.reply_text("❌ Please upload a screenshot image of your payment.")
         return PAYMENT_UPLOAD
         
     chat_id = update.effective_chat.id
     job_id = str(uuid.uuid4())[:8]
     
-    # Save to DB (Explicit close prevents OperationalError: database is locked)
     conn = sqlite3.connect(DB_PATH)
     try:
         conn.execute("INSERT INTO jobs (job_id, chat_id, user_data, status) VALUES (?, ?, ?, ?)",
@@ -923,20 +916,18 @@ async def handle_payment_upload(update: Update, context: ContextTypes.DEFAULT_TY
     finally:
         conn.close()
                      
-    # Forward screenshot to admin
     photo_file = update.message.photo[-1].file_id if update.message.photo else update.message.document.file_id
     keyboard = [
         [InlineKeyboardButton("✅ Approve", callback_data=f"approve_{job_id}"),
          InlineKeyboardButton("❌ Reject", callback_data=f"reject_{job_id}")]
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
     
     admin_text = f"🚨 New Order [{job_id}]\nState: {context.user_data.get('jurisdiction')}\nName: {context.user_data.get('first_name')} {context.user_data.get('last_name')}"
     
     if ADMIN_CHAT_ID:
-        await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo_file, caption=admin_text, reply_markup=reply_markup)
+        await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo_file, caption=admin_text, reply_markup=InlineKeyboardMarkup(keyboard))
     
-    await update.message.reply_text("Please wait for approval.")
+    await update.message.reply_text("⏳ *Please wait for approval.*", parse_mode="Markdown")
     return ConversationHandler.END
 
 async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -945,7 +936,6 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     action, job_id = query.data.split("_")
     
-    # Check DB
     conn = sqlite3.connect(DB_PATH)
     try:
         cursor = conn.cursor()
@@ -970,9 +960,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             conn.close()
         
         await query.edit_message_caption(caption=f"{query.message.caption}\n\n✅ APPROVED")
-        await context.bot.send_message(chat_id, "✅ Your payment was approved! Processing has started. You will receive the files shortly.")
-        
-        # Trigger generation NON-BLOCKING so the button resolves instantly
+        await context.bot.send_message(chat_id, "✅ *Your payment was approved!* Processing has started.", parse_mode="Markdown")
         asyncio.create_task(execute_generation(context.bot, chat_id, user_data))
         
     elif action == "reject":
@@ -984,28 +972,19 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             conn.close()
         
         await query.edit_message_caption(caption=f"{query.message.caption}\n\n❌ REJECTED")
-        await context.bot.send_message(chat_id, "❌ Your payment was rejected or invalid. Process cancelled.")
+        await context.bot.send_message(chat_id, "❌ *Your payment was rejected.* Process cancelled.", parse_mode="Markdown")
 
 async def execute_generation(bot, chat_id, user_data):
-    # ---------------------------------------------------------
-    # MODE A: JSX ONLY (Skip generation, run existing job)
-    # ---------------------------------------------------------
     if TEST_JSX_ONLY:
         await bot.send_message(chat_id, "🧪 TEST MODE: JSX ONLY. Reading 'active_job.txt'...")
-        
         if not os.path.exists(JOB_TICKET_PATH):
              await bot.send_message(chat_id, "❌ Error: active_job.txt not found.")
              return
-
-        # 1. Get Path from Ticket
         with open(JOB_TICKET_PATH, "r") as f:
             existing_data_path = f.read().strip()
-
         if not os.path.exists(existing_data_path):
              await bot.send_message(chat_id, f"❌ Error: Data file listed in job ticket not found: {existing_data_path}")
              return
-
-        # 2. Parse the File to get Configs
         data_map = {}
         try:
             with open(existing_data_path, "r", encoding="utf-8") as f:
@@ -1017,10 +996,7 @@ async def execute_generation(bot, chat_id, user_data):
             await bot.send_message(chat_id, f"❌ Error reading data file: {e}")
             return
         
-        # 3. Determine Jurisdiction
         file_jurisdiction = data_map.get("Jurisdiction", data_map.get("State Code", "")).strip().upper()
-        
-        # Fallback Heuristics
         if not file_jurisdiction:
             if "Real ID Star" in data_map or "Safe Driver Color" in data_map:
                 file_jurisdiction = "FL"
@@ -1028,58 +1004,34 @@ async def execute_generation(bot, chat_id, user_data):
                 file_jurisdiction = "NJ"
 
         if file_jurisdiction == 'NY':
-            jsx_paths = [
-                os.path.join(BASE_DIR, "modules", "process_ny_front.jsx"),
-                os.path.join(BASE_DIR, "modules", "process_ny_back.jsx")
-            ]
+            jsx_paths = [os.path.join(BASE_DIR, "modules", "process_ny_front.jsx"), os.path.join(BASE_DIR, "modules", "process_ny_back.jsx")]
         elif file_jurisdiction == 'FL':
-            jsx_paths = [
-                os.path.join(BASE_DIR, "modules", "process_fl.jsx")
-            ]
+            jsx_paths = [os.path.join(BASE_DIR, "modules", "process_fl.jsx")]
         elif file_jurisdiction == 'VA':
-            results = va_module.prepare_job_files(
-                user_data, None, None, None, None, TEMP_DIR, FINAL_DIR, BASE_DIR)
+            results = va_module.prepare_job_files(user_data, None, None, None, None, TEMP_DIR, FINAL_DIR, BASE_DIR)
             jsx_paths = results[5:]
         else:
-            jsx_paths = [
-                os.path.join(BASE_DIR, "modules", "process_nj.jsx")
-            ]
+            jsx_paths = [os.path.join(BASE_DIR, "modules", "process_nj.jsx")]
 
         await bot.send_message(chat_id, f"🚀 Re-triggering Photoshop ({file_jurisdiction}) on: {os.path.basename(existing_data_path)}")
-        
-        # 4. Add to Queue
-        await processing_queue.put((
-            bot, chat_id, "TEST_RERUN", existing_data_path, 
-            data_map.get("Output Front"), data_map.get("Output Back"), data_map.get("Output PSD"), 
-            jsx_paths
-        ))
+        await processing_queue.put((bot, chat_id, "TEST_RERUN", existing_data_path, data_map.get("Output Front"), data_map.get("Output Back"), data_map.get("Output PSD"), jsx_paths))
         return
 
-    # ---------------------------------------------------------
-    # STANDARD / BARCODE ONLY FLOW
-    # ---------------------------------------------------------
-    await bot.send_message(chat_id, "Generating barcode...", reply_markup=ReplyKeyboardRemove())
+    await bot.send_message(chat_id, "⚙️ Generating barcode...")
     try:
-        # Replaced custom 'context' wrapper logic to map directly via user_data dictionary
         raw_height = user_data.get('height', '5-00')
         api_height, visual_height = parse_height_logic(raw_height)
         
-        # 1. Generate Barcodes - Pushed to thread executor so it doesn't freeze the bot
         loop = asyncio.get_running_loop()
-        barcode_results = await loop.run_in_executor(
-            None, generate_barcodes, user_data, api_height
-        )
+        barcode_results = await loop.run_in_executor(None, generate_barcodes, user_data, api_height)
         barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png = barcode_results
         
-        # 2. Select Module & Prepare Files
         jurisdiction = user_data.get('jurisdiction', 'NJ').strip().upper()
         
         if jurisdiction == 'PA':
-             results = pa_module.prepare_job_files(
-                user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,  big_png=big_png, small_png=small_png)
+             results = pa_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,  big_png=big_png, small_png=small_png)
         elif jurisdiction == 'FL':
-            results = fl_module.prepare_job_files(
-                user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,big_tiff=big_tiff, small_tiff=small_tiff)
+            results = fl_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,big_tiff=big_tiff, small_tiff=small_tiff)
         elif jurisdiction == 'NY':
             results = ny_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
         elif jurisdiction == 'VA':
@@ -1087,29 +1039,18 @@ async def execute_generation(bot, chat_id, user_data):
         else: # NJ
             results = nj_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
 
-        # Capture first 5 standard items
         unique_id, data_path, front_path, back_path, psd_path = results[:5]
-        # Capture all remaining items as the JSX paths tuple
         jsx_paths = results[5:]
 
-        # ---------------------------------------------------------
-        # MODE B: BARCODE ONLY (Stop here)
-        # ---------------------------------------------------------
         if TEST_BARCODE_ONLY:
-            msg = (
-                f"🧪 TEST MODE: Barcode Generated Only.\n"
-                f"📂 Data File: {os.path.basename(data_path)}\n"
-                f"📝 Raw Text Len: {len(raw_text)}\n"
-                f"⚠️ Photoshop was NOT triggered."
-            )
+            msg = f"🧪 TEST MODE: Barcode Generated Only.\n📂 Data File: {os.path.basename(data_path)}\n📝 Raw Text Len: {len(raw_text)}\n⚠️ Photoshop was NOT triggered."
             with open(JOB_TICKET_PATH, "w", encoding="utf-8") as f:
                 f.write(data_path)
             await bot.send_message(chat_id, msg)
             return
 
-        # 4. Standard Queue
         await processing_queue.put((bot, chat_id, unique_id, data_path, front_path, back_path, psd_path, jsx_paths))
-        await bot.send_message(chat_id, f"Generating PSD files...")
+        await bot.send_message(chat_id, f"🚀 Generating PSD files...")
         
     except Exception as e:
         logger.error(f"Failed: {e}")
@@ -1132,15 +1073,12 @@ async def run_offline_mode():
     print("--------------------------------------------------")
     print("Telegram connection is DISABLED.")
     
-    # 1. Setup Mocks
     mock_update = MockUpdate()
     mock_context = MockContext()
     
-    # 2. Trigger the Logic
     print("Executing new_barcode()...")
     await new_barcode(mock_update, mock_context)
     
-    # 3. Simulate Queue Worker (One-off)
     if not processing_queue.empty():
         print("📥 Picking item from queue...")
         item = await processing_queue.get()
@@ -1150,7 +1088,6 @@ async def run_offline_mode():
             with open(JOB_TICKET_PATH, "w", encoding="utf-8") as f:
                 f.write(data_path)
             
-            # Check if this is where we stop (JSX_ONLY or Standard run)
             if TEST_BARCODE_ONLY:
                 print("🛑 TEST_BARCODE_ONLY is True. Script finished without Photoshop.")
                 return
@@ -1167,7 +1104,6 @@ async def run_offline_mode():
         except Exception as e:
             print(f"Offline Worker Error: {e}")
     else:
-        # If queue is empty, it means execute_generation probably returned early (e.g. barcode_only mode)
         print("📭 Queue is empty. Job finished or stopped early.")
 
 def main():
@@ -1175,42 +1111,39 @@ def main():
         asyncio.run(run_offline_mode())
     else:
         app = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(post_init).build()
-        yes_no_filter = filters.Regex(r"(?i)^(yes|no)$")
-        fl_opts = filters.Regex(r"(?i)^(A|B|NONE|YES|NO)$")
 
         conv_handler = ConversationHandler(
             entry_points=[CommandHandler(["newbarcode", "n"], new_barcode)],
             states={
-                STATE_SELECT: [MessageHandler(filters.Regex(r"^(FL|NJ|NY|PA|VA)$"), select_state)],
-                BUY_CHECK: [MessageHandler(yes_no_filter, handle_buy_check)],
+                # STANDARD FLOW (Switched logic to CallbackQueryHandler where inline menus are used)
+                STATE_SELECT: [CallbackQueryHandler(select_state, pattern="^(FL|NJ|NY|PA|VA)$")],
+                BUY_CHECK: [CallbackQueryHandler(handle_buy_check)],
                 BULK_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_bulk_input)],
+                CUSTOM_DL_CHECK: [CallbackQueryHandler(ask_custom_dl)],
+                CUSTOM_DL_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_dl_input)],
+                SIGNATURE_CHECK: [CallbackQueryHandler(ask_signature)],
+                SIGNATURE_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, get_signature_upload)],
+                FACE_CHECK: [CallbackQueryHandler(ask_face)],
+                FACE_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, get_face_upload)],
+                PAYMENT_UPLOAD: [MessageHandler(filters.ALL & ~filters.COMMAND, handle_payment_upload)],
 
                 # PA SPECIFIC FLOW
-                PA_DL_CHECK: [MessageHandler(yes_no_filter, pa_dl_check)],
+                PA_DL_CHECK: [CallbackQueryHandler(pa_dl_check)],
                 PA_DL_INPUT: [MessageHandler(filters.TEXT, pa_dl_input)],
-                PA_ISS_CHECK: [MessageHandler(yes_no_filter, pa_iss_check)],
+                PA_ISS_CHECK: [CallbackQueryHandler(pa_iss_check)],
                 PA_ISS_INPUT: [MessageHandler(filters.TEXT, pa_iss_input)],
-                PA_EXP_CHECK: [MessageHandler(yes_no_filter, pa_exp_check)],
+                PA_EXP_CHECK: [CallbackQueryHandler(pa_exp_check)],
                 PA_EXP_INPUT: [MessageHandler(filters.TEXT, pa_exp_input)],
-                PA_SIG_CHECK: [MessageHandler(yes_no_filter, pa_sig_check)],
+                PA_SIG_CHECK: [CallbackQueryHandler(pa_sig_check)],
                 PA_SIG_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, pa_sig_upload)],
-                PA_REAL_ID: [MessageHandler(yes_no_filter, pa_real_id)],
+                PA_REAL_ID: [CallbackQueryHandler(pa_real_id)],
                 
                 # FL SPECIFIC FLOW
-                FL_REAL_ID: [MessageHandler(fl_opts, fl_ask_real_id)],
-                FL_RESTRICTION: [MessageHandler(fl_opts, fl_ask_restriction)],
-                FL_ENDORSEMENT: [MessageHandler(fl_opts, fl_ask_endorsement)],
-                FL_SAFE_DRIVER: [MessageHandler(fl_opts, fl_ask_safe_driver)],
-                FL_REPLACED: [MessageHandler(fl_opts, fl_ask_replaced)],
-
-                # STANDARD FLOW
-                CUSTOM_DL_CHECK: [MessageHandler(yes_no_filter, ask_custom_dl)],
-                CUSTOM_DL_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_dl_input)],
-                SIGNATURE_CHECK: [MessageHandler(yes_no_filter, ask_signature)],
-                SIGNATURE_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, get_signature_upload)],
-                FACE_CHECK: [MessageHandler(yes_no_filter, ask_face)],
-                FACE_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, get_face_upload)],
-                PAYMENT_UPLOAD: [MessageHandler(filters.ALL & ~filters.COMMAND, handle_payment_upload)]
+                FL_REAL_ID: [CallbackQueryHandler(fl_ask_real_id)],
+                FL_RESTRICTION: [CallbackQueryHandler(fl_ask_restriction)],
+                FL_ENDORSEMENT: [CallbackQueryHandler(fl_ask_endorsement)],
+                FL_SAFE_DRIVER: [CallbackQueryHandler(fl_ask_safe_driver)],
+                FL_REPLACED: [CallbackQueryHandler(fl_ask_replaced)]
             },
             fallbacks=[CommandHandler("cancel", cancel)],
             allow_reentry=True
@@ -1218,7 +1151,7 @@ def main():
 
         app.add_handler(CommandHandler("start", start))
         app.add_handler(conv_handler)
-        app.add_handler(CallbackQueryHandler(admin_callback))
+        app.add_handler(CallbackQueryHandler(admin_callback, pattern="^(approve|reject)_"))
         
         print(f"✅ Bot is active and polling! (Token ends in: ...{TELEGRAM_BOT_TOKEN[-5:]})")
         print("📝 Waiting for messages in Telegram...")
