@@ -22,11 +22,7 @@
         "va_back": "VA Back.psd"
     },
     "toggles": {
-        "offline_test_mode": false,
-        "enable_bg_removal": true
-    },
-    "testing": {
-        "barcode_only": false,
-        "jsx_only": false
+        "enable_bg_removal": true,
+        "admin_mode": true
     }
 }
