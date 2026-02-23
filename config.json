@@ -23,6 +23,6 @@
     },
     "toggles": {
         "enable_bg_removal": true,
-        "admin_mode": true
+        "admin_mode": false
     }
 }
