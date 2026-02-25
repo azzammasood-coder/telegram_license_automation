@@ -1,12 +1,14 @@
+# ny_module.py
+
 import os
 import re
-import json
-import random
+import logging
 from datetime import datetime, timezone
 from PIL import Image
 import xml.etree.ElementTree as ET
-import shutil
 import base64
+
+logger = logging.getLogger(__name__)
 
 def sanitize_filename(text: str) -> str:
     return re.sub(r'[<>:"/\\|?*]', '-', text).strip()
@@ -34,18 +36,33 @@ def process_grayscale_image(input_path: str, temp_dir: str) -> str:
         
         final_img.save(out_path)
         return out_path
+    
     except Exception as e:
-        print(f"Grayscale Error: {e}")
+        logger.error(f"NY Grayscale Image Error: {e}")
         return input_path
+
+def extract_date_from_raw(raw_text: str, prefix: str) -> str:
+    """Extracts date from raw barcode text and returns MM/DD/YYYY."""
+    if not raw_text: return ""
+    match = re.search(f"{prefix}([0-9]{{8}})", raw_text)
+    if match:
+        d = match.group(1)
+        return f"{d[0:2]}/{d[2:4]}/{d[4:]}"
+    return ""
 
 def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR):
     """NY Specific Logic."""
     first = user_data.get('first_name', 'Unknown').strip()
     middle = user_data.get('middle_name', '').strip()
     last = user_data.get('last_name', 'Unknown').strip()
-    dob = user_data.get('dob', '') # MM/DD/YYYY
+    logger.info(f"📄 Preparing NY job files and PSD instructions for: {first} {last}")
     
-    issue_clean = sanitize_filename(user_data.get('issue_date', '00-00-0000'))
+    # Handle Blanks via API Barcode
+    dob_val = user_data.get('dob', '').strip() or extract_date_from_raw(raw_text, "DBB") or "01/01/2000"
+    iss_val = user_data.get('issue_date', '').strip() or extract_date_from_raw(raw_text, "DBD") or "01/01/2020"
+    exp_val = user_data.get('expires_date', '').strip() or extract_date_from_raw(raw_text, "DBA") or "01/01/2030"
+    
+    issue_clean = sanitize_filename(iss_val)
     base_name = f"{first} {last}_{issue_clean}"
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     temp_id = f"{first}_{timestamp}"
@@ -58,30 +75,17 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     elif raw_gender == "1" or raw_gender == "M" or raw_gender == "MALE":
         gender_disp = "M"
 
-    # --- SIGNATURE TEXT LOGIC ---
-    # Use provided signature text, OR fallback to First + Last Initial
-    sig_text_input = user_data.get('signature', '').strip()
-    if not sig_text_input or sig_text_input.lower() == "none":
-         # Fallback: Capitalize first name and ensure last initial is uppercase
-         last_initial = last[0].upper() if last else ""
-         sig_text_final = f"{first.capitalize()} {last_initial}"
-    else:
-         # Ensure the provided signature is formatted to Title Case (John Doe)
-         sig_text_final = sig_text_input.title()
+    # --- UNIFIED SIGNATURE TEXT LOGIC ---
+    sig_text_final = user_data.get('signature', '').strip()
          
     # --- SAVE RAW DATA ---
     raw_data_path = os.path.join(TEMP_DIR, f"raw_data_{temp_id}.txt")
     with open(raw_data_path, "w", encoding="utf-8") as f: f.write(raw_text)
 
     # --- DL EXTRACTION & SPLIT LOGIC (STRICT 9 DIGITS) ---
-    # extract DL directly from the barcode raw text (DAQ tag)
     daq_match = re.search(r'DAQ([^\n\r]+)', raw_text)
-    
-    if daq_match:
-        raw_dl = daq_match.group(1).strip().replace(" ", "").replace("-", "")
-    else:
-        # Fallback to user input if extraction fails
-        raw_dl = user_data.get('custom_dl', '000000000').replace(" ", "").replace("-", "")
+    extracted_dl = daq_match.group(1).strip().replace(" ", "").replace("-", "") if daq_match else "000000000"
+    raw_dl = user_data.get('custom_dl', '').strip().replace(" ", "").replace("-", "") or extracted_dl
 
     # 1. RAISED DL
     dl_3_chars = f"  {raw_dl[1]}     {raw_dl[4]}     {raw_dl[7]}  "            
@@ -104,15 +108,15 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     addr2 = f"{city}, {state} {zip_code}"
 
     # --- MICRO TEXT ---
-    exp_date = user_data.get('expires_date', '').replace("/", " ").replace("-", " ")
-    micro_parts = [exp_date, first, middle, last]
+    exp_date_micro = exp_val.replace("/", " ").replace("-", " ")
+    micro_parts = [exp_date_micro, first, middle, last]
     micro_base = " ".join([p for p in micro_parts if p])
     micro_text = (micro_base + " ") * 10 
     micro_text = micro_text[:63]
 
     # --- DATE PARTS ---
     try:
-        dt_dob = datetime.strptime(dob, "%m/%d/%Y")
+        dt_dob = datetime.strptime(dob_val, "%m/%d/%Y")
         dob_day = dt_dob.strftime("%d")
         dob_month = dt_dob.strftime("%m")
         dob_year = dt_dob.strftime("%Y")
@@ -126,7 +130,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         dob_compact = "JAN00"
 
     try:
-        dt_exp = datetime.strptime(user_data.get('expires_date', ''), "%m/%d/%Y")
+        dt_exp = datetime.strptime(exp_val, "%m/%d/%Y")
         exp_day = dt_exp.strftime("%d")
         exp_month = dt_exp.strftime("%m")
         exp_year_last2 = dt_exp.strftime("%y")
@@ -151,7 +155,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     with open(os.path.join(TEMP_DIR, f"linear_{temp_id}.svg"), "wb") as f: f.write(small_svg)
     
     # --- SUBFOLDER LOGIC ---
-    safe_dob = dob.replace("/", "-")
+    safe_dob = dob_val.replace("/", "-")
     folder_name = f"{first} {last} NY {safe_dob}"
     main_target_dir = os.path.join(FINAL_DIR, folder_name)
     
@@ -191,15 +195,15 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Swirl Text 26: {swirl_text_26}",
         f"Micro Text: {micro_text}",
         f"First 2 Digits Year: {dob_year_first2}",
-        f"Gender: {gender_disp}", # UPDATED: Sends M or F
+        f"Gender: {gender_disp}", 
         f"Height: {visual_height}",
         f"Eyes: {'BRO' if user_data.get('eyes', '').upper().strip() in ['BRN', 'BROWN'] else user_data.get('eyes', 'BRO')}",
         f"Dob Month: {dob_month}",
         f"Dob Day: {dob_day}",
         f"Dob Year Last 2: {dob_year_last2}",
-        f"Raised EXP: {user_data.get('expires_date')}",
-        f"Raised DOB: {dob}",
-        f"Issue Full: {user_data.get('issue_date')}",
+        f"Raised EXP: {exp_val}",
+        f"Raised DOB: {dob_val}",
+        f"Issue Full: {iss_val}",
         f"Exp Day: {exp_day}",
         f"Exp Month: {exp_month}",
         f"Exp Year Last 2: {exp_year_last2}",
@@ -211,7 +215,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Last Name: {last}",
         f"Address 1: {addr1}",
         f"Address 2: {addr2}",
-        f"Signature Text: {sig_text_final}", # UPDATED: Added Text Fallback
+        f"Signature Text: {sig_text_final}", 
         
         "",
         "--- BACK DATA ---",
@@ -248,7 +252,7 @@ def generate_lightburn_lbrn(data_map, base_dir):
         back_dir = data_map.get("Output Dir Back")
         
         if not main_dir or not front_dir or not back_dir:
-            print("❌ LightBurn Error: Missing directory paths.")
+            logger.error("❌ NY LightBurn Error: Missing directory paths in data_map.")
             return
 
         lb_out_dir = os.path.join(main_dir, "Lightburn")
@@ -259,14 +263,14 @@ def generate_lightburn_lbrn(data_map, base_dir):
             dst_path = os.path.join(lb_out_dir, template_name)
             
             if not os.path.exists(src_path):
-                print(f"⚠️ Template missing: {src_path}")
+                logger.warning(f"⚠️ NY LightBurn Template missing: {src_path}")
                 return
 
             try:
                 tree = ET.parse(src_path)
                 root = tree.getroot()
                 
-                print(f"\n🔵 --- Processing {template_name} ---")
+                logger.info(f"🔵 --- Processing NY LightBurn Template: {template_name} ---")
                 
                 # Check which layers we expect vs which we found
                 found_layers = []
@@ -279,18 +283,8 @@ def generate_lightburn_lbrn(data_map, base_dir):
                         png_filename = layer_map[cut_index]
                         png_full_path = os.path.join(png_dir, png_filename)
                         
-                        # LOGGING: Check Original State
-                        orig_w = shape.get('W', 'MISSING')
-                        orig_h = shape.get('H', 'MISSING')
-                        xform = shape.find('XForm')
-                        xform_val = xform.text if xform is not None else "NONE"
-                        
-                        # print(f"   [C{cut_index:02d}] Target: {png_filename}")
-                        # print(f"          Current Size: W={orig_w}, H={orig_h}")
-                        # print(f"          Current Pos : {xform_val}")
-
                         if not os.path.exists(png_full_path):
-                            print(f"          ⚠️ FILE MISSING: {png_full_path}")
+                            logger.warning(f"          ⚠️ FILE MISSING for CutIndex {cut_index}: {png_full_path}")
                             continue
                             
                         # 1. READ IMAGE & CONVERT TO BASE64
@@ -298,10 +292,8 @@ def generate_lightburn_lbrn(data_map, base_dir):
                             with open(png_full_path, "rb") as image_file:
                                 raw_data = image_file.read()
                                 encoded_string = base64.b64encode(raw_data).decode('utf-8')
-                                size_kb = len(raw_data) / 1024
-                                # print(f"          Image Read: {size_kb:.2f} KB")
                         except Exception as img_err:
-                            print(f"          ❌ Read Error: {img_err}")
+                            logger.error(f"          ❌ Read Error for {png_full_path}: {img_err}")
                             continue
                         
                         # 2. INJECT DATA (The Fix for Invisibility)
@@ -323,18 +315,16 @@ def generate_lightburn_lbrn(data_map, base_dir):
                             if child.tag in ['data', 'Data']:
                                 shape.remove(child)
 
-                        # print(f"          ✅ Updated Successfully.")
-
                 # Check for missing layers
                 missing = [k for k in layer_map.keys() if k not in found_layers]
                 if missing:
-                    print(f"⚠️ WARNING: The following CutIndices were NOT found in the template: {missing}")
+                    logger.warning(f"⚠️ WARNING: The following CutIndices were NOT found in the NY template: {missing}")
 
                 tree.write(dst_path)
-                print(f"💾 Saved: {dst_path}")
+                logger.info(f"💾 NY LightBurn File Saved: {dst_path}")
 
             except Exception as e:
-                print(f"❌ Error processing {template_name}: {e}")
+                logger.error(f"❌ Error processing NY template {template_name}: {e}")
 
         # --- CONFIGURATION ---
         front_map = {
@@ -361,4 +351,4 @@ def generate_lightburn_lbrn(data_map, base_dir):
         process_template("NY BACK.lbrn2", back_dir, back_map)
 
     except Exception as e:
-        print(f"❌ LightBurn Generation Logic Failed: {e}")
+        logger.error(f"❌ NY LightBurn Generation Logic Failed completely: {e}")

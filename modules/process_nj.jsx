@@ -32,7 +32,9 @@ if (ROOT_PATH.charAt(ROOT_PATH.length - 1) != "/" && ROOT_PATH.charAt(ROOT_PATH.
 
 // 3. Define other paths based on ROOT_PATH
 var JOB_FILE  = new File(ROOT_PATH + "active_job.txt");
-var LOG_FILE  = new File(ROOT_PATH + "photoshop_log.txt");
+var LOG_DIR = new Folder(ROOT_PATH + "logs");
+if (!LOG_DIR.exists) { LOG_DIR.create(); }
+var LOG_FILE  = new File(ROOT_PATH + "logs/process_nj.log");
 
 var PSD_NAME = config.filenames ? config.filenames.nj_psd : "AUTOMATED NJ F AND B.psd";
 var PSD_PATH = ROOT_PATH + "PSDs/" + PSD_NAME;

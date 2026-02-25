@@ -35,7 +35,6 @@ BASE_DIR      = config['paths']['base_dir']
 PHOTOSHOP_EXE_PATH = config['paths']['photoshop_exe']
 
 # Toggles
-ENABLE_BG_REMOVAL  = config['toggles']['enable_bg_removal']
 ADMIN_CHAT_ID    = config['telegram'].get('admin_chat_id')
 ADMIN_MODE     = config['toggles'].get('admin_mode', False)
 
@@ -49,11 +48,35 @@ def init_db():
                             user_data TEXT,
                             status TEXT
                         )''')
-        # New table for blocked users
+        # Table for blocked users
         conn.execute('''CREATE TABLE IF NOT EXISTS blocked_users (
                             chat_id INTEGER PRIMARY KEY
                         )''')
+        # Table to track usernames for admin commands
+        conn.execute('''CREATE TABLE IF NOT EXISTS users (
+                            chat_id INTEGER PRIMARY KEY,
+                            username TEXT
+                        )''')
 init_db()
+
+def track_user(user):
+    if not user: return
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("INSERT OR REPLACE INTO users (chat_id, username) VALUES (?, ?)", 
+                     (user.id, user.username.lower() if user.username else None))
+
+def resolve_user(user_input):
+    clean_input = user_input.replace('@', '').strip()
+    if clean_input.isdigit():
+        return int(clean_input)
+    
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT chat_id FROM users WHERE username = ?", (clean_input.lower(),))
+        row = cursor.fetchone()
+        if row:
+            return row[0]
+    raise ValueError("User not found in database. They must interact with the bot first.")
 
 def is_blocked(chat_id):
     with sqlite3.connect(DB_PATH) as conn:
@@ -68,6 +91,7 @@ def set_blocked(chat_id, block_status=True):
         else:
             conn.execute("DELETE FROM blocked_users WHERE chat_id = ?", (chat_id,))
         conn.commit()
+
 init_db()
 
 # ==============================================================================
@@ -76,34 +100,26 @@ init_db()
 
 # States
 (
-  DISCLAIMER_WAIT,  # <--- New
-  MAIN_MENU,     # <--- New
-  SHOP_MENU,     # <--- New
-  PREVIEW_STATE_SELECT, # <--- New
-  STATE_SELECT, 
-  BUY_CHECK,
-  BULK_INPUT, 
-  CUSTOM_DL_CHECK, 
-  CUSTOM_DL_INPUT, 
-  SIGNATURE_CHECK, 
-  SIGNATURE_UPLOAD,
-  FL_REAL_ID,     
-  FL_RESTRICTION,   
-  FL_ENDORSEMENT,   
-  FL_SAFE_DRIVER,   
-  FL_REPLACED,    
-  PA_DL_CHECK, PA_DL_INPUT,
-  PA_ISS_CHECK, PA_ISS_INPUT,
-  PA_EXP_CHECK, PA_EXP_INPUT,
-  PA_SIG_CHECK, PA_SIG_UPLOAD,
-  PA_REAL_ID,
-  FACE_CHECK,   
-  FACE_UPLOAD,
-  PAYMENT_UPLOAD   
-) = range(28)      # <--- Updated Range to 28
-# Logging
-logging.basicConfig(format="%(asctime)s - [BOT] - %(message)s", level=logging.INFO)
+  DISCLAIMER_WAIT, MAIN_MENU, SHOP_MENU, PREVIEW_STATE_SELECT, STATE_SELECT,
+  NJ_DL_ID_CHECK, NJ_GRADE_CHECK, SECOND_FORM_CHECK,
+  BUY_CHECK, BULK_INPUT, CUSTOM_DL_CHECK, CUSTOM_DL_INPUT,
+  SIGNATURE_CHECK, SIGNATURE_INPUT, 
+  FL_REAL_ID, FL_RESTRICTION, FL_ENDORSEMENT, FL_SAFE_DRIVER, FL_REPLACED,
+  PA_DL_CHECK, PA_DL_INPUT, PA_ISS_CHECK, PA_ISS_INPUT, PA_EXP_CHECK, PA_EXP_INPUT,
+  PA_SIG_CHECK, PA_SIG_UPLOAD, PA_REAL_ID,
+  FACE_CHECK, FACE_UPLOAD, PAYMENT_UPLOAD   
+) = range(31)
+
+# Logging Setup
+os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
+LOG_FILE_PATH = os.path.join(BASE_DIR, "logs", "bot.log")
+logging.basicConfig(
+    format="%(asctime)s - [BOT] - %(levelname)s - %(message)s",
+    level=logging.INFO,
+    handlers=[logging.FileHandler(LOG_FILE_PATH, encoding="utf-8"), logging.StreamHandler()]
+)
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING) # Suppress HTTPX (Telegram API) INFO logs to hide 'getUpdates' spam
 
 
 FINAL_DIR = os.path.join(BASE_DIR, "Final_Documents")
@@ -123,34 +139,27 @@ async def process_queue_worker(app: Application):
   logger.info("👷 Queue Worker is active.")
   while True:
     item = await processing_queue.get()
-    bot, chat_id, unique_id, data_path, out_front, out_back, out_psd, jsx_paths = item
+    bot, chat_id, unique_id, data_path, out_front, out_back, out_psd, jsx_paths, jurisdiction = item
 
     try:
       # 1. Write Ticket
       with open(JOB_TICKET_PATH, "w", encoding="utf-8") as f:
         f.write(data_path)
 
-      # 2. Parse Data File to check Jurisdiction
+      # 2. Parse Data File to get data_map (needed for Lightburn)
       data_map = {}
-      jurisdiction = "UNKNOWN"
       if os.path.exists(data_path):
         with open(data_path, "r", encoding="utf-8") as f:
           for line in f:
             if ":" in line:
               k, v = line.split(":", 1)
               data_map[k.strip()] = v.strip()
-      
-      # Simple heuristic for NY: presence of "Output Dir Front"
-      if "Output Dir Front" in data_map:
-        output_dir_name = os.path.basename(data_map.get("Output Dir", ""))
-        if "NY" in output_dir_name:
-          jurisdiction = "NY"
-        elif "VA" in output_dir_name:
-          jurisdiction = "VA"
 
       # 3. Trigger Photoshop
       if os.path.exists(PHOTOSHOP_EXE_PATH):
+        logger.info(f"⚙️  Triggering Photoshop for {unique_id}. Running {len(jsx_paths)} JSX script(s).")
         for jsx in jsx_paths:
+          logger.info(f"   -> Executing JSX: {os.path.basename(jsx)}")
           subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx])
           await asyncio.sleep(2)
       else:
@@ -171,12 +180,17 @@ async def process_queue_worker(app: Application):
           front_dir = data_map.get("Output Dir Front", "")
           back_dir = data_map.get("Output Dir Back", "")
           
-          psd_front = os.path.join(front_dir, f"{base_name}.psd")
-          psd_back = os.path.join(back_dir, f"{base_name}.psd")
-          
-          # Check if BOTH exist
-          if os.path.exists(psd_front) and os.path.getsize(psd_front) > 0 and \
-           os.path.exists(psd_back) and os.path.getsize(psd_back) > 0:
+          def is_psd_saved(directory, match_name):
+            if not os.path.exists(directory): return False
+            for f in os.listdir(directory):
+              # Check if it's a PSD, contains the base name, and has file size > 0
+              if f.endswith(".psd") and match_name in f:
+                if os.path.getsize(os.path.join(directory, f)) > 0:
+                  return True
+            return False
+
+          # Check if BOTH exist dynamically
+          if is_psd_saved(front_dir, base_name) and is_psd_saved(back_dir, base_name):
             await asyncio.sleep(2) # Cooldown for save completion
             success = True
             break
@@ -186,15 +200,16 @@ async def process_queue_worker(app: Application):
           # Check for main PSD (out_psd passed in queue)
           if os.path.exists(out_psd) and os.path.getsize(out_psd) > 0:
             
-            # Flexible Front/Back check
-            all_files = os.listdir(FINAL_DIR)
-            found_front = any("Front" in f and unique_id.split('_')[0] in f for f in all_files)
-            found_back = any("Back" in f and unique_id.split('_')[0] in f for f in all_files)
+            target_dir = os.path.dirname(out_psd)
+            if os.path.exists(target_dir):
+              all_files = os.listdir(target_dir)
+              found_front = any("Front" in f and unique_id.split('_')[0] in f for f in all_files)
+              found_back = any("Back" in f and unique_id.split('_')[0] in f for f in all_files)
 
-            if found_front and found_back:
-              await asyncio.sleep(2)
-              success = True
-              break
+              if found_front and found_back:
+                await asyncio.sleep(2)
+                success = True
+                break
         
         if int(time.time() - start_time) % 20 == 0:
           logger.info(f"⏳ Syncing {unique_id}... ({jurisdiction} Mode)")
@@ -202,23 +217,28 @@ async def process_queue_worker(app: Application):
         await asyncio.sleep(3)
 
       if success:
+        logger.info(f"✅ PSD Generation successful for {unique_id}!")
         # --- LIGHTBURN TRIGGER ---
         if jurisdiction == "NY":
           try:
+            logger.info(f"🔥 Generating LightBurn files for NY: {unique_id}")
             await bot.send_message(chat_id, "Generating LightBurn Files...")
             await asyncio.get_running_loop().run_in_executor(
               None, ny_module.generate_lightburn_lbrn, data_map, BASE_DIR
             )
+            logger.info(f"✅ NY LightBurn generation complete for {unique_id}")
           except Exception as e:
             logger.error(f"LightBurn Logic Error: {e}")
             await bot.send_message(chat_id, f"⚠️ LightBurn Error: {e}")
             
         elif jurisdiction == "VA":
           try:
+            logger.info(f"🔥 Generating LightBurn files for VA: {unique_id}")
             await bot.send_message(chat_id, "Generating LightBurn Files...")
             await asyncio.get_running_loop().run_in_executor(
               None, va_module.generate_lightburn_lbrn, data_map, BASE_DIR
             )
+            logger.info(f"✅ VA LightBurn generation complete for {unique_id}")
           except Exception as e:
             logger.error(f"VA LightBurn Logic Error: {e}")
             await bot.send_message(chat_id, f"⚠️ VA LightBurn Error: {e}")
@@ -281,7 +301,7 @@ def format_date_for_api(date_str: str) -> str:
     return f"{clean[4:]}-{clean[0:2]}-{clean[2:4]}"
   return date_str
 
-def parse_fl_data(text: str) -> dict | None:
+def parse_fl_data(text: str) -> dict:
   data = {}
   lines = text.split('\n')
   key_map = {
@@ -290,21 +310,20 @@ def parse_fl_data(text: str) -> dict | None:
     "Full Zip Code + 4 Digits": "zip_code", "Dob": "dob", "Gender": "gender",
     "Height": "height", "Eyes": "eyes", "Issue Date": "issue_date",
     "Expires Date": "expires_date", "Class": "class", "Signature": "signature_text",
-    "Driver License Number": "custom_dl", "DL Number": "custom_dl" 
+    "Driver License Number": "custom_dl", "DL Number": "custom_dl", "DL": "custom_dl"
   }
   for line in lines:
     if ":" in line:
       parts = line.split(":", 1)
       key, val = parts[0].strip(), parts[1].strip()
-      if key in key_map:
-        data[key_map[key]] = val
+      # Match case-insensitively for flexibility
+      for k, v in key_map.items():
+          if key.lower() == k.lower():
+              data[v] = val
 
-  # Basic validation so we don't proceed with empty data
-  if not data.get("last_name") or not data.get("dob"):
-    return None
   return data
 
-def parse_bulk_input(text: str) -> dict | None:
+def parse_bulk_input(text: str) -> dict:
   data = {}
   lines = text.split('\n')
   key_map = {
@@ -316,7 +335,7 @@ def parse_bulk_input(text: str) -> dict | None:
     "class": "class", "endorsements": "endorsements", "restrictions": "restrictions",
     "issue date": "issue_date", "expires date": "expires_date", "real id": "real_id",
     "not real id": "not_real_id", "signature": "signature",
-    "dl number": "custom_dl", "license number": "custom_dl"
+    "dl number": "custom_dl", "license number": "custom_dl", "dl": "custom_dl"
   }
   
   for line in lines:
@@ -332,11 +351,6 @@ def parse_bulk_input(text: str) -> dict | None:
           elif val_low in ["2", "f", "female"]: value = "2"
         data[mapped_key] = value
 
-  # REMOVED "jurisdiction" from required list
-  required = ["first_name", "last_name", "dob", "gender"]
-  for req in required:
-    if req not in data:
-      return None
   return data
 
 # ==============================================================================
@@ -479,16 +493,17 @@ def generate_barcodes(user_data: dict, api_height: str):
       payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
 
     if mn_len > 0:
-      # Note: I removed the trailing comma from your snippet that would have created a tuple bug
       payload["data[DAD]"] = user_data.get("middle_name", "").upper()
       payload["data[DDG]"] = trunc_middle
 
-  logging.info(f"payload: {payload}")
+  logger.info(f"🚀 Sending payload to FIS API for state: {state}")
 
   # --- EXECUTE REQUEST ---
   resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=60)
   resp.raise_for_status()
   barcode_id = resp.headers.get("X-Barcode-ID")
+  
+  logger.info(f"✅ Barcode successfully generated! Barcode ID: {barcode_id}")
 
   # Fetch all formats
   params = {"barcode_id": barcode_id}
@@ -527,6 +542,7 @@ def get_options_kb(options):
 # ==============================================================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    track_user(update.effective_user)
     if is_blocked(update.effective_chat.id):
         return ConversationHandler.END
 
@@ -543,6 +559,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return DISCLAIMER_WAIT
 
 async def enter_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    track_user(update.effective_user)
     chat_id = update.effective_chat.id if update.effective_chat else update.callback_query.message.chat_id
     if is_blocked(chat_id):
         return ConversationHandler.END
@@ -615,6 +632,7 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
   return MAIN_MENU
 
+
 async def shop_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   query = update.callback_query
   data = query.data
@@ -624,14 +642,7 @@ async def shop_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return SHOP_MENU
   elif data == "shop_physical":
     await query.answer()
-    keyboard = [
-      [InlineKeyboardButton("FL - Florida", callback_data="FL")],
-      [InlineKeyboardButton("NJ - New Jersey", callback_data="NJ")],
-      [InlineKeyboardButton("NY - New York", callback_data="NY")],
-      [InlineKeyboardButton("PA - Pennsylvania", callback_data="PA")],
-      [InlineKeyboardButton("VA - Virginia", callback_data="VA")],
-      [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_main")]
-    ]
+    keyboard = get_50_states_keyboard()
     await query.message.edit_text("Please Choose A State", reply_markup=InlineKeyboardMarkup(keyboard))
     return STATE_SELECT
   elif data == "back_main":
@@ -690,19 +701,16 @@ async def handle_bulk_input(update: Update, context: ContextTypes.DEFAULT_TYPE) 
   else:
     parsed_data = parse_bulk_input(raw_text)
 
-  if not parsed_data:
-    await update.message.reply_text("🤔 *I couldn't understand that format.*\nPlease check the template and try again.", parse_mode="Markdown")
-    return BULK_INPUT
+  if parsed_data is None:
+      parsed_data = {}
   
   context.user_data.update(parsed_data)
   context.user_data['jurisdiction'] = current_state 
+  
+  logger.info(f"📥 Payload received from User ID {update.effective_chat.id} for State: {current_state}. Keys parsed: {list(parsed_data.keys())}")
 
-  if current_state == "PA":
-    await update.message.reply_text("🔢 *Custom DL?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
-    return PA_DL_CHECK
-
-  await update.message.reply_text("🔢 *Custom DL Number?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
-  return CUSTOM_DL_CHECK
+  await update.message.reply_text("✍️ *Custom Signature?*\n\nSelect Yes to upload an image or type text. Select No to auto-generate.", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
+  return SIGNATURE_CHECK
 
 async def ask_custom_dl(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   query = update.callback_query
@@ -719,21 +727,6 @@ async def get_custom_dl_input(update: Update, context: ContextTypes.DEFAULT_TYPE
   context.user_data["custom_dl"] = update.message.text.strip()
   await update.message.reply_text("✍️ *Upload Signature Image?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
   return SIGNATURE_CHECK
-
-async def ask_signature(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-  query = update.callback_query
-  await query.answer()
-
-  if query.data.lower() == "yes":
-    await query.message.edit_text("📤 *Please upload the signature image.*", parse_mode="Markdown")
-    return SIGNATURE_UPLOAD
-  else:
-    if context.user_data.get('jurisdiction') == "FL":
-      await query.message.edit_text("🌴 *FL: Real ID?*", reply_markup=get_options_kb(["YES", "NO"]), parse_mode="Markdown")
-      return FL_REAL_ID
-    
-    await query.message.edit_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
-    return FACE_CHECK
 
 
 # --- FL SPECIFIC HANDLERS ---
@@ -825,9 +818,7 @@ async def pa_sig_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
   return PA_REAL_ID
 
 async def pa_sig_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-  await get_signature_upload(update, context) 
-  await update.message.reply_text("⭐ *Real ID?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
-  return PA_REAL_ID
+    return await get_signature_input(update, context)
 
 async def pa_real_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   query = update.callback_query
@@ -835,27 +826,6 @@ async def pa_real_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   context.user_data['real_id'] = "YES" if query.data.lower() == "yes" else "NO"
   await query.message.edit_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
   return FACE_CHECK
-
-# --- SHARED FINAL STEPS ---
-async def ask_face(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-  query = update.callback_query
-  await query.answer()
-  if query.data.lower() == "yes":
-    await query.message.edit_text("📤 *Please upload the face image.*", parse_mode="Markdown")
-    return FACE_UPLOAD
-  else:
-    if ADMIN_MODE:
-      await query.message.edit_text("🛡️ *Admin Mode Active:* Skipping payment. Processing started...", parse_mode="Markdown")
-      asyncio.create_task(execute_generation(context.bot, update.effective_chat.id, context.user_data))
-      return ConversationHandler.END
-    else:
-      msg_path = os.path.join(BASE_DIR, "Automated Messages", "Messages", "payment_message.txt")
-      payment_msg = "💳 *Please send the payment screenshot.*"
-      if os.path.exists(msg_path):
-        with open(msg_path, "r", encoding="utf-8") as f:
-          payment_msg = f.read()
-      await query.message.edit_text(payment_msg, parse_mode="Markdown")
-      return PAYMENT_UPLOAD
 
 async def request_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   msg_path = os.path.join(BASE_DIR, "Automated Messages", "Messages", "payment_message.txt")
@@ -866,7 +836,6 @@ async def request_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
   await update.message.reply_text(payment_msg, parse_mode="Markdown")
   return PAYMENT_UPLOAD
 
-# --- ADMIN & EXECUTION (No Changes to Logic) ---
 async def handle_payment_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not update.message.photo and not update.message.document:
         await update.message.reply_text("❌ Please upload a screenshot image of your payment.")
@@ -890,7 +859,8 @@ async def handle_payment_upload(update: Update, context: ContextTypes.DEFAULT_TY
         [InlineKeyboardButton("🚫 Block User", callback_data=f"block_{job_id}")]
     ]
     
-    admin_text = f"🚨 New Order [{job_id}]\nState: {context.user_data.get('jurisdiction')}\nName: {context.user_data.get('first_name')} {context.user_data.get('last_name')}\nUser ID: `{chat_id}`"
+    username = f"@{update.effective_user.username}" if update.effective_user.username else "No Username"
+    admin_text = f"🚨 New Order [{job_id}]\nState: {context.user_data.get('jurisdiction')}\nName: {context.user_data.get('first_name')} {context.user_data.get('last_name')}\nUser ID: `{chat_id}`\nUsername: {username}"
     
     if ADMIN_CHAT_ID:
         await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo_file, caption=admin_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
@@ -977,79 +947,178 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("🚫 Block User", callback_data=f"block_{job_id}")]]
         await query.edit_message_caption(caption=f"{clean_caption}\n\n🔓 UNBLOCKED", reply_markup=InlineKeyboardMarkup(keyboard))
 
+async def show_unified_prompt(query, context, state_code):
+    dl_formats = {
+        "NJ": "H5901 59055 59481",
+        "NY": "689 995 677",
+        "VA": "T67256730",
+        "FL": "O425-10-46-516-0",
+        "PA": "19 059 959"
+    }
+    sample_dl = dl_formats.get(state_code.upper(), "H5901 59055 59481")
+
+    msg = (
+       "Please only edit and replace the sample information with your information details exactly in this format.\n\n"
+       "```text\n"
+       f"DL: {sample_dl}\n"
+       "First Name: HARROLD\n"
+       "Middle Name: EYES\n"
+       "Last Name: FINCH\n"
+       "Address: 100 EYES \n"
+       "City: NEWARK\n"
+       f"State Code: {state_code.upper()}\n"
+       "Full Zip Code + 4 Digits: 07101-1234\n"
+       "Gender: M\n"
+       "Dob: 01/01/1980\n"
+       "Height: 5'-11\"\n"
+       "Eyes: BRN\n"
+       "Class: D\n"
+       "Endorsements: NONE\n"
+       "Restrictions: NONE\n"
+       "Issue Date: 01/01/2023\n"
+       "Expires Date: 01/01/2030\n"
+       "Real ID: Visible\n"
+       "Not Real ID: Not Visible\n"
+       "```"
+    )
+    context.user_data['bulk_prompt_msg'] = msg 
+    await query.message.edit_text(msg, parse_mode="Markdown")
+    return BULK_INPUT
+
+def get_50_states_keyboard(prefix=""):
+    states_str = (
+        "AL - Alabama\nAK - Alaska\nAZ - Arizona\nAR - Arkansas\nCA - California\n"
+        "CO - Colorado\nCT - Connecticut\nDE - Delaware\nDC - District of Columbia\n"
+        "FL - Florida\nGA - Georgia\nHI - Hawaii\nID - Idaho\nIL - Illinois\n"
+        "IN - Indiana\nIA - Iowa\nKS - Kansas\nKY - Kentucky\nLA - Louisiana\n"
+        "ME - Maine\nMD - Maryland\nMA - Massachusetts\nMI - Michigan\nMN - Minnesota\n"
+        "MS - Mississippi\nMO - Missouri\nMT - Montana\nNE - Nebraska\nNV - Nevada\n"
+        "NH - New Hampshire\nNJ - New Jersey\nNM - New Mexico\nNY - New York\n"
+        "NC - North Carolina\nND - North Dakota\nOH - Ohio\nOK - Oklahoma\nOR - Oregon\n"
+        "PA - Pennsylvania\nRI - Rhode Island\nSC - South Carolina\nSD - South Dakota\n"
+        "TN - Tennessee\nTX - Texas\nUT - Utah\nVT - Vermont\nVA - Virginia\n"
+        "WA - Washington\nWV - West Virginia\nWI - Wisconsin\nWY - Wyoming"
+    )
+    keyboard = []
+    row = []
+    for s in states_str.split("\n"):
+        code = s.split(" - ")[0].strip()
+        name = s.strip()
+        row.append(InlineKeyboardButton(name, callback_data=f"{prefix}{code}"))
+        if len(row) == 2:  # Changed to 2 columns so full names fit on mobile
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+    keyboard.append([InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_main")])
+    return keyboard
+
 async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    
+    if query.data == "back_main":
+        await query.answer()
+        return await enter_command(update, context)
+        
+    selected = query.data.upper()
+    implemented_states = ["NJ", "NY", "FL", "PA", "VA"]
+    
+    if selected not in implemented_states:
+        await query.answer("Coming Soon!", show_alert=True)
+        return STATE_SELECT
+        
+    await query.answer()
+    context.user_data['jurisdiction'] = selected
+
+    if selected == "NJ":
+        keyboard = [[InlineKeyboardButton("🪪 ID", callback_data="nj_id"), InlineKeyboardButton("🚗 DL", callback_data="nj_dl")]]
+        await query.message.edit_text("📍 *NJ Selected*\n\nPlease select document type:", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return NJ_DL_ID_CHECK
+    else:
+        return await show_unified_prompt(query, context, selected)
+
+async def nj_dl_id_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    context.user_data['nj_doc_type'] = query.data
+    keyboard = [[InlineKeyboardButton("Grade - 🅰️", callback_data="nj_grade_a"), InlineKeyboardButton("Grade - 🅱️", callback_data="nj_grade_b")]]
+    await query.message.edit_text("Select Grade:", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    return NJ_GRADE_CHECK
+
+async def nj_grade_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    context.user_data['nj_grade'] = query.data
+    return await show_unified_prompt(query, context, "NJ")
+
+async def ask_signature(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   query = update.callback_query
   await query.answer()
-  
-  if query.data == "back_main":
-    return await enter_command(update, context)
-    
-  selected = query.data.upper()
-  logger.info(f"🔘 State Button Pressed: '{selected}'")
-  context.user_data['jurisdiction'] = selected
 
-  if selected == "PA":
-    msg = ("📍 *PA Selected*\n\nPlease enter details exactly in this format:\n"
-       "```text\nFirst Name: Harrold\nMiddle Name: Eyes\nLast Name: Finch\nAddress: 100 Eyes Rd\n"
-       "City: wyncote\nState Code: PA\nFull Zip Code + 4 Digits: 190950000\n"
-       "Dob: 04/09/1954\nGender: M\nHeight: 5-08\nEyes: BRO\n"
-       "Class: C\nSignature:\n```")
-  elif selected == "FL":
-    msg = ("📍 *FL Selected*\n\nPlease enter details exactly in this format:\n"
-       "```text\nFirst Name: ...\nMiddle Name: ...\nLast Name: ...\nAddress: ...\n"
-       "City: ...\nState Code: FL\nFull Zip Code + 4 Digits: ...\n"
-       "Dob: MM/DD/YYYY\nGender: M\nHeight: 5'-09\nEyes: BRO\n"
-       "Issue Date: ...\nExpires Date: ...\nClass: E\n"
-       "Real ID: Visible\nNot Real ID: Not Visible\nSignature: ...\n```")
-  elif selected == "VA":
-    msg = ("📍 *VA Selected*\n\nPlease enter details exactly in this format:\n"
-       "```text\nFirst Name: ARTHUR\nMiddle Name: S\nLast Name: JAR\nAddress: 4301 W BROAD ST\n"
-       "City: RICHMOND\nState Code: VA\nFull Zip Code + 4 Digits: 23230-0000\n"
-       "Gender: M\nDob: 01/16/1980\nHeight: 5'-08\"\nEyes: BRN\n"
-       "Class: D\nEndorsements: NONE\nRestrictions: NONE\n"
-       "Issue Date: 01/16/2023\nExpires Date: 01/16/2032\n"
-       "Real ID: Visible\nNot Real ID: Not Visible\nSignature: Arthur S Jar\n```")
+  if query.data.lower() == "yes":
+    await query.message.edit_text("📤 *Please type your signature text or upload a signature image.*", parse_mode="Markdown")
+    return SIGNATURE_INPUT
   else:
-    msg = (f"📍 *{selected} Selected*\n\nPlease enter details exactly in this format:\n"
-       "```text\nFirst Name: JOHN\nMiddle Name: ROBERT\nLast Name: DOE\nAddress: 123 MAIN ST\n"
-       "City: NEWARK\nState Code: NJ\nFull Zip Code + 4 Digits: 07101\nGender: M\nDob: 01/01/1980\n"
-       "Height: 5'-11\"\nEyes: BRN\nClass: D\nEndorsements: NONE\nRestrictions: NONE\n"
-       "Issue Date: 01/01/2023\nExpires Date: 01/01/2030\nReal ID: Visible\n"
-       "Not Real ID: Not Visible\nSignature: JOHN DOE\n```")
+    fn = context.user_data.get('first_name', 'Unknown')
+    ln = context.user_data.get('last_name', 'User')
+    f_init = fn[0].upper() if fn else ""
+    context.user_data['signature'] = f"{f_init}{ln.title()}"
     
-  context.user_data['bulk_prompt_msg'] = msg 
-  
-  await query.message.edit_text(msg, parse_mode="Markdown")
-  return BULK_INPUT
+    state = context.user_data.get('jurisdiction')
+    if state == "FL":
+      await query.message.edit_text("🌴 *FL: Real ID?*", reply_markup=get_options_kb(["YES", "NO"]), parse_mode="Markdown")
+      return FL_REAL_ID
+    elif state == "PA":
+      await query.message.edit_text("⭐ *PA: Real ID?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
+      return PA_REAL_ID
+      
+    await query.message.edit_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
+    return FACE_CHECK
 
-async def get_signature_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-  file_obj = None
-  if update.message.document:
-    file_obj = await update.message.document.get_file()
-  elif update.message.photo:
-    file_obj = await update.message.photo[-1].get_file()
-  
-  if file_obj:
-    ext = os.path.splitext(file_obj.file_path)[1] or ".png"
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    raw_path = os.path.join(TEMP_DIR, f"sig_raw_{timestamp}{ext}")
-    await file_obj.download_to_drive(raw_path)
-    
-    clean_path = os.path.join(TEMP_DIR, f"sig_{timestamp}.png")
-    success = False
-    if ENABLE_BG_REMOVAL:
-      success = remove_bg_removebg(raw_path, clean_path)
-    
-    context.user_data["signature_path"] = clean_path if success else raw_path
+async def get_signature_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+  if update.message.text:
+      context.user_data["signature"] = update.message.text.strip()
   else:
-    await update.message.reply_text("❌ Couldn't download image.")
-  
-  if context.user_data.get('jurisdiction') == "FL":
+      file_obj = None
+      if update.message.document:
+        file_obj = await update.message.document.get_file()
+      elif update.message.photo:
+        file_obj = await update.message.photo[-1].get_file()
+      
+      if file_obj:
+        ext = os.path.splitext(file_obj.file_path)[1] or ".png"
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        raw_path = os.path.join(TEMP_DIR, f"sig_raw_{timestamp}{ext}")
+        await file_obj.download_to_drive(raw_path)
+        
+        clean_path = os.path.join(TEMP_DIR, f"sig_{timestamp}.png")
+
+        success = remove_bg_removebg(raw_path, clean_path)
+        
+        context.user_data["signature_path"] = clean_path if success else raw_path
+      else:
+        await update.message.reply_text("❌ Couldn't download image or read text.")
+
+  state = context.user_data.get('jurisdiction')
+  if state == "FL":
     await update.message.reply_text("🌴 *FL: Real ID?*", reply_markup=get_options_kb(["YES", "NO"]), parse_mode="Markdown")
     return FL_REAL_ID
+  elif state == "PA":
+    await update.message.reply_text("⭐ *PA: Real ID?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
+    return PA_REAL_ID
 
   await update.message.reply_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
   return FACE_CHECK
+
+async def ask_face(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+  query = update.callback_query
+  await query.answer()
+  if query.data.lower() == "yes":
+    await query.message.edit_text("📤 *Please upload the face image.*", parse_mode="Markdown")
+    return FACE_UPLOAD
+  else:
+    await query.message.edit_text("📄 *2nd Form?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
+    return SECOND_FORM_CHECK
 
 async def get_face_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   file_obj = None
@@ -1065,22 +1134,32 @@ async def get_face_upload(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await file_obj.download_to_drive(raw_path)
     
     clean_path = os.path.join(TEMP_DIR, f"face_{timestamp}.png")
-    success = False
-    if ENABLE_BG_REMOVAL:
-      success = remove_bg_removebg(raw_path, clean_path)
+
+    success = remove_bg_removebg(raw_path, clean_path)
     
     context.user_data["face_path"] = clean_path if success else raw_path
   else:
     await update.message.reply_text("❌ Couldn't download face image.")
   
+  await update.message.reply_text("Face received & processed\n\n📄 *2nd Form?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
+  return SECOND_FORM_CHECK
+
+async def handle_second_form(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+  query = update.callback_query
+  await query.answer()
+  
   if ADMIN_MODE:
-    # await update.message.reply_text("Face received & processed\n\n🛡️ *Admin Mode Active:* Skipping payment. Processing started...", parse_mode="Markdown")
-    await update.message.reply_text("Face received & processed\n\nPlease wait...")
+    await query.message.edit_text("🛡️ *Admin Mode Active:* Skipping payment. Processing started...", parse_mode="Markdown")
     asyncio.create_task(execute_generation(context.bot, update.effective_chat.id, context.user_data))
     return ConversationHandler.END
   else:
-    await update.message.reply_text("Face received & processed\n\nPlease wait...")
-    return await request_payment(update, context)
+    msg_path = os.path.join(BASE_DIR, "Automated Messages", "Messages", "payment_message.txt")
+    payment_msg = "💳 *Please send the payment screenshot.*"
+    if os.path.exists(msg_path):
+      with open(msg_path, "r", encoding="utf-8") as f:
+        payment_msg = f.read()
+    await query.message.edit_text(payment_msg, parse_mode="Markdown")
+    return PAYMENT_UPLOAD
 
 async def execute_generation(bot, chat_id, user_data):
   try:
@@ -1092,6 +1171,7 @@ async def execute_generation(bot, chat_id, user_data):
     barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png = barcode_results
     
     jurisdiction = user_data.get('jurisdiction', 'NJ').strip().upper()
+    logger.info(f"🎨 Routing data to {jurisdiction} module to prepare job files and PSD instructions...")
     
     if jurisdiction == 'PA':
       results = pa_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=big_png, small_png=small_png)
@@ -1107,7 +1187,7 @@ async def execute_generation(bot, chat_id, user_data):
     unique_id, data_path, front_path, back_path, psd_path = results[:5]
     jsx_paths = results[5:]
 
-    await processing_queue.put((bot, chat_id, unique_id, data_path, front_path, back_path, psd_path, jsx_paths))
+    await processing_queue.put((bot, chat_id, unique_id, data_path, front_path, back_path, psd_path, jsx_paths, jurisdiction))
     
   except Exception as e:
     logger.error(f"Failed: {e}")
@@ -1117,50 +1197,72 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   await update.message.reply_text("🚫 Cancelled.")
   return ConversationHandler.END
 
+async def cleanup_worker():
+ """Runs in the background to delete temp files older than 5 days."""
+ while True:
+  try:
+   now = time.time()
+   cutoff = now - (5 * 86400) # 5 days in seconds
+   for f in os.listdir(TEMP_DIR):
+    file_path = os.path.join(TEMP_DIR, f)
+    if os.path.isfile(file_path) and os.stat(file_path).st_mtime < cutoff:
+     os.remove(file_path)
+  except Exception as e:
+   logger.error(f"Cleanup Error: {e}")
+  
+  await asyncio.sleep(86400) # Sleep for 24 hours before checking again
+
 async def post_init(application: Application):
-  asyncio.create_task(process_queue_worker(application))
+ asyncio.create_task(process_queue_worker(application))
+ asyncio.create_task(cleanup_worker())
 
 # --- ADMIN COMMANDS ---
 async def block_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.id != ADMIN_CHAT_ID:
         return
     if not context.args:
-        await update.message.reply_text("⚠️ Usage: /block <user_id>")
+        await update.message.reply_text("⚠️ Usage: /block <user_id or @username>")
         return
+    
+    user_input = context.args[0]
     try:
-        target_id = int(context.args[0])
+        target_id = resolve_user(user_input)
         set_blocked(target_id, True)
-        await update.message.reply_text(f"✅ User `{target_id}` has been permanently blocked.", parse_mode="Markdown")
-    except ValueError:
-        await update.message.reply_text("⚠️ Invalid User ID. Must be a number.")
+        await update.message.reply_text(f"✅ User {user_input} (ID: `{target_id}`) has been permanently blocked.", parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ {e}")
 
 async def unblock_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.id != ADMIN_CHAT_ID:
         return
     if not context.args:
-        await update.message.reply_text("⚠️ Usage: /unblock <user_id>")
+        await update.message.reply_text("⚠️ Usage: /unblock <user_id or @username>")
         return
+    
+    user_input = context.args[0]
     try:
-        target_id = int(context.args[0])
+        target_id = resolve_user(user_input)
         set_blocked(target_id, False)
-        await update.message.reply_text(f"✅ User `{target_id}` has been unblocked.", parse_mode="Markdown")
-    except ValueError:
-        await update.message.reply_text("⚠️ Invalid User ID. Must be a number.")
+        await update.message.reply_text(f"✅ User {user_input} (ID: `{target_id}`) has been unblocked.", parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ {e}")
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.id != ADMIN_CHAT_ID:
         return
     if not context.args:
-        await update.message.reply_text("⚠️ Usage: /status <user_id>")
+        await update.message.reply_text("⚠️ Usage: /status <user_id or @username>")
         return
+    
+    user_input = context.args[0]
     try:
-        target_id = int(context.args[0])
+        target_id = resolve_user(user_input)
         if is_blocked(target_id):
-            await update.message.reply_text(f"🛑 User `{target_id}` is currently BLOCKED.", parse_mode="Markdown")
+            await update.message.reply_text(f"🛑 User {user_input} (ID: `{target_id}`) is currently BLOCKED.", parse_mode="Markdown")
         else:
-            await update.message.reply_text(f"✅ User `{target_id}` is currently ACTIVE (Not Blocked).", parse_mode="Markdown")
-    except ValueError:
-        await update.message.reply_text("⚠️ Invalid User ID. Must be a number.")
+            await update.message.reply_text(f"✅ User {user_input} (ID: `{target_id}`) is currently ACTIVE (Not Blocked).", parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ {e}")
 
 # ==============================================================================
 # MAIN FUNCTION
@@ -1178,45 +1280,35 @@ def main():
             PREVIEW_STATE_SELECT: [CallbackQueryHandler(preview_state_select_handler)],
             
             # STANDARD FLOW
-            STATE_SELECT: [CallbackQueryHandler(select_state, pattern="^(FL|NJ|NY|PA|VA|back_main)$")],
+            STATE_SELECT: [CallbackQueryHandler(select_state, pattern="^([A-Z]{2}|back_main)$")],
+            NJ_DL_ID_CHECK: [CallbackQueryHandler(nj_dl_id_handler)],
+            NJ_GRADE_CHECK: [CallbackQueryHandler(nj_grade_handler)],
             BUY_CHECK: [CallbackQueryHandler(handle_buy_check)],
             BULK_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_bulk_input)],
-            CUSTOM_DL_CHECK: [CallbackQueryHandler(ask_custom_dl)],
-            CUSTOM_DL_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_custom_dl_input)],
             SIGNATURE_CHECK: [CallbackQueryHandler(ask_signature)],
-            SIGNATURE_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, get_signature_upload)],
+            SIGNATURE_INPUT: [MessageHandler(filters.TEXT | filters.Document.ALL | filters.PHOTO, get_signature_input)],
             FACE_CHECK: [CallbackQueryHandler(ask_face)],
             FACE_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, get_face_upload)],
+            SECOND_FORM_CHECK: [CallbackQueryHandler(handle_second_form)],
             PAYMENT_UPLOAD: [MessageHandler(filters.ALL & ~filters.COMMAND, handle_payment_upload)],
 
-            # PA SPECIFIC FLOW
-            PA_DL_CHECK: [CallbackQueryHandler(pa_dl_check)],
-            PA_DL_INPUT: [MessageHandler(filters.TEXT, pa_dl_input)],
-            PA_ISS_CHECK: [CallbackQueryHandler(pa_iss_check)],
-            PA_ISS_INPUT: [MessageHandler(filters.TEXT, pa_iss_input)],
-            PA_EXP_CHECK: [CallbackQueryHandler(pa_exp_check)],
-            PA_EXP_INPUT: [MessageHandler(filters.TEXT, pa_exp_input)],
-            PA_SIG_CHECK: [CallbackQueryHandler(pa_sig_check)],
-            PA_SIG_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, pa_sig_upload)],
-            PA_REAL_ID: [CallbackQueryHandler(pa_real_id)],
-            
             # FL SPECIFIC FLOW
             FL_REAL_ID: [CallbackQueryHandler(fl_ask_real_id)],
             FL_RESTRICTION: [CallbackQueryHandler(fl_ask_restriction)],
             FL_ENDORSEMENT: [CallbackQueryHandler(fl_ask_endorsement)],
             FL_SAFE_DRIVER: [CallbackQueryHandler(fl_ask_safe_driver)],
-            FL_REPLACED: [CallbackQueryHandler(fl_ask_replaced)]
+            FL_REPLACED: [CallbackQueryHandler(fl_ask_replaced)],
+            
+            # PA SPECIFIC FLOW (Retained paths internally if needed)
+            PA_REAL_ID: [CallbackQueryHandler(pa_real_id)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         allow_reentry=True
     )
 
     app.add_handler(conv_handler)
-    
-    # Updated regex to include both 'block' and 'unblock'
     app.add_handler(CallbackQueryHandler(admin_callback, pattern="^(approve|reject|block|unblock)_"))
     
-    # Admin slash commands
     app.add_handler(CommandHandler("block", block_command))
     app.add_handler(CommandHandler("unblock", unblock_command))
     app.add_handler(CommandHandler("status", status_command))

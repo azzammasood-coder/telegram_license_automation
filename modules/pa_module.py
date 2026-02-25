@@ -1,7 +1,11 @@
+# pa_module.py
+
 import os
 import re
-import shutil
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 def clean_path(path: str) -> str:
     """Forces forward slashes for Photoshop compatibility."""
@@ -40,11 +44,17 @@ def extract_dd_from_raw(raw_text: str) -> str:
 
 def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=None, small_png=None):
     
-    # 1. Setup Data
+    # 1. Setup Data & Handle Blanks via API Barcode
     first_name = user_data.get('first_name', '').strip()
     last_name = user_data.get('last_name', '').strip()
     middle_name = user_data.get('middle_name', '').strip()
-    dob_clean = sanitize_filename(user_data.get('dob', '00000000'))
+    logger.info(f"📄 Preparing PA job files and PSD instructions for: {first_name} {last_name}")
+    
+    dob_val = user_data.get('dob', '').strip() or extract_date_from_raw(raw_text, "DBB") or "01/01/2000"
+    final_iss = user_data.get('issue_date', '').strip() or extract_date_from_raw(raw_text, "DBD") or "01/01/2020"
+    final_exp = user_data.get('expires_date', '').strip() or extract_date_from_raw(raw_text, "DBA") or "01/01/2030"
+    
+    dob_clean = sanitize_filename(dob_val)
     unique_id = f"{first_name} {last_name} {dob_clean}"
 
     # 2. Setup Paths
@@ -54,33 +64,15 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     out_front_color = clean_path(os.path.join(job_output_dir, f"Front Color Only.tif"))
     out_front_black = clean_path(os.path.join(job_output_dir, f"Front Black Only.png"))
     
-    # 3. Handle Images & Signature Logic
+    # 3. Handle Images & Unified Signature
     sig_path_source = user_data.get('signature_path')
     face_path_source = user_data.get('face_path')
-    raw_sig_text = user_data.get('signature', '').strip()
 
-    final_sig_path = ""
-    final_sig_text = ""
-    use_sig_image = "FALSE"
-    
-    # Logic: Priority 1 (Image) -> Priority 2 (Provided Text) -> Priority 3 (Default Name)
-    if sig_path_source and os.path.exists(sig_path_source):
-        # 1. Use Image
-        final_sig_path = clean_path(sig_path_source)
-        use_sig_image = "TRUE"
-    elif raw_sig_text and raw_sig_text.lower() not in ["none", "skip", "no", ""]:
-        # 2. Use Provided Text (Title Cased)
-        final_sig_text = raw_sig_text.title()
-    else:
-        # 3. Default (First Name + Last Initial)
-        f_title = first_name.title()
-        l_title = last_name.title()
-        l_init = l_title[0] if l_title else ""
-        final_sig_text = f"{f_title} {l_init}".strip()
+    final_sig_path = clean_path(sig_path_source) if sig_path_source and os.path.exists(sig_path_source) else ""
+    use_sig_image = "TRUE" if final_sig_path else "FALSE"
+    final_sig_text = user_data.get('signature', '').strip()
 
-    final_face_path = ""
-    if face_path_source and os.path.exists(face_path_source):
-        final_face_path = clean_path(face_path_source)
+    final_face_path = clean_path(face_path_source) if face_path_source and os.path.exists(face_path_source) else ""
 
     # 4. Save Barcodes (Back is just the PNG)
     if big_png:
@@ -100,9 +92,10 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     is_real_id = "YES" if "YES" in real_id_input else "NO"
 
     # DL Number
-    final_dl_number = user_data.get('custom_dl', '')
+    final_dl_number = user_data.get('custom_dl', '').strip()
     if not final_dl_number:
         final_dl_number = extract_dl_from_raw(raw_text)
+        
     # Format DL
     clean_dl = re.sub(r'[^a-zA-Z0-9]', '', final_dl_number)
     if len(clean_dl) == 8:
@@ -116,25 +109,12 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     try:
         f_init = first_name[0].upper() if first_name else ""
         l_init = last_name[0].upper() if last_name else ""
-        dob_dt = datetime.strptime(user_data.get('dob', ''), "%m/%d/%Y")
+        dob_dt = datetime.strptime(dob_val, "%m/%d/%Y")
         dob_yy = dob_dt.strftime("%y")
         micro_text = f"{f_init}{l_init}{dob_yy}"
-    except:
+    except Exception as e:
+        logger.error(f"PA Micro Text Error: {e}")
         micro_text = "ERROR"
-
-    # --- DATE LOGIC ---
-    # Try User Input -> Then Try Extracting from Barcode -> Then Empty
-    final_iss = user_data.get('issue_date', '').strip()
-    if not final_iss:
-        final_iss = extract_date_from_raw(raw_text, "DBD")
-        
-    final_exp = user_data.get('expires_date', '').strip()
-    if not final_exp:
-        final_exp = extract_date_from_raw(raw_text, "DBA")
-
-    # Zip: First 5 digits only
-    raw_zip = user_data.get('zip_code', '')
-    zip_5 = raw_zip[:5] if len(raw_zip) >= 5 else raw_zip
 
     # --- GENDER LOGIC (Fix 1/0 -> M/F) ---
     raw_gen = str(user_data.get('gender', '1')).strip().upper()
@@ -160,7 +140,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         # Black Group
         f"Top Micro Initials: {micro_text}",
         f"DL: {formatted_dl}",
-        f"DOB: {user_data.get('dob', '')}",
+        f"DOB: {dob_val}",
         f"Last Name: {last_name.upper()}",
         f"First Middle: {first_name.upper()} {middle_name.upper()}".strip(),
         f"Street 1: {user_data.get('address', '').upper()}",

@@ -1,9 +1,14 @@
+# va_module.py
+
 import os
 import base64
 import re
+import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 def process_grayscale_image(input_path: str, temp_dir: str) -> str:
     try:
@@ -16,14 +21,29 @@ def process_grayscale_image(input_path: str, temp_dir: str) -> str:
         final_img = Image.merge("RGBA", (gray_img, gray_img, gray_img, alpha))
         final_img.save(out_path)
         return out_path
-    except: return input_path
+    except Exception as e:
+        logger.error(f"VA Grayscale Image Error: {e}")
+        return input_path
+
+def extract_date_from_raw(raw_text: str, prefix: str) -> str:
+    """Extracts date from raw barcode text and returns MM/DD/YYYY."""
+    if not raw_text: return ""
+    match = re.search(f"{prefix}([0-9]{{8}})", raw_text)
+    if match:
+        d = match.group(1)
+        return f"{d[0:2]}/{d[2:4]}/{d[4:]}"
+    return ""
 
 def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=None, small_png=None):
     first = user_data.get('first_name', 'Unknown').strip()
     middle = user_data.get('middle_name', '').strip()
     last = user_data.get('last_name', 'Unknown').strip()
-    dob = user_data.get('dob', '01/01/1980')
-    exp = user_data.get('expires_date', '01/01/2030')
+    logger.info(f"📄 Preparing VA job files and PSD instructions for: {first} {last}")
+    
+    # Handle Blanks via API Barcode
+    dob_val = user_data.get('dob', '').strip() or extract_date_from_raw(raw_text, "DBB") or "01/01/2000"
+    iss_val = user_data.get('issue_date', '').strip() or extract_date_from_raw(raw_text, "DBD") or "01/01/2020"
+    exp_val = user_data.get('expires_date', '').strip() or extract_date_from_raw(raw_text, "DBA") or "01/01/2030"
     
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     temp_id = f"va_{first}_{timestamp}"
@@ -39,14 +59,15 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
 
     # --- DATA EXTRACTION ---
     daq_match = re.search(r'DAQ([^\n\r]+)', raw_text)
-    raw_dl = daq_match.group(1).strip().replace(" ", "") if daq_match else "A00000000"
+    extracted_dl = daq_match.group(1).strip().replace(" ", "") if daq_match else "A00000000"
+    raw_dl = user_data.get('custom_dl', '').strip().replace(" ", "") or extracted_dl
 
     dd_match = re.search(r'DCF([^\n\r]+)', raw_text)
     dd_val = dd_match.group(1).strip() if dd_match else "00000000000000000000"
     
     # --- DATE PARSING ---
-    dt_dob = datetime.strptime(dob, "%m/%d/%Y")
-    dt_exp = datetime.strptime(exp, "%m/%d/%Y")
+    dt_dob = datetime.strptime(dob_val, "%m/%d/%Y")
+    dt_exp = datetime.strptime(exp_val, "%m/%d/%Y")
     
     # DOB Strings for Back Circle
     month_str = dt_dob.strftime("%b").upper() # JAN
@@ -54,31 +75,27 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     year_str = dt_dob.strftime("%Y")          # 1980
     
     # --- STRINGS FOR BACK ---
-    # Long Barcode: Zip(5) + Inventory Control + ExpYear(2) -> "00619 001872704 23"
     exp_yy = dt_exp.strftime("%y")
 
     # Priority: DCK (Inventory Control) -> DCF (Document Discriminator) -> Default
     dck_match = re.search(r'DCK([^\n\r]+)', raw_text)
-    inv_val = dck_match.group(1).strip()
+    inv_val = dck_match.group(1).strip() if dck_match else ""
 
     if len(inv_val) == 16:
         inv_val = f"{inv_val[:5]} {inv_val[5:14]} {inv_val[14:]}"
 
-
-    # Name Swirl: "        ARTHUR S JARINGT12345687"
-    # Leading spaces required by template
+    # Name Swirl
     mid_initial = f"{middle}" if middle else ""
     full_swirl = f"{first}{mid_initial}{last}{raw_dl}".upper().replace("  ", " ")
 
     # Micro Text
     full_name_clean = f"{first}{middle}{last}".upper().replace(" ", "")
-    exp_clean = exp.replace("/", "") 
+    exp_clean = exp_val.replace("/", "") 
     micro_base = f"{exp_clean}{full_name_clean}"
     micro_text = (micro_base * 3)[:40]
 
-    # Signature
-    sig_input = user_data.get('signature', '').strip()
-    sig_text_final = sig_input.title() if sig_input and sig_input.lower() != "none" else f"{first.capitalize()} {last[0].upper()}."
+    # Unified Signature Text
+    sig_text_final = user_data.get('signature', '').strip()
 
     # Assets
     gray_face = process_grayscale_image(user_data.get("face_path", ""), TEMP_DIR)
@@ -95,7 +112,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     full_zip = user_data.get('zip_code', '').strip()
 
     # Paths
-    safe_dob = dob.replace("/", "-")
+    safe_dob = dob_val.replace("/", "-")
     main_target_dir = os.path.join(FINAL_DIR, f"{first} {last} VA {safe_dob}")
     front_dir = os.path.join(main_target_dir, "Front")
     back_dir = os.path.join(main_target_dir, "Back")
@@ -136,7 +153,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Dob Short Month: {month_str}",
         f"Exp Month: {dt_exp.strftime('%m')}",
         f"Exp Year Last 2: {exp_yy}",
-        f"Exp Full: {exp}",
+        f"Exp Full: {exp_val}",
         f"First Middle: {first} {middle}",
         f"First Name: {first}",
         f"Middle Name: {middle}",
@@ -149,7 +166,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Micro Text: {micro_text}",
         f"Signature Text: {sig_text_final}",
         f"Initials: {first[0].upper()}{last[0].upper()}",
-        f"Issue Date: {user_data.get('issue_date', '')}",
+        f"Issue Date: {iss_val}",
         "",
         "--- VA BACK DATA ---",
         f"Long Barcode: {inv_val}",
@@ -169,9 +186,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     jsx_front = os.path.join(BASE_DIR, "modules", "process_va_front.jsx")
     jsx_back = os.path.join(BASE_DIR, "modules", "process_va_back.jsx")
     
-    # Return 7 items so the bot can unpack jsx_paths properly
     return temp_id, data_file_path, "", "", "", jsx_front, jsx_back
-
 
 def generate_lightburn_lbrn(data_map, base_dir):
     try:
@@ -180,7 +195,7 @@ def generate_lightburn_lbrn(data_map, base_dir):
         back_dir = data_map.get("Output Dir Back")
         
         if not main_dir or not front_dir or not back_dir:
-            print("❌ LightBurn Error: Missing directory paths.")
+            logger.error("❌ VA LightBurn Error: Missing directory paths.")
             return
 
         lb_out_dir = os.path.join(main_dir, "Lightburn")
@@ -191,14 +206,14 @@ def generate_lightburn_lbrn(data_map, base_dir):
             dst_path = os.path.join(lb_out_dir, template_name)
             
             if not os.path.exists(src_path):
-                print(f"⚠️ Template missing: {src_path}")
+                logger.warning(f"⚠️ VA LightBurn Template missing: {src_path}")
                 return
 
             try:
                 tree = ET.parse(src_path)
                 root = tree.getroot()
                 
-                print(f"\n🔵 --- Processing {template_name} ---")
+                logger.info(f"🔵 --- Processing VA Template {template_name} ---")
                 
                 for shape in root.findall(".//Shape[@Type='Bitmap']"):
                     cut_index = int(shape.get('CutIndex', -1))
@@ -208,7 +223,7 @@ def generate_lightburn_lbrn(data_map, base_dir):
                         png_full_path = os.path.join(png_dir, png_filename)
 
                         if not os.path.exists(png_full_path):
-                            print(f"          ⚠️ FILE MISSING: {png_full_path}")
+                            logger.warning(f"          ⚠️ FILE MISSING for CutIndex {cut_index}: {png_full_path}")
                             continue
                             
                         try:
@@ -216,7 +231,7 @@ def generate_lightburn_lbrn(data_map, base_dir):
                                 raw_data = image_file.read()
                                 encoded_string = base64.b64encode(raw_data).decode('utf-8')
                         except Exception as img_err:
-                            print(f"          ❌ Read Error: {img_err}")
+                            logger.error(f"          ❌ Read Error for {png_full_path}: {img_err}")
                             continue
                         
                         shape.set('Data', encoded_string)
@@ -232,10 +247,10 @@ def generate_lightburn_lbrn(data_map, base_dir):
                                 shape.remove(child)
 
                 tree.write(dst_path)
-                print(f"💾 Saved: {dst_path}")
+                logger.info(f"💾 VA LightBurn File Saved: {dst_path}")
 
             except Exception as e:
-                print(f"❌ Error processing {template_name}: {e}")
+                logger.error(f"❌ Error processing VA template {template_name}: {e}")
 
         # VA FRONT TEMPLATE MAP
         front_map = {
@@ -266,4 +281,4 @@ def generate_lightburn_lbrn(data_map, base_dir):
         process_template("VA Template Back.lbrn2", back_dir, back_map)
 
     except Exception as e:
-        print(f"❌ VA LightBurn Generation Logic Failed: {e}")
+        logger.error(f"❌ VA LightBurn Generation Logic Failed completely: {e}")

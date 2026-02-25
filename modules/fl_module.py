@@ -2,8 +2,10 @@
 
 import os
 import re
+import logging
 from datetime import datetime
-import shutil
+
+logger = logging.getLogger(__name__)
 
 def sanitize_filename(text: str) -> str:
     """Sanitizes text for use in filenames."""
@@ -68,15 +70,29 @@ def extract_dl_from_raw(raw_text: str) -> str:
         return match.group(1)
     return ""
 
+def extract_date_from_raw(raw_text: str, prefix: str) -> str:
+    """Extracts date from raw barcode text and returns MM/DD/YYYY."""
+    if not raw_text: return ""
+    match = re.search(f"{prefix}([0-9]{{8}})", raw_text)
+    if match:
+        d = match.group(1)
+        return f"{d[0:2]}/{d[2:4]}/{d[4:]}"
+    return ""
+
 def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_tiff=None, small_tiff=None):
     """
     Creates the FL specific data.txt file and moves images.
     """
     
-    # 1. Clean Data
+    # 1. Clean Data & Handle Blanks via API Barcode
     first_name = user_data.get('first_name', '').upper()
     last_name = user_data.get('last_name', '').upper()
-    dob_clean = sanitize_filename(user_data.get('dob', '00000000'))
+    dob_val = user_data.get('dob', '').strip() or extract_date_from_raw(raw_text, "DBB") or "01/01/2000"
+    iss_val = user_data.get('issue_date', '').strip() or extract_date_from_raw(raw_text, "DBD") or "01/01/2020"
+    exp_val = user_data.get('expires_date', '').strip() or extract_date_from_raw(raw_text, "DBA") or "01/01/2030"
+    logger.info(f"📄 Preparing FL job files and PSD instructions for: {first_name} {last_name}")
+    
+    dob_clean = sanitize_filename(dob_val)
     unique_id = f"{first_name} {last_name} {dob_clean}"
 
     # 2. Logic Mappings
@@ -86,7 +102,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     safe_driver_input = user_data.get('safe_driver', 'NO').upper()
     safe_driver_graphic = "Visible" if "YES" in safe_driver_input else "Not Visible"
     
-    safe_driver_text = is_safe_driver_text_eligible(user_data.get('issue_date', ''))
+    safe_driver_text = is_safe_driver_text_eligible(iss_val)
 
     replaced_input = user_data.get('replaced', 'NO').upper()
     replaced_visible = "Visible" if "YES" in replaced_input else "Not Visible"
@@ -95,7 +111,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     f_init = first_name[0] if first_name else ""
     l_init = last_name[0] if last_name else ""
     try:
-        dob_dt = datetime.strptime(user_data.get('dob', ''), "%m/%d/%Y")
+        dob_dt = datetime.strptime(dob_val, "%m/%d/%Y")
         dob_yy = dob_dt.strftime("%y")
     except:
         dob_yy = "00"
@@ -111,35 +127,16 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     out_front_color = clean_path(os.path.join(job_output_dir, f"Front_Color_Only.tif"))
     out_front_black = clean_path(os.path.join(job_output_dir, f"Front_Black_Only.tif"))
     
-    # 4. Handle Images & Signature Logic
+    # 4. Handle Images & Unified Signature
     sig_path_source = user_data.get('signature_path')
     face_path_source = user_data.get('face_path')
 
-    final_sig_path = ""
-    final_sig_text = ""
+    final_sig_path = clean_path(sig_path_source) if sig_path_source and os.path.exists(sig_path_source) else ""
+    final_sig_text = user_data.get('signature', '').strip()
     
-    ## Signature Decision Tree
-    if sig_path_source and os.path.exists(sig_path_source):
-        # Use existing temp path directly
-        final_sig_path = clean_path(sig_path_source)
-    else:
-        # Use Text
-        raw_sig = user_data.get('signature_text', '') or user_data.get('signature', '')
-        if raw_sig and raw_sig.upper() not in ["SKIP", "NO", "NONE"]:
-            final_sig_text = raw_sig
-        else:
-            fn = user_data.get('first_name', '').strip().title()
-            ln = user_data.get('last_name', '').strip().title()
-            li = ln[0] if ln else ""
-            final_sig_text = f"{fn} {li}"
-
-    final_face_path = ""
-    if face_path_source and os.path.exists(face_path_source):
-        # Use existing temp path directly
-        final_face_path = clean_path(face_path_source)
+    final_face_path = clean_path(face_path_source) if face_path_source and os.path.exists(face_path_source) else ""
 
     # 5. Save Barcodes (4 Files Total)
-    # [UPDATED] Save Big+Small as both TIFF+SVG with specific names
     if big_tiff:
         with open(os.path.join(job_output_dir, "barcode.tiff"), "wb") as f:
             f.write(big_tiff)
@@ -156,7 +153,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
 
     dd_value = extract_dd_from_raw(raw_text)
 
-    final_dl_number = user_data.get('custom_dl', '')
+    # Priority: User Custom DL -> API Generated DL
+    final_dl_number = user_data.get('custom_dl', '').strip()
     if not final_dl_number:
         final_dl_number = extract_dl_from_raw(raw_text)
 
@@ -176,16 +174,16 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"First Middle: {first_name} {user_data.get('middle_name', '').upper()}",
         f"Street Address Apt/Unit: {user_data.get('address', '').upper()}",
         f"City State Zip: {user_data.get('city', '').upper()} FL {short_zip}",
-        f"Dob: {user_data.get('dob', '')}",
+        f"Dob: {dob_val}",
         f"Sex: {user_data.get('gender', 'M')}",
-        f"Exp: {user_data.get('expires_date', '')}",
+        f"Exp: {exp_val}",
         f"Height: {visual_height}",
         f"Restriction: {user_data.get('restrictions', 'NONE')}",
         f"End: {user_data.get('endorsements', 'NONE')}",
-        f"Issue Date: {user_data.get('issue_date', '')}",
+        f"Issue Date: {iss_val}",
         f"DD: {dd_value}",
         f"Bottom Micro Text: {micro_text}",
-        f"REPLACED DATE: {user_data.get('issue_date', '')}",
+        f"REPLACED DATE: {iss_val}",
         
         f"Real ID Star: {real_id_star}",
         f"Safe Driver Color: {safe_driver_graphic}",

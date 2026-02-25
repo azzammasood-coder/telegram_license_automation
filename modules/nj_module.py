@@ -1,7 +1,11 @@
+# nj_module.py
+
 import os
-import json
 import re
+import logging
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 def sanitize_filename(text: str) -> str:
     return re.sub(r'[<>:"/\\|?*]', '-', text).strip()
@@ -31,12 +35,28 @@ def calculate_chief_logic(issue_date_str: str) -> dict:
     except ValueError: pass
     return results
 
+def extract_date_from_raw(raw_text: str, prefix: str) -> str:
+    """Extracts date from raw barcode text and returns MM/DD/YYYY."""
+    if not raw_text: return ""
+    match = re.search(f"{prefix}([0-9]{{8}})", raw_text)
+    if match:
+        d = match.group(1)
+        return f"{d[0:2]}/{d[2:4]}/{d[4:]}"
+    return ""
+
 def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR):
     """NJ Specific Logic."""
     first = user_data.get('first_name', 'Unknown').strip()
     last = user_data.get('last_name', 'Unknown').strip()
-    issue_clean = sanitize_filename(user_data.get('issue_date', '00-00-0000'))
-    dob_clean = sanitize_filename(user_data.get('dob', '00-00-0000'))
+    logger.info(f"📄 Preparing NJ job files and PSD instructions for: {first} {last}")
+    
+    # Handle Blanks via API Barcode
+    dob_val = user_data.get('dob', '').strip() or extract_date_from_raw(raw_text, "DBB") or "01/01/2000"
+    iss_val = user_data.get('issue_date', '').strip() or extract_date_from_raw(raw_text, "DBD") or "01/01/2020"
+    exp_val = user_data.get('expires_date', '').strip() or extract_date_from_raw(raw_text, "DBA") or "01/01/2030"
+    
+    issue_clean = sanitize_filename(iss_val)
+    dob_clean = sanitize_filename(dob_val)
 
     # Format: First Last NJ DOB
     folder_name = f"{first} {last} NJ {dob_clean}"
@@ -53,13 +73,16 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     raw_data_path = os.path.join(TEMP_DIR, f"raw_data_{temp_id}.txt")
     with open(raw_data_path, "w", encoding="utf-8") as f: f.write(raw_text)
 
-    # Extract Elements
+    # Extract Elements & Priority override with Custom DL
     daq_match = re.search(r'DAQ([^\n\r]+)', raw_text)
     dcf_match = re.search(r'DCF([^\n\r]+)', raw_text)
+    
     extracted_dl = daq_match.group(1).strip() if daq_match else "NOT_FOUND"
+    final_dl = user_data.get('custom_dl', '').strip() or extracted_dl
+    
     extracted_dd = dcf_match.group(1).strip() if dcf_match else "NOT_FOUND"
 
-    dl_clean = extracted_dl.replace(" ", "")
+    dl_clean = final_dl.replace(" ", "")
     formatted_dl = " ".join([dl_clean[i:i+5] for i in range(0, len(dl_clean), 5)]).strip()
 
     ic_raw = get_ic_from_raw(raw_text)[0]
@@ -85,18 +108,10 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     psd_final   = os.path.join(job_output_dir, f"{base_name}.psd")
     
     # NJ Specific Logic
-    logic = calculate_chief_logic(user_data.get("issue_date", ""))
+    logic = calculate_chief_logic(iss_val)
 
-    # --- SIGNATURE LOGIC START ---
-    # 1. Check if user provided custom text
-    sig_input = user_data.get('signature', '').strip()
-    
-    if sig_input:
-        sig_text_final = sig_input.title()
-    else:
-        # 2. Fallback: First Name + Last Initial (e.g. "Joan V")
-        last_initial = last[0].upper() if last else ""
-        sig_text_final = f"{first} {last_initial}".strip()
+    # Unified Signature Logic
+    sig_text_final = user_data.get('signature', '').strip()
 
     lines = [
         "--- SYSTEM CONFIG ---",
@@ -116,9 +131,9 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         lines.append(f"Load Face Image: {face_path}")
 
     # Date Formatting: Replace slashes with dashes
-    issue_fmt = user_data.get('issue_date', '').replace('/', '-')
-    expires_fmt = user_data.get('expires_date', '').replace('/', '-')
-    dob_fmt = user_data.get('dob', '').replace('/', '-')
+    issue_fmt = iss_val.replace('/', '-')
+    expires_fmt = exp_val.replace('/', '-')
+    dob_fmt = dob_val.replace('/', '-')
 
     # Zip Formatting: Convert 070423819 to 07042-3819
     zip_raw = user_data.get('zip_code', '').strip()
