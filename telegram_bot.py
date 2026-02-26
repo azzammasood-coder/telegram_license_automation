@@ -107,8 +107,8 @@ init_db()
   FL_REAL_ID, FL_RESTRICTION, FL_ENDORSEMENT, FL_SAFE_DRIVER, FL_REPLACED,
   PA_DL_CHECK, PA_DL_INPUT, PA_ISS_CHECK, PA_ISS_INPUT, PA_EXP_CHECK, PA_EXP_INPUT,
   PA_SIG_CHECK, PA_SIG_UPLOAD, PA_REAL_ID,
-  FACE_CHECK, FACE_UPLOAD, PAYMENT_UPLOAD   
-) = range(31)
+  FACE_CHECK, FACE_UPLOAD, PAYMENT_UPLOAD, CART_MENU   
+) = range(32)
 
 # Logging Setup
 os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
@@ -564,10 +564,14 @@ async def enter_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     if is_blocked(chat_id):
         return ConversationHandler.END
 
+    cart = context.user_data.get('cart', [])
+    cart_text = f"🛒 View Cart ({len(cart)} items)" if cart else "🛒 Cart (Empty)"
+
     text = "👋WELCOME!\n\n📇Underground Express Store📇\n\nMain Menu"
     keyboard = [
         [InlineKeyboardButton("Shop", callback_data="menu_shop"), InlineKeyboardButton("Rules", callback_data="menu_rules")],
-        [InlineKeyboardButton("Preview", callback_data="menu_preview"), InlineKeyboardButton("Price", callback_data="menu_price")]
+        [InlineKeyboardButton("Preview", callback_data="menu_preview"), InlineKeyboardButton("Price", callback_data="menu_price")],
+        [InlineKeyboardButton(cart_text, callback_data="menu_cart")]
     ]
     
     markup = InlineKeyboardMarkup(keyboard)
@@ -592,6 +596,9 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     ]
     await query.message.edit_text("Select a Category:", reply_markup=InlineKeyboardMarkup(keyboard))
     return SHOP_MENU
+  
+  elif data == "menu_cart":
+    return await show_cart(update, context)
   
   elif data == "menu_rules":
     msg_path = os.path.join(BASE_DIR, "Automated Messages", "Messages", "rules.txt")
@@ -632,6 +639,63 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
   return MAIN_MENU
 
+async def show_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    cart = context.user_data.get('cart', [])
+    
+    if not cart:
+        await query.message.edit_text("🛒 *Your cart is empty.*", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_main")]]), parse_mode="Markdown")
+        return CART_MENU
+        
+    text = "🛒 *Your Cart:*\n\n"
+    keyboard = []
+    
+    for i, item in enumerate(cart):
+        state = item.get('jurisdiction', 'Unknown')
+        fn = item.get('first_name', '')
+        ln = item.get('last_name', '')
+        text += f"{i+1}. {state} - {fn} {ln}\n"
+        keyboard.append([InlineKeyboardButton(f"❌ Remove: {state} ({fn})", callback_data=f"cart_del_{i}")])
+        
+    text += "\nReady to submit?"
+    keyboard.append([InlineKeyboardButton("💳 Checkout & Pay", callback_data="cart_checkout")])
+    keyboard.append([InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_main")])
+    
+    await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    return CART_MENU
+
+async def cart_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    
+    if data == "back_main":
+        return await enter_command(update, context)
+        
+    elif data.startswith("cart_del_"):
+        idx = int(data.split("_")[2])
+        cart = context.user_data.get('cart', [])
+        if 0 <= idx < len(cart):
+            cart.pop(idx)
+            context.user_data['cart'] = cart
+        return await show_cart(update, context)
+        
+    elif data == "cart_checkout":
+        if ADMIN_MODE:
+            await query.message.edit_text("🛡️ *Admin Mode Active:* Skipping payment. Processing started...", parse_mode="Markdown")
+            cart = context.user_data.get('cart', [])
+            for item in cart:
+                asyncio.create_task(execute_generation(context.bot, update.effective_chat.id, item))
+            context.user_data['cart'] = [] # Clear cart
+            return ConversationHandler.END
+        else:
+            msg_path = os.path.join(BASE_DIR, "Automated Messages", "Messages", "payment_message.txt")
+            payment_msg = "💳 *Please send the payment screenshot for your entire order.*"
+            if os.path.exists(msg_path):
+                with open(msg_path, "r", encoding="utf-8") as f:
+                    payment_msg = f.read()
+            await query.message.edit_text(payment_msg, parse_mode="Markdown")
+            return PAYMENT_UPLOAD
 
 async def shop_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   query = update.callback_query
@@ -844,28 +908,41 @@ async def handle_payment_upload(update: Update, context: ContextTypes.DEFAULT_TY
     chat_id = update.effective_chat.id
     job_id = str(uuid.uuid4())[:8]
     
+    cart = context.user_data.get('cart', [])
+    if not cart:
+        await update.message.reply_text("🛒 Your cart is empty.")
+        return ConversationHandler.END
+    
     conn = sqlite3.connect(DB_PATH)
     try:
         conn.execute("INSERT INTO jobs (job_id, chat_id, user_data, status) VALUES (?, ?, ?, ?)",
-                     (job_id, chat_id, json.dumps(context.user_data), "PENDING"))
+                     (job_id, chat_id, json.dumps(cart), "PENDING"))
         conn.commit()
     finally:
         conn.close()
                      
     photo_file = update.message.photo[-1].file_id if update.message.photo else update.message.document.file_id
     keyboard = [
-        [InlineKeyboardButton("✅ Approve", callback_data=f"approve_{job_id}"),
+        [InlineKeyboardButton("✅ Approve All", callback_data=f"approve_{job_id}"),
          InlineKeyboardButton("❌ Reject", callback_data=f"reject_{job_id}")],
         [InlineKeyboardButton("🚫 Block User", callback_data=f"block_{job_id}")]
     ]
     
     username = f"@{update.effective_user.username}" if update.effective_user.username else "No Username"
-    admin_text = f"🚨 New Order [{job_id}]\nState: {context.user_data.get('jurisdiction')}\nName: {context.user_data.get('first_name')} {context.user_data.get('last_name')}\nUser ID: `{chat_id}`\nUsername: {username}"
+    
+    # Build a text list of all items ordered
+    admin_text = f"🚨 New Order [{job_id}] - {len(cart)} Items\n"
+    for i, item in enumerate(cart):
+        admin_text += f"- {item.get('jurisdiction')}: {item.get('first_name')} {item.get('last_name')}\n"
+    admin_text += f"\nUser ID: `{chat_id}`\nUsername: {username}"
     
     if ADMIN_CHAT_ID:
         await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo_file, caption=admin_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
     
-    await update.message.reply_text("⏳ *Please wait for approval.*", parse_mode="Markdown")
+    # Empty cart
+    context.user_data['cart'] = []
+    
+    await update.message.reply_text("⏳ *Order submitted. Please wait for approval.*", parse_mode="Markdown")
     return ConversationHandler.END
 
 async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -887,7 +964,7 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     chat_id, user_data_json = row
-    user_data = json.loads(user_data_json)
+    cart_items = json.loads(user_data_json)
     
     # Helper to clean up previous status tags so they don't stack
     clean_caption = query.message.caption.replace("\n\n🚫 BLOCKED", "").replace("\n\n🔓 UNBLOCKED", "")
@@ -901,9 +978,19 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             conn.close()
         
         await query.edit_message_caption(caption=f"{clean_caption}\n\n✅ APPROVED", reply_markup=None)
-        await context.bot.send_message(chat_id, "✅ *Your payment was approved!* Processing has started.", parse_mode="Markdown")
-        asyncio.create_task(execute_generation(context.bot, chat_id, user_data))
         
+        # Determine how many items are being processed
+        total_items = len(cart_items) if isinstance(cart_items, list) else 1
+        await context.bot.send_message(chat_id, f"✅ *Your payment was approved!* Processing {total_items} item(s).", parse_mode="Markdown")
+        
+        # Loop through list of cart items
+        if isinstance(cart_items, list):
+            for item in cart_items:
+                asyncio.create_task(execute_generation(context.bot, chat_id, item))
+        else:
+            # Fallback just in case an older database job was a single dictionary
+            asyncio.create_task(execute_generation(context.bot, chat_id, cart_items))
+            
     elif action == "reject":
         conn = sqlite3.connect(DB_PATH)
         try:
@@ -1148,18 +1235,21 @@ async def handle_second_form(update: Update, context: ContextTypes.DEFAULT_TYPE)
   query = update.callback_query
   await query.answer()
   
-  if ADMIN_MODE:
-    await query.message.edit_text("🛡️ *Admin Mode Active:* Skipping payment. Processing started...", parse_mode="Markdown")
-    asyncio.create_task(execute_generation(context.bot, update.effective_chat.id, context.user_data))
-    return ConversationHandler.END
-  else:
-    msg_path = os.path.join(BASE_DIR, "Automated Messages", "Messages", "payment_message.txt")
-    payment_msg = "💳 *Please send the payment screenshot.*"
-    if os.path.exists(msg_path):
-      with open(msg_path, "r", encoding="utf-8") as f:
-        payment_msg = f.read()
-    await query.message.edit_text(payment_msg, parse_mode="Markdown")
-    return PAYMENT_UPLOAD
+  # 1. Get existing cart
+  cart = context.user_data.get('cart', [])
+  
+  # 2. Package current item data
+  current_item = {k: v for k, v in context.user_data.items() if k != 'cart'}
+  cart.append(current_item)
+  
+  # 3. Reset user session but keep the cart
+  context.user_data.clear()
+  context.user_data['cart'] = cart
+  
+  await query.message.edit_text("✅ *Item saved to your cart!*\n\nReturning to Main Menu...", parse_mode="Markdown")
+  await asyncio.sleep(1.5)
+  
+  return await enter_command(update, context)
 
 async def execute_generation(bot, chat_id, user_data):
   try:
@@ -1278,6 +1368,7 @@ def main():
             MAIN_MENU: [CallbackQueryHandler(main_menu_handler)],
             SHOP_MENU: [CallbackQueryHandler(shop_menu_handler)],
             PREVIEW_STATE_SELECT: [CallbackQueryHandler(preview_state_select_handler)],
+            CART_MENU: [CallbackQueryHandler(cart_menu_handler)], # <--- THIS LINE IS ADDED
             
             # STANDARD FLOW
             STATE_SELECT: [CallbackQueryHandler(select_state, pattern="^([A-Z]{2}|back_main)$")],
