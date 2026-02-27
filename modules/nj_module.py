@@ -2,6 +2,7 @@
 
 import os
 import re
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -46,9 +47,23 @@ def extract_date_from_raw(raw_text: str, prefix: str) -> str:
 
 def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR):
     """NJ Specific Logic."""
+
+    # 1. Determine the correct PSD template based on user selection
+    config_path = os.path.join(BASE_DIR, "config.json")
+    template_file = "AUTOMATED NJ F AND B.psd" # Default fallback
+    
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+            # Check the document type saved during the Telegram prompt
+            if user_data.get('nj_doc_type') == 'nj_id':
+                template_file = config_data.get('filenames', {}).get('nj_id_psd', 'NJ ID.psd')
+            else:
+                template_file = config_data.get('filenames', {}).get('nj_psd', 'AUTOMATED NJ F AND B.psd')
+
     first = user_data.get('first_name', 'Unknown').strip()
     last = user_data.get('last_name', 'Unknown').strip()
-    logger.info(f"📄 Preparing NJ job files and PSD instructions for: {first} {last}")
+    logger.info(f"📄 Preparing NJ job files and PSD instructions for: {first} {last} (Template: {template_file})")
     
     # Handle Blanks via API Barcode
     dob_val = user_data.get('dob', '').strip() or extract_date_from_raw(raw_text, "DBB") or "01/01/2000"
@@ -115,6 +130,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
 
     lines = [
         "--- SYSTEM CONFIG ---",
+        f"Template File: {template_file}",
         f"Output Front: {front_final.replace('\\', '\\\\')}",
         f"Output Back: {back_final.replace('\\', '\\\\')}",
         f"Output PSD: {psd_final.replace('\\', '\\\\')}",

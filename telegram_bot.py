@@ -41,6 +41,9 @@ ADMIN_MODE     = config['toggles'].get('admin_mode', False)
 # --- Database Setup ---
 DB_PATH = os.path.join(BASE_DIR, "jobs.db")
 def init_db():
+    # Fix: Ensure the directory exists before SQLite tries to create/open the file
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute('''CREATE TABLE IF NOT EXISTS jobs (
                             job_id TEXT PRIMARY KEY,
@@ -56,6 +59,12 @@ def init_db():
         conn.execute('''CREATE TABLE IF NOT EXISTS users (
                             chat_id INTEGER PRIMARY KEY,
                             username TEXT
+                        )''')
+        # NEW: Table to track custom invite links
+        conn.execute('''CREATE TABLE IF NOT EXISTS invites (
+                            token TEXT PRIMARY KEY,
+                            expiry_timestamp REAL,
+                            is_used INTEGER
                         )''')
 init_db()
 
@@ -542,9 +551,58 @@ def get_options_kb(options):
 # ==============================================================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    track_user(update.effective_user)
-    if is_blocked(update.effective_chat.id):
+    user = update.effective_user
+    chat_id = update.effective_chat.id
+    
+    if is_blocked(chat_id):
         return ConversationHandler.END
+
+    # 1. Check if the user is already authorized (Admin or existing in users table)
+    is_authorized = False
+    if chat_id == ADMIN_CHAT_ID:
+        is_authorized = True
+    else:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1 FROM users WHERE chat_id = ?", (chat_id,))
+            if cursor.fetchone() is not None:
+                is_authorized = True
+
+    # 2. If they are a new user, they MUST have a valid token
+    if not is_authorized:
+        if not context.args:
+            await update.message.reply_text("🚫 Unauthorized access. An invite link is required.")
+            return ConversationHandler.END
+            
+        token = context.args[0]
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT expiry_timestamp, is_used FROM invites WHERE token = ?", (token,))
+            row = cursor.fetchone()
+            
+            if not row:
+                await update.message.reply_text("🚫 Invalid invite link.")
+                return ConversationHandler.END
+                
+            expiry, is_used = row
+            if is_used == 1:
+                await update.message.reply_text("🚫 This invite link has already been used.")
+                return ConversationHandler.END
+                
+            if time.time() > expiry:
+                await update.message.reply_text("🚫 This invite link has expired.")
+                return ConversationHandler.END
+                
+            # Burn the token so it can't be used again
+            conn.execute("UPDATE invites SET is_used = 1 WHERE token = ?", (token,))
+            conn.commit()
+            
+        # Grant access & register them in the database for future visits
+        track_user(user)
+        await update.message.reply_text("✅ *Access Granted!* Welcome to the bot.", parse_mode="Markdown")
+    else:
+        # Keep their username updated in the database just in case they changed it
+        track_user(user)
 
     context.user_data.clear()
     text = (
@@ -623,14 +681,8 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return MAIN_MENU
     
   elif data == "menu_preview":
-    keyboard = [
-      [InlineKeyboardButton("FL - Florida", callback_data="prev_FL")],
-      [InlineKeyboardButton("NJ - New Jersey", callback_data="prev_NJ")],
-      [InlineKeyboardButton("NY - New York", callback_data="prev_NY")],
-      [InlineKeyboardButton("PA - Pennsylvania", callback_data="prev_PA")],
-      [InlineKeyboardButton("VA - Virginia", callback_data="prev_VA")],
-      [InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_main")]
-    ]
+    # Use the existing 50 states helper, adding the 'prev_' prefix
+    keyboard = get_50_states_keyboard("prev_")
     await query.message.edit_text("Please Choose A State", reply_markup=InlineKeyboardMarkup(keyboard))
     return PREVIEW_STATE_SELECT
     
@@ -716,33 +768,40 @@ async def shop_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
   return SHOP_MENU
 
 async def preview_state_select_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-  query = update.callback_query
-  await query.answer()
-  data = query.data
+    query = update.callback_query
+    data = query.data
   
-  if data == "back_main":
-    return await enter_command(update, context)
+    if data == "back_main":
+        await query.answer()
+        return await enter_command(update, context)
   
-  state = data.replace("prev_", "")
-  preview_dir = os.path.join(BASE_DIR, "Automated Messages", "Previews", state)
-  back_kb = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_main")]])
-  
-  await query.message.reply_text(f"🔍 Here is the front and back preview for {state}:")
-  
-  if os.path.exists(preview_dir):
-    images = os.listdir(preview_dir)
-    front_img = next((img for img in images if "front" in img.lower()), None)
-    back_img = next((img for img in images if "back" in img.lower()), None)
-
-    if front_img:
-      await context.bot.send_photo(chat_id=query.message.chat_id, photo=open(os.path.join(preview_dir, front_img), 'rb'))
-    if back_img:
-      await context.bot.send_photo(chat_id=query.message.chat_id, photo=open(os.path.join(preview_dir, back_img), 'rb'))
-  else:
-    await query.message.reply_text("Preview images not found for this state.")
+    state = data.replace("prev_", "")
+    preview_dir = os.path.join(BASE_DIR, "Automated Messages", "Previews", state)
     
-  await query.message.reply_text("Select an option below:", reply_markup=back_kb)
-  return MAIN_MENU
+    # 1. Look for images first
+    valid_extensions = ('.png', '.jpg', '.jpeg')
+    images = []
+    if os.path.exists(preview_dir):
+        images = [f for f in os.listdir(preview_dir) if f.lower().endswith(valid_extensions)]
+        
+    # 2. Trigger Popup if no images found
+    if not images:
+        await query.answer(f"Previews for {state} coming soon!", show_alert=True)
+        return PREVIEW_STATE_SELECT
+        
+    # 3. If images exist, proceed to send them
+    await query.answer()
+    back_kb = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Main Menu", callback_data="back_main")]])
+    await query.message.reply_text(f"🔍 Here are the previews for {state}:")
+    
+    for img in images:
+        try:
+            await context.bot.send_photo(chat_id=query.message.chat_id, photo=open(os.path.join(preview_dir, img), 'rb'))
+        except Exception as e:
+            logger.error(f"Failed to send preview {img}: {e}")
+            
+    await query.message.reply_text("Select an option below:", reply_markup=back_kb)
+    return MAIN_MENU
 
 async def handle_buy_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   query = update.callback_query
@@ -1354,6 +1413,39 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"⚠️ {e}")
 
+async def invite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.id != ADMIN_CHAT_ID:
+        return
+        
+    # Default to 24 hours if the admin doesn't provide a timeframe
+    hours = 24.0
+    if context.args:
+        try:
+            hours = float(context.args[0])
+        except ValueError:
+            await update.message.reply_text("⚠️ Usage: /invite <hours>\nExample: /invite 24")
+            return
+            
+    # Generate unique token and expiry timestamp
+    token = uuid.uuid4().hex
+    expiry = time.time() + (hours * 3600)
+    
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("INSERT INTO invites (token, expiry_timestamp, is_used) VALUES (?, ?, 0)", (token, expiry))
+        conn.commit()
+        
+    # Get the bot's username dynamically to format the deep link
+    bot_username = (await context.bot.get_me()).username
+    invite_link = f"https://t.me/{bot_username}?start={token}"
+    
+    await update.message.reply_text(
+        f"✅ *Invite Link Generated*\n\n"
+        f"🔗 Link: `{invite_link}`\n"
+        f"⏳ Expires in: {hours} hours\n\n"
+        f"This link acts as a one-time-use access pass.",
+        parse_mode="Markdown"
+    )
+
 # ==============================================================================
 # MAIN FUNCTION
 # ==============================================================================
@@ -1368,7 +1460,7 @@ def main():
             MAIN_MENU: [CallbackQueryHandler(main_menu_handler)],
             SHOP_MENU: [CallbackQueryHandler(shop_menu_handler)],
             PREVIEW_STATE_SELECT: [CallbackQueryHandler(preview_state_select_handler)],
-            CART_MENU: [CallbackQueryHandler(cart_menu_handler)], # <--- THIS LINE IS ADDED
+            CART_MENU: [CallbackQueryHandler(cart_menu_handler)], 
             
             # STANDARD FLOW
             STATE_SELECT: [CallbackQueryHandler(select_state, pattern="^([A-Z]{2}|back_main)$")],
@@ -1403,6 +1495,7 @@ def main():
     app.add_handler(CommandHandler("block", block_command))
     app.add_handler(CommandHandler("unblock", unblock_command))
     app.add_handler(CommandHandler("status", status_command))
+    app.add_handler(CommandHandler("invite", invite_command)) # <--- ADDED LINE
     
     print(f"✅ Bot is active and polling! (Token ends in: ...{TELEGRAM_BOT_TOKEN[-5:]})")
     print("📝 Waiting for messages in Telegram...")

@@ -36,9 +36,6 @@ var LOG_DIR = new Folder(ROOT_PATH + "logs");
 if (!LOG_DIR.exists) { LOG_DIR.create(); }
 var LOG_FILE  = new File(ROOT_PATH + "logs/process_nj.log");
 
-var PSD_NAME = config.filenames ? config.filenames.nj_psd : "AUTOMATED NJ F AND B.psd";
-var PSD_PATH = ROOT_PATH + "PSDs/" + PSD_NAME;
-
 function main() {
     initLog();
     log("------------------------------------------");
@@ -62,7 +59,12 @@ function main() {
         // 2. PARSE DATA
         var data = parseDataFile(dataFile);
         
-        // 3. OPEN / ACTIVATE TEMPLATE
+        // 3. DETERMINE DYNAMIC TEMPLATE
+        var PSD_NAME = data["Template File"] ? data["Template File"] : (config.filenames ? config.filenames.nj_psd : "AUTOMATED NJ F AND B.psd");
+        var PSD_PATH = ROOT_PATH + "PSDs/" + PSD_NAME;
+        log("Target Template: " + PSD_NAME);
+        
+        // 4. OPEN / ACTIVATE TEMPLATE
         if (!isDocumentOpen(PSD_NAME)) {
             if (new File(PSD_PATH).exists) {
                 log("Opening template: " + PSD_NAME);
@@ -74,12 +76,11 @@ function main() {
         app.activeDocument = app.documents.getByName(PSD_NAME);
         var doc = app.activeDocument;
 
-        // 4. RESET STATE (History Revert to Open)
-        // We do this at the start to ensure a clean slate, but NOT at the end.
+        // 5. RESET STATE (History Revert to Open)
         log("Resetting to original state...");
         doc.activeHistoryState = doc.historyStates[0];
 
-        // 5. PROCESS FRONT
+        // 6. PROCESS FRONT
         log("--- Updating Front Layers ---");
         
         // Root group navigation
@@ -138,7 +139,6 @@ function main() {
             if (sigImgLayer) {
                 sigImgLayer.visible = true;
                 if (sigImgLayer.kind == LayerKind.SMARTOBJECT) {
-                    // This helper opens the SO, places the new image, fits it, deletes old content, saves & closes
                     replaceSmartObject(info, "Signature image", new File(sigImgPath));
                 } else {
                     log("Warning: 'Signature image' layer exists but is not a Smart Object.");
@@ -212,7 +212,6 @@ function main() {
         }
 
         // --- MICRO LOGIC ---
-        // Requirement: Last Initial, last digit in dob year, F initial, 2nd to last digit in dob year
         try {
             var firstName = data["First Edit"] || "";
             var lastName = data["Last Edit"] || "";
@@ -249,7 +248,7 @@ function main() {
         setVisibility(info, "Chief Sig July 1 2022 -", data["Chief Sig July 1 2022 -"]);
         setVisibility(info, "Chief administrator -", data["Chief administrator -"]);
 
-        // 6. PROCESS BACK
+        // 7. PROCESS BACK
         log("--- Updating Back Layers ---");
         var back      = getLayerSet(njPrint, "BACK");
         var backBlack = getLayerSet(back, "Black");
@@ -264,7 +263,7 @@ function main() {
         var lInit = (data["Last Edit"]  || "").charAt(0).toUpperCase();
         updateText(editable, "Dob", fInit + lInit + data["Dob"]);
 
-        // 7. PLACE BARCODES
+        // 8. PLACE BARCODES
         var pathBig = data["Load Big Barcode"];
         var pathSmall = data["Load Small Barcode"];
         
@@ -278,14 +277,14 @@ function main() {
             replaceSmartObject(barcodes, "Small Barcode", new File(pathSmall));
         }
 
-        // 8. SAVE PSD COPY
+        // 9. SAVE PSD COPY
         var psdOut = data["Output PSD"];
         if (psdOut) {
             log("Saving User PSD...");
             savePSD(psdOut);
         }
 
-        // 9. TRIM & EXPORT
+        // 10. TRIM & EXPORT
         var frontOut = data["Output Front"];
         var backOut  = data["Output Back"];
         
@@ -309,7 +308,7 @@ function main() {
         doc.trim(TrimType.TRANSPARENT, true, true, true, true);
         exportPNG(backOut);
 
-        // 10. FINAL CLEANUP (Crucial Step)
+        // 11. FINAL CLEANUP (Crucial Step)
         log("Final Revert...");
         
         // 1. Undo the last Trim action to return to Full Canvas
