@@ -10,6 +10,8 @@ jobs.db
 store bot guide.txt
 logs
 cart guide.txt
+flask_demo.py
+
 
 # Python
 .vscode/
@@ -21,7 +23,7 @@ __pycache__/
 photoshop_log.txt
 active_job.txt
 imp.txt
-prompt.txt
+creds.txt
 offline_test_data.txt
 
 # Sensitive Info

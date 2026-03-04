@@ -31,3 +31,39 @@ Notes:
 
 - For Eyes, it does not matter what user has typed in (BRN or BRO), it is automatically handled in the template. For NJ it is BRN, for NY it is BRO.
 
+Custom Expiry Link Guide:
+
+Step A: Admin Link Generation
+
+From your Admin account, send: /invite 0.05 (this generates a link valid for 3 minutes).
+
+Expected Result: The bot returns a unique URL (e.g., t.me/YourBot?start=uuid...).
+
+Step B: Unauthorized Access
+
+From the secondary Telegram account, search for the bot's username manually and click "Start" (or send /start).
+
+Expected Result: The bot rejects the user: "🚫 Unauthorized access. An invite link is required."
+
+Step C: Valid Authentication & Token Burning
+
+Send the generated URL to the secondary account.
+
+Click the link from the secondary account.
+
+Expected Result: The bot accepts the user: "✅ Access Granted!" and shows the main menu.
+
+Click the exact same link again.
+
+Expected Result: The bot rejects the reuse: "🚫 This invite link has already been used."
+
+Step D: Expiration
+
+From your Admin account, generate another link: /invite 0.05.
+
+Wait 4 minutes.
+
+Click the link.
+
+Expected Result: The bot rejects the link: "🚫 This invite link has expired."
+
