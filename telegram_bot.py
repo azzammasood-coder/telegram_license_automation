@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters,)
-from modules import nj_module, fl_module, pa_module, va_module, ny_module
+from modules import nj_module, fl_module, pa_module, va_module, ny_module, ga_module
 
 # ==============================================================================
 # CONFIGURATION & SETTINGS
@@ -183,7 +183,7 @@ async def process_queue_worker(app: Application):
       while (time.time() - start_time) < timeout:
         
         # --- NY / VA SPECIFIC SUCCESS CONDITION ---
-        if jurisdiction in ["NY", "VA"]:
+        if jurisdiction in ["NY", "VA", "GA"]:
           # NY/VA saves PSDs inside the Front and Back subfolders
           base_name = data_map.get("Base Name", "")
           front_dir = data_map.get("Output Dir Front", "")
@@ -227,30 +227,22 @@ async def process_queue_worker(app: Application):
 
       if success:
         logger.info(f"✅ PSD Generation successful for {unique_id}!")
+        
         # --- LIGHTBURN TRIGGER ---
-        if jurisdiction == "NY":
-          try:
-            logger.info(f"🔥 Generating LightBurn files for NY: {unique_id}")
-            await bot.send_message(chat_id, "Generating LightBurn Files...")
-            await asyncio.get_running_loop().run_in_executor(
-              None, ny_module.generate_lightburn_lbrn, data_map, BASE_DIR
-            )
-            logger.info(f"✅ NY LightBurn generation complete for {unique_id}")
-          except Exception as e:
-            logger.error(f"LightBurn Logic Error: {e}")
-            await bot.send_message(chat_id, f"⚠️ LightBurn Error: {e}")
-            
-        elif jurisdiction == "VA":
-          try:
-            logger.info(f"🔥 Generating LightBurn files for VA: {unique_id}")
-            await bot.send_message(chat_id, "Generating LightBurn Files...")
-            await asyncio.get_running_loop().run_in_executor(
-              None, va_module.generate_lightburn_lbrn, data_map, BASE_DIR
-            )
-            logger.info(f"✅ VA LightBurn generation complete for {unique_id}")
-          except Exception as e:
-            logger.error(f"VA LightBurn Logic Error: {e}")
-            await bot.send_message(chat_id, f"⚠️ VA LightBurn Error: {e}")
+        lightburn_modules = {"NY": ny_module, "VA": va_module, "GA": ga_module}
+
+        if jurisdiction in lightburn_modules:
+            target_module = lightburn_modules[jurisdiction]
+            try:
+                logger.info(f"🔥 Generating LightBurn files for {jurisdiction}: {unique_id}")
+                await bot.send_message(chat_id, "Generating LightBurn Files...")
+                await asyncio.get_running_loop().run_in_executor(
+                    None, target_module.generate_lightburn_lbrn, data_map, BASE_DIR
+                )
+                logger.info(f"✅ {jurisdiction} LightBurn generation complete for {unique_id}")
+            except Exception as e:
+                logger.error(f"{jurisdiction} LightBurn Logic Error: {e}")
+                await bot.send_message(chat_id, f"⚠️ {jurisdiction} LightBurn Error: {e}")
 
         await bot.send_message(chat_id, "🎉 Job Done!")
       else:
@@ -1098,9 +1090,11 @@ async def show_unified_prompt(query, context, state_code):
         "NJ": "H5901 59055 59481",
         "NY": "689 995 677",
         "VA": "T67256730",
-        "FL": "O425-10-46-516-0",
-        "PA": "19 059 959"
+        "FL": "F425-104-65-162-0",
+        "PA": "19 059 959",
+        "GA": "049559674"
     }
+
     sample_dl = dl_formats.get(state_code.upper(), "H5901 59055 59481")
 
     msg = (
@@ -1167,7 +1161,7 @@ async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         return await enter_command(update, context)
         
     selected = query.data.upper()
-    implemented_states = ["NJ", "NY", "FL", "PA", "VA"]
+    implemented_states = ["NJ", "NY", "FL", "PA", "VA", "GA"]
     
     if selected not in implemented_states:
         await query.answer("Coming Soon!", show_alert=True)
@@ -1324,6 +1318,8 @@ async def execute_generation(bot, chat_id, user_data):
     
     if jurisdiction == 'PA':
       results = pa_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=big_png, small_png=small_png)
+    elif jurisdiction == 'GA':
+      results = ga_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
     elif jurisdiction == 'FL':
       results = fl_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,big_tiff=big_tiff, small_tiff=small_tiff)
     elif jurisdiction == 'NY':

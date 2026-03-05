@@ -1,6 +1,6 @@
 {
     "telegram": {
-        "bot_token": "8560545532:AAHHmT0HWhKhz3sp-P29GEK8twaWioxJJrc",
+        "bot_token": "8684861060:AAGKl-bTCfr5VVK3juy4uxFrpcWQ0c_e69A",
         "admin_chat_id": 8237067905
     },
     "api": {
@@ -20,7 +20,9 @@
         "fl_psd": "FL Revision 2020 For Poly.psd",
         "pa_psd": "FRONT PA POLY.psd",
         "va_front": "VA Front.psd",
-        "va_back": "VA Back.psd"
+        "va_back": "VA Back.psd",
+        "ga_front": "GA Front Edit For Laser.psd",
+        "ga_back": "GA Back Edit For Laser.psd"
     },
     "toggles": {
         "admin_mode": false
