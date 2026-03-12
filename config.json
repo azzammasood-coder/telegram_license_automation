@@ -1,6 +1,6 @@
 {
     "telegram": {
-        "bot_token": "8684861060:AAGKl-bTCfr5VVK3juy4uxFrpcWQ0c_e69A",
+        "bot_token": "8560545532:AAHHmT0HWhKhz3sp-P29GEK8twaWioxJJrc",
         "admin_chat_id": 8237067905
     },
     "api": {
@@ -22,7 +22,9 @@
         "va_front": "VA Front.psd",
         "va_back": "VA Back.psd",
         "ga_front": "GA Front Edit For Laser.psd",
-        "ga_back": "GA Back Edit For Laser.psd"
+        "ga_back": "GA Back Edit For Laser.psd",
+        "tx_front": "TX Front.psd",
+        "tx_back": "TX Back.psd"
     },
     "toggles": {
         "admin_mode": false

@@ -7,13 +7,14 @@ import subprocess
 import requests
 import re
 import json
+import random
 import base64
 import sqlite3
 import uuid
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters,)
-from modules import nj_module, fl_module, pa_module, va_module, ny_module, ga_module
+from modules import nj_module, fl_module, pa_module, va_module, ny_module, ga_module, tx_module
 
 # ==============================================================================
 # CONFIGURATION & SETTINGS
@@ -182,9 +183,9 @@ async def process_queue_worker(app: Application):
 
       while (time.time() - start_time) < timeout:
         
-        # --- NY / VA SPECIFIC SUCCESS CONDITION ---
-        if jurisdiction in ["NY", "VA", "GA"]:
-          # NY/VA saves PSDs inside the Front and Back subfolders
+        # --- NY / VA / GA / TX SPECIFIC SUCCESS CONDITION ---
+        if jurisdiction in ["NY", "VA", "GA", "TX"]:
+          # NY/VA/GA/TX saves PSDs inside the Front and Back subfolders
           base_name = data_map.get("Base Name", "")
           front_dir = data_map.get("Output Dir Front", "")
           back_dir = data_map.get("Output Dir Back", "")
@@ -229,13 +230,18 @@ async def process_queue_worker(app: Application):
         logger.info(f"✅ PSD Generation successful for {unique_id}!")
         
         # --- LIGHTBURN TRIGGER ---
-        lightburn_modules = {"NY": ny_module, "VA": va_module, "GA": ga_module}
+        lightburn_modules = {
+            "NY": ny_module,
+            "VA": va_module,
+            "GA": ga_module,
+            "TX": tx_module
+        }
 
         if jurisdiction in lightburn_modules:
             target_module = lightburn_modules[jurisdiction]
             try:
-                logger.info(f"🔥 Generating LightBurn files for {jurisdiction}: {unique_id}")
-                await bot.send_message(chat_id, "Generating LightBurn Files...")
+                logger.info(f"Generating LightBurn files for {jurisdiction}: {unique_id}")
+                # await bot.send_message(chat_id, "Generating LightBurn Files...")
                 await asyncio.get_running_loop().run_in_executor(
                     None, target_module.generate_lightburn_lbrn, data_map, BASE_DIR
                 )
@@ -244,9 +250,9 @@ async def process_queue_worker(app: Application):
                 logger.error(f"{jurisdiction} LightBurn Logic Error: {e}")
                 await bot.send_message(chat_id, f"⚠️ {jurisdiction} LightBurn Error: {e}")
 
-        await bot.send_message(chat_id, "🎉 Job Done!")
+        await bot.send_message(chat_id, "Job Done!")
       else:
-        await bot.send_message(chat_id, "😔 Job took very long...")
+        await bot.send_message(chat_id, "Job still processing...")
 
     except Exception as e:
       logger.error(f"Worker Error: {e}")
@@ -358,169 +364,180 @@ def parse_bulk_input(text: str) -> dict:
 # CORE LOGIC (API)
 # ==============================================================================
 
-import random # Add this import at top if missing
-
 def generate_barcodes(user_data: dict, api_height: str):
-  headers = {"Authorization": f"Bearer {FIS_API_KEY}", "Content-Type": "application/x-www-form-urlencoded"}
-  state = user_data.get("jurisdiction", "NJ").upper().strip()
-  if state == "FL": state = "FL"
+    headers = {"Authorization": f"Bearer {FIS_API_KEY}", "Content-Type": "application/x-www-form-urlencoded"}
+    state = user_data.get("jurisdiction", "NJ").upper().strip()
+    if state == "FL": state = "FL"
 
-  # --- COMMON PREP ---
-  eye_map = {
-    "BRN": "BRO", "BROWN": "BRO", "BLU": "BLU", "BLUE": "BLU",
-    "GRN": "GRN", "GREEN": "GRN", "HZL": "HAZ", "HAZEL": "HAZ", 
-    "BLK": "BLK", "BLACK": "BLK", "GRY": "GRY", "GRAY": "GRY"
-  }
-  raw_eyes = user_data.get("eyes", "BRO").upper().strip()
-  api_eyes = eye_map.get(raw_eyes, raw_eyes)[:3] 
-
-  # Truncation Calculation (Common)
-  fn_len = len(user_data.get("first_name", "").strip())
-  mn_len = len(user_data.get("middle_name", "").strip())
-  ln_len = len(user_data.get("last_name", "").strip())
-  trunc_first = "T" if fn_len == 1 else "N"
-  trunc_last = "T" if ln_len == 1 else "N"
-  trunc_middle = "T" if mn_len == 1 else "N" if mn_len > 1 else ""
-
-  # Real ID (Common)
-  real_id_status = "N"
-  if "VISIBLE" in user_data.get("real_id", "").upper() or "YES" in user_data.get("real_id", "").upper():
-    real_id_status = "F"
-
-  # ==========================================================================
-  # FLORIDA SPECIFIC LOGIC (Strict Ordering + Safe Driver Fix)
-  # ==========================================================================
-  if state == "FL":
-    # 1. FL Specific Variables
-    safe_driver_val = "2"
-    val_safe = user_data.get("safe_driver", "").strip().upper()
-    if val_safe == "YES" or val_safe == "VISIBLE":
-      safe_driver_val = "1"
-
-    replaced_date_val = ""
-    if user_data.get("replaced", "").upper() == "YES":
-      replaced_date_val = format_date_for_api(user_data.get("issue_date", ""))
-
-    customer_id = f"{random.randint(0, 9999999999):010d}"
-
-    # 2. FL Payload Construction
-    payload = {
-      "jurisdiction": state, 
-      "document": "DL", 
-      "save": "true",
-      
-      # Standard D-Fields
-      "data[DAC]": user_data.get("first_name", "").upper(),
-      "data[DCS]": user_data.get("last_name", "").upper(),
-      "data[DAG]": user_data.get("address", "").upper(), 
-      "data[DAI]": user_data.get("city", "").upper(),
-      "data[DAJ]": user_data.get("state_code", state).upper(), 
-      "data[DAK]": user_data.get("zip_code", ""),
-      "data[DBC]": "1" if user_data.get("gender", "M").upper() in ["M", "1", "MALE"] else "2", 
-      "data[DBB]": format_date_for_api(user_data.get("dob", "")),
-      "data[DAU]": api_height, 
-      "data[DAY]": api_eyes,       
-      "data[DDA]": real_id_status,    
-      "data[DDF]": trunc_first,  
-      "data[DDE]": trunc_last,  
-      "data[DCA]": user_data.get("class", "E").upper(), 
-      "data[DCB]": user_data.get("restrictions", "NONE").upper(),
-      "data[DCD]": user_data.get("endorsements", "NONE").upper(),
-      "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
-      "data[DBD]": format_date_for_api(user_data.get("issue_date", "")),
-      "data[DCK]": user_data.get("inventory_control", "")
+    # --- COMMON PREP ---
+    eye_map = {
+        "BRN": "BRO", "BROWN": "BRO", "BLU": "BLU", "BLUE": "BLU",
+        "GRN": "GRN", "GREEN": "GRN", "HZL": "HAZ", "HAZEL": "HAZ", 
+        "BLK": "BLK", "BLACK": "BLK", "GRY": "GRY", "GRAY": "GRY"
     }
+    raw_eyes = user_data.get("eyes", "BRO").upper().strip()
+    api_eyes = eye_map.get(raw_eyes, raw_eyes)[:3] 
 
-    # Optional D-Fields (MUST be added BEFORE Z-Fields)
-    if user_data.get("custom_dl"):
-      payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
+    # Truncation Calculation (Common)
+    fn_len = len(user_data.get("first_name", "").strip())
+    mn_len = len(user_data.get("middle_name", "").strip())
+    ln_len = len(user_data.get("last_name", "").strip())
+    trunc_first = "T" if fn_len == 1 else "N"
+    trunc_last = "T" if ln_len == 1 else "N"
+    trunc_middle = "T" if mn_len == 1 else "N" if mn_len > 1 else ""
 
-    if mn_len > 0:
-      payload["data[DAD]"] = user_data.get("middle_name", "").upper()
-      payload["data[DDG]"] = trunc_middle
+    # Real ID (Common)
+    real_id_status = "N"
+    if "VISIBLE" in user_data.get("real_id", "").upper() or "YES" in user_data.get("real_id", "").upper():
+        real_id_status = "F"
 
-    # Auxiliary Z-Fields (Strict Order)
-    payload["data[ZFA]"] = replaced_date_val   
-    payload["data[ZFB]"] = ""          
-    payload["data[ZFC]"] = safe_driver_val    
-    payload["data[ZFD]"] = "N"          
-    payload["data[ZFE]"] = "N"          
-    payload["data[ZFF]"] = "N"          
-    payload["data[ZFG]"] = "N"          
-    payload["data[ZFH]"] = "N"          
-    payload["data[ZFI]"] = "None"        
-    payload["data[ZFJ]"] = customer_id      
-    payload["data[ZFK]"] = ""          
+    # ==========================================================================
+    # FLORIDA SPECIFIC LOGIC (Strict Ordering + Safe Driver Fix)
+    # ==========================================================================
+    if state == "FL":
+        # 1. FL Specific Variables
+        safe_driver_val = "2"
+        val_safe = user_data.get("safe_driver", "").strip().upper()
+        if val_safe == "YES" or val_safe == "VISIBLE":
+            safe_driver_val = "1"
 
-    # Manufacturer Data (Using ORI to fix Safe Driver)
-    payload["data[ZNA]"] = "WX"
-    payload["data[ZNB]"] = "11.00"
-    payload["data[ZNC]"] = "ORI" 
+        replaced_date_val = ""
+        if user_data.get("replaced", "").upper() == "YES":
+            replaced_date_val = format_date_for_api(user_data.get("issue_date", ""))
 
-  # ==========================================================================
-  # NJ / NY SPECIFIC LOGIC (Legacy Payload)
-  # ==========================================================================
-  else:
-    payload = {
-      "jurisdiction": state, 
-      "document": "DL", "save": "true",
-      "data[DAC]": user_data.get("first_name", "").upper(),
-      "data[DCS]": user_data.get("last_name", "").upper(),
-      "data[DAG]": user_data.get("address", "").upper(), 
-      "data[DAI]": user_data.get("city", "").upper(),
-      "data[DAJ]": user_data.get("state_code", state).upper(), 
-      "data[DAK]": user_data.get("zip_code", ""),
-      # NJ/NY logic often passes '1' or '2' directly or defaults to '1'
-      "data[DBC]": user_data.get("gender", "1"),
-      "data[DBB]": format_date_for_api(user_data.get("dob", "")),
-      "data[DAU]": api_height, 
-      "data[DAY]": api_eyes,       
-      "data[DDA]": real_id_status,    
-      "data[DDF]": trunc_first, 
-      "data[DDE]": trunc_last,  
-      "data[DCA]": user_data.get("class", "D").upper(), 
-      "data[DCB]": user_data.get("restrictions", "NONE").upper(),
-      "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
-      "data[DBD]": format_date_for_api(user_data.get("issue_date", "")),
-      
-      # Legacy Manufacturer Data
-      "data[ZNA]": "WX", 
-      "data[ZNB]": "11.00", 
-      "data[ZNC]": "DUP", 
-      "data[DDC]": "1"
-    }
+        customer_id = f"{random.randint(0, 9999999999):010d}"
 
-    if user_data.get("custom_dl"):
-      payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
+        # 2. FL Payload Construction
+        payload = {
+            "jurisdiction": state, 
+            "document": "DL", 
+            "save": "true",
+            
+            # Standard D-Fields
+            "data[DAC]": user_data.get("first_name", "").upper(),
+            "data[DCS]": user_data.get("last_name", "").upper(),
+            "data[DAG]": user_data.get("address", "").upper(), 
+            "data[DAI]": user_data.get("city", "").upper(),
+            "data[DAJ]": user_data.get("state_code", state).upper(), 
+            "data[DAK]": user_data.get("zip_code", ""),
+            "data[DBC]": "1" if user_data.get("gender", "M").upper() in ["M", "1", "MALE"] else "2", 
+            "data[DBB]": format_date_for_api(user_data.get("dob", "")),
+            "data[DAU]": api_height, 
+            "data[DAY]": api_eyes,       
+            "data[DDA]": real_id_status,    
+            "data[DDF]": trunc_first,  
+            "data[DDE]": trunc_last,  
+            "data[DCA]": user_data.get("class", "E").upper(), 
+            "data[DCB]": user_data.get("restrictions", "NONE").upper(),
+            "data[DCD]": user_data.get("endorsements", "NONE").upper(),
+            "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
+            "data[DBD]": format_date_for_api(user_data.get("issue_date", "")),
+            "data[DCK]": user_data.get("inventory_control", "")
+        }
 
-    if mn_len > 0:
-      payload["data[DAD]"] = user_data.get("middle_name", "").upper()
-      payload["data[DDG]"] = trunc_middle
+        # Optional D-Fields (MUST be added BEFORE Z-Fields)
+        if user_data.get("custom_dl"):
+            payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
 
-  logger.info(f"🚀 Sending payload to FIS API for state: {state}")
+        if mn_len > 0:
+            payload["data[DAD]"] = user_data.get("middle_name", "").upper()
+            payload["data[DDG]"] = trunc_middle
 
-  # --- EXECUTE REQUEST ---
-  resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=60)
-  resp.raise_for_status()
-  barcode_id = resp.headers.get("X-Barcode-ID")
-  
-  logger.info(f"✅ Barcode successfully generated! Barcode ID: {barcode_id}")
+        # Auxiliary Z-Fields (Strict Order)
+        payload["data[ZFA]"] = replaced_date_val   
+        payload["data[ZFB]"] = ""          
+        payload["data[ZFC]"] = safe_driver_val    
+        payload["data[ZFD]"] = "N"          
+        payload["data[ZFE]"] = "N"          
+        payload["data[ZFF]"] = "N"          
+        payload["data[ZFG]"] = "N"          
+        payload["data[ZFH]"] = "N"          
+        payload["data[ZFI]"] = "None"        
+        payload["data[ZFJ]"] = customer_id      
+        payload["data[ZFK]"] = ""          
 
-  # Fetch all formats
-  params = {"barcode_id": barcode_id}
-  
-  big_svg = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/svg+xml"}, params=params, timeout=60).content
-  small_svg = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/svg+xml"}, params=params, timeout=60).content
-  
-  big_tiff = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/tiff"}, params=params, timeout=60).content
-  small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/tiff"}, params=params, timeout=60).content
-  
-  raw_text = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "text/plain"}, params=params, timeout=60).text
-  
-  big_png = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/png"}, params=params, timeout=60).content
-  small_png = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/png"}, params=params, timeout=60).content
+        # Manufacturer Data (Using ORI to fix Safe Driver)
+        payload["data[ZNA]"] = "WX"
+        payload["data[ZNB]"] = "11.00"
+        payload["data[ZNC]"] = "ORI" 
 
-  return barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png
+    # ==========================================================================
+    # STANDARD SPECIFIC LOGIC (Legacy Payload)
+    # ==========================================================================
+    else:
+        payload = {
+            "jurisdiction": state, 
+            "document": "DL", "save": "true",
+            "data[DAC]": user_data.get("first_name", "").upper(),
+            "data[DCS]": user_data.get("last_name", "").upper(),
+            "data[DAG]": user_data.get("address", "").upper(), 
+            "data[DAI]": user_data.get("city", "").upper(),
+            "data[DAJ]": user_data.get("state_code", state).upper(), 
+            "data[DAK]": user_data.get("zip_code", ""),
+            "data[DBC]": user_data.get("gender", "1"),
+            "data[DBB]": format_date_for_api(user_data.get("dob", "")),
+            "data[DAU]": api_height, 
+            "data[DAY]": api_eyes,       
+            "data[DDA]": real_id_status,    
+            "data[DDF]": trunc_first, 
+            "data[DDE]": trunc_last,  
+            "data[DCA]": user_data.get("class", "D").upper(), 
+            "data[DCB]": user_data.get("restrictions", "NONE").upper(),
+            "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
+            "data[DBD]": format_date_for_api(user_data.get("issue_date", "")),
+            
+            # Legacy Manufacturer Data
+            "data[ZNA]": "WX", 
+            "data[ZNB]": "11.00", 
+            "data[ZNC]": "DUP", 
+            "data[DDC]": "1"
+        }
+
+        # Inject DCK, DDB, and API Revision strictly for TX
+        if state == "TX":
+            payload["revision"] = "0900-2021" # Forces API to use the older TX template
+            payload["data[DDB]"] = "2021-07-16"
+            
+        #     if user_data.get("inventory_control"):
+        #         payload["data[DCK]"] = user_data.get("inventory_control")
+        #     else:
+        #         # Dynamically generate an 11-digit random inventory number
+        #         payload["data[DCK]"] = str(random.randint(10000000000, 99999999999))
+                
+        # elif user_data.get("inventory_control"):
+        #     payload["data[DCK]"] = user_data.get("inventory_control")
+
+        if user_data.get("custom_dl"):
+            payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
+
+        if mn_len > 0:
+            payload["data[DAD]"] = user_data.get("middle_name", "").upper()
+            payload["data[DDG]"] = trunc_middle
+
+    logger.info(f"🚀 Sending payload to FIS API for state: {state}")
+
+    # --- EXECUTE REQUEST ---
+    resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=60)
+    resp.raise_for_status()
+    barcode_id = resp.headers.get("X-Barcode-ID")
+    
+    logger.info(f"✅ Barcode successfully generated! Barcode ID: {barcode_id}")
+
+    # Fetch all formats
+    params = {"barcode_id": barcode_id}
+    
+    big_svg = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/svg+xml"}, params=params, timeout=60).content
+    small_svg = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/svg+xml"}, params=params, timeout=60).content
+    
+    big_tiff = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/tiff"}, params=params, timeout=60).content
+    small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/tiff"}, params=params, timeout=60).content
+    
+    raw_text = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "text/plain"}, params=params, timeout=60).text
+    
+    big_png = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/png"}, params=params, timeout=60).content
+    small_png = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/png"}, params=params, timeout=60).content
+
+    return barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png
 
 # ==============================================================================
 # TELEGRAM FLOW
@@ -1092,7 +1109,8 @@ async def show_unified_prompt(query, context, state_code):
         "VA": "T67256730",
         "FL": "F425-104-65-162-0",
         "PA": "19 059 959",
-        "GA": "049559674"
+        "GA": "049559674",
+        "TX": "96136059"
     }
 
     sample_dl = dl_formats.get(state_code.upper(), "H5901 59055 59481")
@@ -1161,7 +1179,7 @@ async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         return await enter_command(update, context)
         
     selected = query.data.upper()
-    implemented_states = ["NJ", "NY", "FL", "PA", "VA", "GA"]
+    implemented_states = ["NJ", "NY", "FL", "PA", "VA", "GA", "TX"]
     
     if selected not in implemented_states:
         await query.answer("Coming Soon!", show_alert=True)
@@ -1326,6 +1344,8 @@ async def execute_generation(bot, chat_id, user_data):
       results = ny_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
     elif jurisdiction == 'VA':
       results = va_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png, small_png)
+    elif jurisdiction == 'TX':
+      results = tx_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
     else: # NJ
       results = nj_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
 

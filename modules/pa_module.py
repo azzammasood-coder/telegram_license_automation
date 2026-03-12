@@ -83,9 +83,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
             f.write(small_png)
 
     # 5. Logic Mappings
-    # Zip: First 5 digits only
-    raw_zip = user_data.get('zip_code', '')
-    zip_5 = raw_zip[:5] if len(raw_zip) >= 5 else raw_zip
+    # Zip: Use the full zip code instead of truncating
+    full_zip = user_data.get('zip_code', '').strip()
 
     # Real ID
     real_id_input = user_data.get('real_id', 'NO').upper()
@@ -144,7 +143,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Last Name: {last_name.upper()}",
         f"First Middle: {first_name.upper()} {middle_name.upper()}".strip(),
         f"Street 1: {user_data.get('address', '').upper()}",
-        f"City State Zip: {user_data.get('city', '').upper()}, PA {zip_5}",
+        f"City State Zip: {user_data.get('city', '').upper()}, PA {full_zip}",
         f"Exp Date: {final_exp}",  
         f"Iss Date: {final_iss}",
         f"Sex: {final_sex}",
