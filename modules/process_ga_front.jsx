@@ -151,9 +151,30 @@ function main() {
                     try {
                         var item = exportsFront[i];
                         var savePath = frontDir + "/" + item.name + ".png";
-                        exportLayer(doc, item.target, savePath);
+                        
+                        if (item.name === "6 Big Photo") {
+                            log("Special Exporting: 6 Big Photo + Bg");
+                            // Duplicate entire canvas safely
+                            var tempDoc = doc.duplicate("temp_photo", false);
+                            var tempMainGroup = tempDoc.layerSets.getByName("FRNT");
+                            
+                            // Hide everything, then show ONLY the two groups we want merged
+                            hideAllInSet(tempMainGroup); 
+                            showLayerPath(tempMainGroup, "6 Big Photo");
+                            showLayerPath(tempMainGroup, "1 Big Photo Bg");
+                            
+                            // Export and close temp document
+                            exportPNG(new File(savePath));
+                            tempDoc.close(SaveOptions.DONOTSAVECHANGES);
+                            
+                            // Return focus to master doc
+                            app.activeDocument = doc;
+                        } else {
+                            // Run the standard export for everything else
+                            exportLayer(doc, item.target, savePath);
+                        }
                     } catch(e) {
-                        log("Skipped or missing front export layer: " + exportsFront[i].name);
+                        log("Skipped or missing front export layer: " + exportsFront[i].name + " | Error: " + e);
                     }
                 }
             } catch(e) {

@@ -75,7 +75,7 @@ function main() {
 
                     var smallBarcodePath = data["Load Small Barcode"];
                     if (smallBarcodePath && new File(smallBarcodePath).exists) {
-                        replaceSmartObject(barcodeGroup, "2 Small barcode", new File(smallBarcodePath));
+                        replaceSmartObject(barcodeGroup, "2 Small barcode", new File(smallBarcodePath), 90);
                     }
                 }
             }
@@ -401,7 +401,7 @@ function replaceFace(parentSet, layerName, filePath, zoomAmount) {
     }
 }
 
-function replaceSmartObject(parentSet, layerName, fileRef, doBg) {
+function replaceSmartObject(parentSet, layerName, fileRef, rotateAngle) {
     if (!parentSet || !fileRef.exists) return;
     try {
         var foundLayer = null;
@@ -413,7 +413,6 @@ function replaceSmartObject(parentSet, layerName, fileRef, doBg) {
             }
         }
         if (foundLayer && foundLayer.kind == LayerKind.SMARTOBJECT) {
-            log("Replacing SO: " + foundLayer.name);
             app.activeDocument.activeLayer = foundLayer;
             executeAction(stringIDToTypeID("placedLayerEditContents"), new ActionDescriptor(), DialogModes.NO);
             var soDoc = app.activeDocument;
@@ -425,29 +424,18 @@ function replaceSmartObject(parentSet, layerName, fileRef, doBg) {
             executeAction(idPlc, desc, DialogModes.NO);
             
             var newLayer = soDoc.activeLayer;
+
+            // Apply rotation if an angle was provided
+            if (rotateAngle) {
+                newLayer.rotate(rotateAngle, AnchorPosition.MIDDLECENTER);
+            }
+
             var docW = soDoc.width.as("px"); var docH = soDoc.height.as("px");
             var bounds = newLayer.bounds; 
             var layerW = bounds[2].as("px")-bounds[0].as("px");
             var layerH = bounds[3].as("px")-bounds[1].as("px");
             var scaleX = (docW/layerW)*100; var scaleY = (docH/layerH)*100;
             newLayer.resize(scaleX, scaleY, AnchorPosition.MIDDLECENTER);
-            
-            if(doBg) {
-                try {
-                    var idautoCutout = stringIDToTypeID("autoCutout");
-                    var desc2 = new ActionDescriptor();
-                    desc2.putBoolean(stringIDToTypeID("sampleAllLayers"), false);
-                    executeAction(idautoCutout, desc2, DialogModes.NO);
-                    var idMk = charIDToTypeID("Mk  ");
-                    var desc3 = new ActionDescriptor();
-                    desc3.putClass(charIDToTypeID("Nw  "), charIDToTypeID("Chnl"));
-                    var ref = new ActionReference();
-                    ref.putEnumerated(charIDToTypeID("Chnl"), charIDToTypeID("Chnl"), charIDToTypeID("Msk "));
-                    desc3.putReference(charIDToTypeID("At  "), ref);
-                    desc3.putEnumerated(charIDToTypeID("Usng"), charIDToTypeID("UsrM"), charIDToTypeID("RvlS"));
-                    executeAction(idMk, desc3, DialogModes.NO);
-                } catch(e) {}
-            }
             
             for(var j=soDoc.layers.length-1; j>=0; j--) {
                 if(soDoc.layers[j] != newLayer) soDoc.layers[j].remove();

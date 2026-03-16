@@ -83,7 +83,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     addr1 = user_data.get('address', '').upper()
     city = user_data.get('city', '').upper()
     state = user_data.get('state_code', 'GA').upper()
-    zip_code = user_data.get('zip_code', '').split('-')[0]
+    zip_code = user_data.get('zip_code', '')
     city_state_zip = f"{city}, {state} {zip_code}"
     
     county = user_data.get('county', 'FULTON').upper()
@@ -159,7 +159,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Feet: {feet}",
         f"Inches: {inches}",
         f"Eyes: {'BRO' if user_data.get('eyes', '').upper().strip() in ['BRN', 'BROWN'] else user_data.get('eyes', 'BRO').upper()[:3]}",
-        f"Weight: {weight}",
+        f"Weight: {weight} lb",
         f"DD: {doc_discriminator}",
         f"Signature Text: {sig_text_final}", 
         "",
@@ -176,56 +176,120 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
 
     return temp_id, data_file_path, front_final, back_final, psd_final, jsx_front, jsx_back
 
+import base64
+import os
+import xml.etree.ElementTree as ET
+import logging
+
 def generate_lightburn_lbrn(data_map, base_dir):
+    base_name = data_map.get("Base Name", "Unknown")
+    logging.info(f"Starting LightBurn Base64 generation for GA: {base_name}")
+    
+    main_dir = data_map.get("Output Dir", "")
     front_dir = data_map.get("Output Dir Front", "")
     back_dir = data_map.get("Output Dir Back", "")
-    base_name = data_map.get("Base Name", "Unknown")
 
-    # Assuming standard Lightburn template directory structure
+    # 1. Create a dedicated Lightburn folder inside the main job directory
+    lightburn_out_dir = os.path.join(main_dir, "Lightburn")
+    os.makedirs(lightburn_out_dir, exist_ok=True)
+
+    # 2. Path definitions
     template_front = os.path.join(base_dir, "Lightburn", "GA Laser Front.lbrn2")
     template_back = os.path.join(base_dir, "Lightburn", "GA Laser Back.lbrn2")
 
-    out_front = os.path.join(front_dir, f"{base_name}_Front.lbrn2")
-    out_back = os.path.join(back_dir, f"{base_name}_Back.lbrn2")
+    out_front = os.path.join(lightburn_out_dir, f"{base_name}_Front.lbrn2")
+    out_back = os.path.join(lightburn_out_dir, f"{base_name}_Back.lbrn2")
 
-    # Exact mappings from the instruction prompt
+    # 3. Mappings (CutIndex integers & String fallback)
     front_mapping = {
-        "2 Do Not Touch": "2 Do Not Touch.png",
-        "3 Star": "3 Star.png",
-        "4 TEXT EDIT": "4 Text Edit.png",
-        "5 Raised": "5 Raised.png",
-        "6 Big Photo": "6 Big Photo.png",
-        "7 Lens Photo": "7 Lens Photo.png",
+        2: "2 Do Not Touch.png",
+        3: "3 Star.png",
+        4: "4 Text Edit.png",
+        5: "5 Raised.png",
+        6: "6 Big Photo.png",
+        7: "7 Lens Photo.png",
         "8 Lens Dob": "8 Dob Lens.png"
     }
 
     back_mapping = {
-        "1 Big barcode": "1 Big Barcode.png",
-        "2 small Barcode": "2 Small barcode.png",
-        "4 Edit Text": "4 Edit Text.png"
+        1: "1 Big Barcode.png",
+        2: "2 Small barcode.png",
+        4: "4 Edit Text.png"
     }
 
-    def process_template(template_path, out_path, mapping, img_dir):
+    def process_template(template_path, out_path, mapping, img_dir, side):
+        logging.info(f"[{side}] Loading template: {template_path}")
         if not os.path.exists(template_path):
-            logger.error(f"GA Lightburn Template not found: {template_path}")
+            logging.error(f"[{side}] LightBurn Template NOT FOUND at: {template_path}")
             return
+        
         try:
+            logging.info(f"[{side}] Parsing XML...")
             tree = ET.parse(template_path)
             root = tree.getroot()
             
-            # Find all Bitmap shapes and check their names against our mapping
-            for shape in root.findall(".//Shape[@Type='Bitmap']"):
-                name_elem = shape.find("Name")
-                if name_elem is not None and name_elem.text in mapping:
-                    img_elem = shape.find("ImagePath")
-                    if img_elem is not None:
-                        # Replace the template path with the newly generated PNG path
-                        img_elem.text = os.path.join(img_dir, mapping[name_elem.text])
+            shapes = root.findall(".//Shape[@Type='Bitmap']")
+            logging.info(f"[{side}] Found {len(shapes)} Bitmap shapes in template.")
+            
+            updated_count = 0
+            for shape in shapes:
+                cut_index_attr = shape.get("CutIndex")
+                name_attr = shape.get("Name")
+                
+                match_key = None
+                
+                # Check integer CutIndex first
+                if cut_index_attr and cut_index_attr.isdigit() and int(cut_index_attr) in mapping:
+                    match_key = int(cut_index_attr)
+                # Fallback check for exact Name attribute match (for "8 Lens Dob")
+                elif name_attr and name_attr in mapping:
+                    match_key = name_attr
+                
+                if match_key is not None:
+                    png_filename = mapping[match_key]
+                    png_full_path = os.path.join(img_dir, png_filename)
+                    
+                    if not os.path.exists(png_full_path):
+                        logging.warning(f"[{side}] ⚠️ FILE MISSING for key {match_key}: {png_full_path}")
+                        continue
+
+                    # 1. READ IMAGE & CONVERT TO BASE64
+                    try:
+                        with open(png_full_path, "rb") as image_file:
+                            raw_data = image_file.read()
+                            encoded_string = base64.b64encode(raw_data).decode('utf-8')
+                    except Exception as img_err:
+                        logging.error(f"[{side}] ❌ Read Error for {png_full_path}: {img_err}")
+                        continue
                         
+                    # 2. INJECT DATA
+                    shape.set('Data', encoded_string)
+                    shape.set('File', os.path.abspath(png_full_path).replace("\\", "/"))
+                    
+                    # 3. CLEANUP CONFLICTS
+                    if 'SourceHash' in shape.attrib:
+                        del shape.attrib['SourceHash']
+                    if 'RelativePath' in shape.attrib:
+                        del shape.attrib['RelativePath']
+
+                    # 4. Remove legacy elements (forces LightBurn to use the Data attribute)
+                    for child in list(shape):
+                        if child.tag in ['data', 'Data', 'ImagePath']:
+                            shape.remove(child)
+
+                    # logging.info(f"[{side}] ✅ Updated key {match_key} with Base64 data from {png_filename}")
+                    updated_count += 1
+                else:
+                    pass
+                    # logging.info(f"[{side}] ⏭️ Shape CutIndex {cut_index_attr} / Name '{name_attr}' not in mapping, skipping.")
+            
+            # Write final XML output
             tree.write(out_path, encoding="utf-8", xml_declaration=True)
+            logging.info(f"[{side}] Successfully saved {updated_count} updates to: {out_path}")
+            
         except Exception as e:
-            logger.error(f"Error processing Lightburn template {template_path}: {e}")
+            logging.error(f"[{side}] Error processing LightBurn template: {e}")
 
     # Execute
-    process_template(template_front, out_front, front_mapping, front_dir)
-    process_template(template_back, out_back, back_mapping, back_dir)
+    process_template(template_front, out_front, front_mapping, front_dir, "Front")
+    process_template(template_back, out_back, back_mapping, back_dir, "Back")

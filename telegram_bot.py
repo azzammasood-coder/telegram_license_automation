@@ -338,7 +338,8 @@ def parse_bulk_input(text: str) -> dict:
     "first name": "first_name", "middle name": "middle_name", "last name": "last_name",
     "address": "address", "city": "city", "state code": "state_code", 
     "full zip code + 4 digits": "zip_code", "zip code": "zip_code",
-    "gender": "gender", "dob": "dob", "height": "height", "eyes": "eyes",
+    "county": "county",
+    "gender": "gender", "dob": "dob", "height": "height", "weight": "weight", "eyes": "eyes",
     "class": "class", "endorsements": "endorsements", "restrictions": "restrictions",
     "issue date": "issue_date", "expires date": "expires_date", "real id": "real_id",
     "not real id": "not_real_id", "signature": "signature",
@@ -1103,42 +1104,72 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_caption(caption=f"{clean_caption}\n\n🔓 UNBLOCKED", reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def show_unified_prompt(query, context, state_code):
-    dl_formats = {
-        "NJ": "H5901 59055 59481",
-        "NY": "689 995 677",
-        "VA": "T67256730",
-        "FL": "F425-104-65-162-0",
-        "PA": "19 059 959",
-        "GA": "049559674",
-        "TX": "96136059"
-    }
+    state_code_upper = state_code.upper()
+    
+    if state_code_upper == "GA":
+        msg = (
+            "Please only edit and replace the sample information with your information details exactly in this format.\n\n"
+            "```text\n"
+            "DL: 049559674\n"
+            "First Name: HARROLD\n"
+            "Middle Name: EYES\n"
+            "Last Name: FINCH\n"
+            "Address: 100 EYES \n"
+            "City: ATLANTA\n"
+            "State Code: GA\n"
+            "Full Zip Code + 4 Digits: 39999-1234\n"
+            "County: Fulton\n"
+            "Gender: M\n"
+            "Dob: 01/01/1980\n"
+            "Height: 5'-11\"\n"
+            "Weight: 160\n"
+            "Eyes: BRO\n"
+            "Class: D\n"
+            "Endorsements: NONE\n"
+            "Restrictions: NONE\n"
+            "Issue Date: 01/01/2023\n"
+            "Expires Date: 01/01/2030\n"
+            "Real ID: Visible\n"
+            "Not Real ID: Not Visible\n"
+            "```"
+        )
+    else:
+        dl_formats = {
+            "NJ": "H5901 59055 59481",
+            "NY": "689 995 677",
+            "VA": "T67256730",
+            "FL": "F425-104-65-162-0",
+            "PA": "19 059 959",
+            "TX": "96136059"
+        }
 
-    sample_dl = dl_formats.get(state_code.upper(), "H5901 59055 59481")
+        sample_dl = dl_formats.get(state_code_upper, "H5901 59055 59481")
 
-    msg = (
-       "Please only edit and replace the sample information with your information details exactly in this format.\n\n"
-       "```text\n"
-       f"DL: {sample_dl}\n"
-       "First Name: HARROLD\n"
-       "Middle Name: EYES\n"
-       "Last Name: FINCH\n"
-       "Address: 100 EYES \n"
-       "City: NEWARK\n"
-       f"State Code: {state_code.upper()}\n"
-       "Full Zip Code + 4 Digits: 07101-1234\n"
-       "Gender: M\n"
-       "Dob: 01/01/1980\n"
-       "Height: 5'-11\"\n"
-       "Eyes: BRN\n"
-       "Class: D\n"
-       "Endorsements: NONE\n"
-       "Restrictions: NONE\n"
-       "Issue Date: 01/01/2023\n"
-       "Expires Date: 01/01/2030\n"
-       "Real ID: Visible\n"
-       "Not Real ID: Not Visible\n"
-       "```"
-    )
+        msg = (
+            "Please only edit and replace the sample information with your information details exactly in this format.\n\n"
+            "```text\n"
+            f"DL: {sample_dl}\n"
+            "First Name: HARROLD\n"
+            "Middle Name: EYES\n"
+            "Last Name: FINCH\n"
+            "Address: 100 EYES \n"
+            "City: NEWARK\n"
+            f"State Code: {state_code_upper}\n"
+            "Full Zip Code + 4 Digits: 07101-1234\n"
+            "Gender: M\n"
+            "Dob: 01/01/1980\n"
+            "Height: 5'-11\"\n"
+            "Eyes: BRN\n"
+            "Class: D\n"
+            "Endorsements: NONE\n"
+            "Restrictions: NONE\n"
+            "Issue Date: 01/01/2023\n"
+            "Expires Date: 01/01/2030\n"
+            "Real ID: Visible\n"
+            "Not Real ID: Not Visible\n"
+            "```"
+        )
+        
     context.user_data['bulk_prompt_msg'] = msg 
     await query.message.edit_text(msg, parse_mode="Markdown")
     return BULK_INPUT
