@@ -158,20 +158,26 @@ import os
 import xml.etree.ElementTree as ET
 
 def generate_lightburn_lbrn(data_map, base_dir):
+    main_dir = data_map.get("Output Dir", "")
     front_dir = data_map.get("Output Dir Front", "")
     back_dir = data_map.get("Output Dir Back", "")
     base_name = data_map.get("Base Name", "Unknown")
 
     logger.info(f"Starting LightBurn generation for TX: {base_name}")
 
-    # Pointing to the Lightburn folder
+    # Create Lightburn output directory next to Front and Back
+    lb_out_dir = os.path.join(main_dir, "Lightburn")
+    os.makedirs(lb_out_dir, exist_ok=True)
+
+    # Pointing to the template files in the root project directory
     template_front = os.path.join(base_dir, "Lightburn", "TX Lasering Front.lbrn2")
     template_back = os.path.join(base_dir, "Lightburn", "TX Lasering Back.lbrn2")
 
-    out_front = os.path.join(front_dir, f"{base_name}_Front.lbrn2")
-    out_back = os.path.join(back_dir, f"{base_name}_Back.lbrn2")
+    # Set the destination paths to the new Lightburn subfolder
+    out_front = os.path.join(lb_out_dir, f"{base_name}_Front.lbrn2")
+    out_back = os.path.join(lb_out_dir, f"{base_name}_Back.lbrn2")
 
-    # Map the CutIndex integers (C01 = 1, C02 = 2, C05 = 5, etc.) to the PNGs
+    # Map the CutIndex integers to the PNGs
     front_mapping = {
         1: "1 Bold Text.png",
         2: "2 Light Text.png",
@@ -195,17 +201,13 @@ def generate_lightburn_lbrn(data_map, base_dir):
             return
         
         try:
-            logger.info(f"[{side}] Parsing XML...")
             tree = ET.parse(template_path)
             root = tree.getroot()
             
             shapes = root.findall(".//Shape[@Type='Bitmap']")
-            logger.info(f"[{side}] Found {len(shapes)} Bitmap shapes in template.")
             
-            updated_count = 0
             for shape in shapes:
                 cut_index = int(shape.get("CutIndex", -1))
-                # logger.info(f"[{side}] Inspecting shape with CutIndex (Color): {cut_index}")
                 
                 if cut_index in mapping:
                     png_filename = mapping[cut_index]
@@ -228,25 +230,16 @@ def generate_lightburn_lbrn(data_map, base_dir):
                     shape.set('Data', encoded_string)
                     shape.set('File', os.path.abspath(png_full_path).replace("\\", "/"))
                     
-                    # 3. CLEANUP ONLY CONFLICTS (Preserves W, H, XForm)
-                    if 'SourceHash' in shape.attrib:
-                        del shape.attrib['SourceHash']
-                    if 'RelativePath' in shape.attrib:
-                        del shape.attrib['RelativePath']
+                    # 3. CLEANUP CONFLICTS
+                    if 'SourceHash' in shape.attrib: del shape.attrib['SourceHash']
+                    if 'RelativePath' in shape.attrib: del shape.attrib['RelativePath']
 
-                    # 4. Remove legacy elements if they exist so it forces the new Data attribute
                     for child in list(shape):
                         if child.tag in ['data', 'Data', 'ImagePath']:
                             shape.remove(child)
 
-                    # logger.info(f"[{side}] ✅ Updated CutIndex {cut_index} with Base64 data from {png_filename}")
-                    updated_count += 1
-                else:
-                    logger.info(f"[{side}] ⏭️ Shape CutIndex {cut_index} not in mapping, skipping.")
-            
-            # logger.info(f"[{side}] Writing {updated_count} updates to: {out_path}")
             tree.write(out_path, encoding="utf-8", xml_declaration=True)
-            # logger.info(f"[{side}] Successfully saved.")
+            logger.info(f"[{side}] Successfully saved Lightburn file to: {out_path}")
             
         except Exception as e:
             logger.error(f"[{side}] Error processing LightBurn template: {e}")

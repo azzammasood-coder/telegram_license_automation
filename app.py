@@ -3,6 +3,8 @@ import os
 import re
 import json
 import uuid
+import hashlib
+import hmac
 import requests
 from datetime import datetime
 from flask import Flask, request, render_template, redirect, url_for, session, jsonify, send_from_directory, flash
@@ -20,7 +22,8 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 db = SQLAlchemy(app)
 WEB_URL = "https://ghostautomation.pythonanywhere.com/"
 WORKER_API_KEY = "worker-secret-123"
-WEB_ADMIN_PASSWORD = "admin"
+WEB_ADMIN_USERNAME = "Barcodenapster66"
+WEB_ADMIN_PASSWORD = "Password63"
 
 # Load Config for Telegram
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
@@ -73,7 +76,8 @@ def parse_fl_data(text: str) -> dict:
 # DATABASE MODELS
 # ==========================================
 class User(db.Model):
-    id = db.Column(db.String(50), primary_key=True)
+    id = db.Column(db.String(50), primary_key=True) # Will now store Telegram ID
+    username = db.Column(db.String(100)) # Stores Telegram @username
     is_blocked = db.Column(db.Boolean, default=False)
 
 class Invite(db.Model):
@@ -101,9 +105,24 @@ with app.app_context():
 # ==========================================
 # MIDDLEWARE (Access Control)
 # ==========================================
+def verify_telegram_auth(auth_data, bot_token):
+    """Cryptographically verifies the login payload came from Telegram."""
+    check_hash = auth_data.pop('hash', None)
+    if not check_hash:
+        return False
+        
+    data_check_arr = [f"{k}={v}" for k, v in sorted(auth_data.items())]
+    data_check_string = "\n".join(data_check_arr)
+    
+    secret_key = hashlib.sha256(bot_token.encode()).digest()
+    expected_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    
+    return expected_hash == check_hash
+
 @app.before_request
 def check_auth():
-    allowed_routes = ['start', 'admin', 'admin_action', 'generate_invite', 'toggle_admin_mode', 'worker_get_job', 'worker_submit', 'static', 'telegram_action']
+    allowed_routes = ['start', 'telegram_auth', 'admin', 'admin_action', 'clear_queue', 'unblock_user', 'generate_invite', 'toggle_admin_mode', 'worker_get_job', 'worker_submit', 'static', 'serve_upload']
+
     if request.endpoint in allowed_routes: return
 
     user_id = session.get('user_id')
@@ -114,31 +133,93 @@ def check_auth():
 
 # Pass admin_mode to all templates globally
 @app.context_processor
-def inject_settings():
+def inject_globals():
     settings = Setting.query.first()
-    return dict(admin_mode=settings.admin_mode if settings else False)
+    cart_count = len(session.get('cart', []))
+    return dict(
+        admin_mode=settings.admin_mode if settings else False,
+        cart_count=cart_count
+    )
 
 # ==========================================
 # ROUTES: AUTH, MENU, PREVIEWS
 # ==========================================
 @app.route('/', methods=['GET', 'POST'])
 def start():
+    # Pass bot username to the template so the widget knows which bot to invoke
+    BOT_USERNAME = "GhostAuthLoginBot" # <-- REPLACE WITH YOUR ACTUAL BOT USERNAME (no @)
+    
     if request.method == 'POST':
-        token = request.form.get('token')
+        token = request.form.get('token', '').strip()
         invite = Invite.query.get(token)
+        
+        # Check if token exists and is not used
         if invite and not invite.is_used:
-            invite.is_used = True
-            user_id = str(uuid.uuid4())
-            new_user = User(id=user_id)
-            db.session.add(new_user)
-            db.session.commit()
-            session['user_id'] = user_id
-            session['cart'] = []
-            return redirect(url_for('disclaimer'))
+            # Token is valid! Save it temporarily and show the Telegram Widget
+            session['pending_token'] = token
+            return render_template('auth.html', step="telegram", bot_username=BOT_USERNAME)
         else:
-            flash("Invalid or used token.", "danger")
-    return render_template('auth.html', step="token")
+            flash("❌ Invalid, expired, or previously used token.", "danger")
+            
+    return render_template('auth.html', step="token", bot_username=BOT_USERNAME)
 
+@app.route('/telegram_auth')
+def telegram_auth():
+    pending_token = session.get('pending_token')
+    if not pending_token:
+        flash("❌ Session expired. Please enter your invite token again.", "danger")
+        return redirect(url_for('start'))
+        
+    auth_data = request.args.to_dict()
+    
+    # Verify data actually came from Telegram
+    if verify_telegram_auth(auth_data.copy(), TELEGRAM_BOT_TOKEN):
+        tg_id = str(auth_data.get('id'))
+        tg_username = auth_data.get('username', f"Unknown_{tg_id}")
+        tg_first_name = auth_data.get('first_name', '')
+        tg_last_name = auth_data.get('last_name', '')
+        
+        # Fallback to initials if user has no Telegram profile picture
+        fallback_url = f"https://ui-avatars.com/api/?name={tg_first_name}+{tg_last_name}&background=0D8ABC&color=fff"
+        tg_photo_url = auth_data.get('photo_url', fallback_url)
+        
+        user = User.query.get(tg_id)
+        if user and user.is_blocked:
+            session.pop('pending_token', None) 
+            return "<h1>🚫 Access Denied</h1><p>You have been permanently blocked from using this service.</p>", 403
+            
+        invite = Invite.query.get(pending_token)
+        if not invite or invite.is_used:
+            flash("❌ Token has already been used.", "danger")
+            return redirect(url_for('start'))
+            
+        if not user:
+            user = User(id=tg_id, username=tg_username)
+            db.session.add(user)
+        else:
+            user.username = tg_username
+            
+        invite.is_used = True
+        db.session.commit()
+        
+        # Log them in and store profile details
+        session.pop('pending_token', None)
+        session['user_id'] = tg_id
+        session['username'] = tg_username
+        session['name'] = f"{tg_first_name} {tg_last_name}".strip() or tg_username
+        session['photo_url'] = tg_photo_url
+        session['cart'] = []
+        
+        return redirect(url_for('disclaimer'))
+    else:
+        return "<h1>⚠️ Authentication Failed</h1><p>Invalid Telegram Hash.</p>", 403
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("You have been successfully logged out.", "success")
+    return redirect(url_for('start'))
+    
 @app.route('/disclaimer', methods=['GET', 'POST'])
 def disclaimer():
     if request.method == 'POST': return redirect(url_for('main_menu'))
@@ -292,16 +373,13 @@ def checkout():
     settings = Setting.query.first()
 
     if settings.admin_mode:
-        # ADMIN MODE ON: Auto-approve, no payment screenshot
         new_job = Job(job_id=job_id, user_id=session.get('user_id'), user_data=json.dumps(cart), status="APPROVED")
         db.session.add(new_job)
         db.session.commit()
         session['cart'] = []
         flash("🛡️ Admin Mode Active: Order automatically approved and processing started.", "success")
         return render_template('cart.html', success_id=job_id, auto_approved=True)
-
     else:
-        # ADMIN MODE OFF: Require payment, send to Telegram
         payment_file = request.files.get('payment_screenshot')
         if not payment_file or not payment_file.filename:
             flash("❌ Payment screenshot is required.", "danger")
@@ -314,33 +392,6 @@ def checkout():
         new_job = Job(job_id=job_id, user_id=session.get('user_id'), user_data=json.dumps(cart), status="PENDING_APPROVAL", payment_image=filename)
         db.session.add(new_job)
         db.session.commit()
-
-        # SEND TO TELEGRAM
-        if TELEGRAM_BOT_TOKEN and ADMIN_CHAT_ID:
-            try:
-                caption = f"🚨 *New Order* [{job_id}] - {len(cart)} Items\n"
-                for item in cart:
-                    caption += f"- {item.get('jurisdiction')}: {item.get('first_name')} {item.get('last_name')}\n"
-
-                # Setup Secure Inline Buttons pointing back to the website
-                approve_url = f"{WEB_URL}/tg_action/approve/{job_id}?key={WORKER_API_KEY}"
-                reject_url = f"{WEB_URL}/tg_action/reject/{job_id}?key={WORKER_API_KEY}"
-                reply_markup = {
-                    "inline_keyboard": [
-                        [{"text": "✅ Approve", "url": approve_url}, {"text": "❌ Reject", "url": reject_url}]
-                    ]
-                }
-
-                url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
-                with open(filepath, 'rb') as photo:
-                    requests.post(url, data={
-                        "chat_id": ADMIN_CHAT_ID,
-                        "caption": caption,
-                        "parse_mode": "Markdown",
-                        "reply_markup": json.dumps(reply_markup)
-                    }, files={"photo": photo})
-            except Exception as e:
-                print(f"Telegram Notification Failed: {e}")
 
         session['cart'] = []
         return render_template('cart.html', success_id=job_id, auto_approved=False)
@@ -358,6 +409,13 @@ def telegram_action(action, job_id):
     elif action == "reject":
         job.status = "REJECTED"
         msg = f"❌ Order {job_id} REJECTED."
+    elif action == "block":
+        job.status = "BLOCKED"
+        if job.user_id:
+            user = User.query.get(job.user_id)
+            if user: user.is_blocked = True
+            else: db.session.add(User(id=job.user_id, is_blocked=True))
+        msg = f"🚫 Order {job_id} REJECTED and User BLOCKED."
 
     db.session.commit()
     return f"<h3>{msg}</h3><br><a href='/admin'>Go to Admin Dashboard</a>"
@@ -368,14 +426,17 @@ def telegram_action(action, job_id):
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if request.method == 'POST':
-        if request.form.get('password') == WEB_ADMIN_PASSWORD:
+        # Check if both the username and password match
+        if request.form.get('username') == WEB_ADMIN_USERNAME and request.form.get('password') == WEB_ADMIN_PASSWORD:
             session['is_admin'] = True
-        else: flash("Incorrect Password", "danger")
+        else: 
+            flash("Incorrect Username or Password", "danger")
 
     if not session.get('is_admin'): return render_template('admin.html', login=True)
 
     jobs = Job.query.order_by(Job.created_at.desc()).all()
-    return render_template('admin.html', jobs=jobs, parse_json=json.loads)
+    blocked_users = User.query.filter_by(is_blocked=True).all()
+    return render_template('admin.html', jobs=jobs, blocked_users=blocked_users, parse_json=json.loads)
 
 @app.route('/admin/toggle_mode', methods=['POST'])
 def toggle_admin_mode():
@@ -386,17 +447,44 @@ def toggle_admin_mode():
     flash(f"Admin Mode is now {'ON' if settings.admin_mode else 'OFF'}", "success")
     return redirect(url_for('admin'))
 
+@app.route('/admin/clear_queue', methods=['POST'])
+def clear_queue():
+    if not session.get('is_admin'): return redirect(url_for('admin'))
+    # Delete all jobs waiting to be processed to clear the backlog
+    deleted = Job.query.filter(Job.status.in_(['APPROVED', 'PENDING_APPROVAL'])).delete(synchronize_session=False)
+    db.session.commit()
+    flash(f"🗑️ Queue cleared! Deleted {deleted} pending/approved jobs.", "success")
+    return redirect(url_for('admin'))
+
 @app.route('/admin/<action>/<job_id>')
 def admin_action(action, job_id):
     if not session.get('is_admin'): return redirect(url_for('admin'))
     job = Job.query.get_or_404(job_id)
-    if action == "approve": job.status = "APPROVED"
-    elif action == "reject": job.status = "REJECTED"
+    
+    if action == "approve": 
+        job.status = "APPROVED"
+    elif action == "reject": 
+        job.status = "REJECTED"
     elif action == "block":
-        user = User.query.get(job.user_id)
-        if user: user.is_blocked = True
         job.status = "BLOCKED"
+        if job.user_id:
+            user = User.query.get(job.user_id)
+            if user: 
+                user.is_blocked = True
+            else:
+                # Fallback: Create the user object strictly to block it
+                db.session.add(User(id=job.user_id, is_blocked=True))
+                
     db.session.commit()
+    return redirect(url_for('admin'))
+
+@app.route('/admin/unblock_user/<user_id>')
+def unblock_user(user_id):
+    if not session.get('is_admin'): return redirect(url_for('admin'))
+    user = User.query.get_or_404(user_id)
+    user.is_blocked = False
+    db.session.commit()
+    flash(f"✅ User {user_id} has been unblocked.", "success")
     return redirect(url_for('admin'))
 
 @app.route('/admin/generate_invite')
@@ -425,6 +513,10 @@ def worker_submit(job_id):
     job.status = "COMPLETED"
     db.session.commit()
     return jsonify({"message": "Success"}), 200
+
+@app.route('/uploads/<filename>')
+def serve_upload(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
     app.run(debug=True)

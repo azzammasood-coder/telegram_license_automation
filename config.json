@@ -1,6 +1,6 @@
 {
     "telegram": {
-        "bot_token": "8560545532:AAHHmT0HWhKhz3sp-P29GEK8twaWioxJJrc",
+        "bot_token": "8734895812:AAGD3yTBMCr6nxI-PuQEWUKwsZUg8C_zfvw",
         "admin_chat_id": 8237067905
     },
     "api": {
@@ -27,6 +27,6 @@
         "tx_back": "TX Back.psd"
     },
     "toggles": {
-        "admin_mode": false
+        "admin_mode": true
     }
 }

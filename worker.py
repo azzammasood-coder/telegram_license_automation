@@ -14,11 +14,9 @@ from modules import nj_module, fl_module, pa_module, va_module, ny_module, ga_mo
 # ==========================================
 # CONFIGURATION
 # ==========================================
-# Replace with your actual PythonAnywhere URL
 WEB_SERVER_URL = "https://ghostautomation.pythonanywhere.com" 
 API_KEY = "worker-secret-123"
 
-# Load local config.json
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 with open(CONFIG_PATH, "r") as f:
     config = json.load(f)
@@ -29,7 +27,6 @@ REMOVEBG_API_KEY = config['api']['removebg_key']
 BASE_DIR = config['paths']['base_dir']
 PHOTOSHOP_EXE_PATH = config['paths']['photoshop_exe']
 
-# Setup Directories
 TEMP_DIR = os.path.join(BASE_DIR, "temp_files")
 FINAL_DIR = os.path.join(BASE_DIR, "Final_Documents")
 LOG_DIR = os.path.join(BASE_DIR, "logs")
@@ -44,7 +41,6 @@ os.makedirs(LOG_DIR, exist_ok=True)
 # ==========================================
 LOG_FILE_PATH = os.path.join(LOG_DIR, "worker.log")
 
-# Add a visual separator to the log file for every new run
 with open(LOG_FILE_PATH, "a", encoding="utf-8") as f:
     f.write("\n" + "="*70 + "\n")
     f.write(f"🚀 NEW WORKER RUN STARTED AT: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -61,8 +57,19 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ==========================================
-# HELPERS (Ported from Telegram Bot)
+# HELPERS
 # ==========================================
+def cleanup_temp_files():
+    """Deletes files in TEMP_DIR older than 5 days."""
+    cutoff = time.time() - (5 * 86400)
+    for filename in os.listdir(TEMP_DIR):
+        file_path = os.path.join(TEMP_DIR, filename)
+        if os.path.isfile(file_path) and os.stat(file_path).st_mtime < cutoff:
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                logger.error(f"Cleanup Error for {filename}: {e}")
+
 def remove_bg_removebg(input_path: str, output_path: str):
     if not REMOVEBG_API_KEY or "YOUR_KEY" in REMOVEBG_API_KEY:
         logger.error("Remove.bg API Key missing.")
@@ -71,7 +78,7 @@ def remove_bg_removebg(input_path: str, output_path: str):
     headers = {"X-Api-Key": REMOVEBG_API_KEY}
     try:
         with open(input_path, "rb") as img_file:
-            response = requests.post(url, files={'image_file': img_file}, data={'size': 'auto', 'format': 'png'}, headers=headers)
+            response = requests.post(url, files={'image_file': img_file}, data={'size': 'auto', 'format': 'png'}, headers=headers, timeout=60)
         if response.status_code == 200:
             with open(output_path, "wb") as out: out.write(response.content)
             return True
@@ -158,21 +165,48 @@ def generate_barcodes(user_data: dict, api_height: str):
         payload["data[DAD]"] = user_data.get("middle_name", "").upper()
         payload["data[DDG]"] = trunc_middle
 
-    resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=60)
-    resp.raise_for_status()
+    logger.info(f"📡 Sending POST request to FIS API for {state}...")
+    try:
+        resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=20)
+        resp.raise_for_status()
+    except Exception as e:
+        logger.error(f"❌ FIS API POST Failed: {e}")
+        raise e
+
     barcode_id = resp.headers.get("X-Barcode-ID")
+    logger.info(f"✅ Barcode generated! ID: {barcode_id}. Downloading SPECIFIC formats for {state}...")
     
     params = {"barcode_id": barcode_id}
     auth_head = {"Authorization": f"Bearer {FIS_API_KEY}"}
     
-    big_svg = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/svg+xml"}, params=params).content
-    small_svg = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/svg+xml"}, params=params).content
-    big_tiff = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/tiff"}, params=params).content
-    small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/tiff"}, params=params).content
-    raw_text = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "text/plain"}, params=params).text
-    big_png = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/png"}, params=params).content
-    small_png = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/png"}, params=params).content
+    big_svg, small_svg, big_tiff, small_tiff, big_png, small_png = b"", b"", None, None, None, None
+    
+    # 1. EVERY state needs the raw text data
+    logger.info("⬇️ Fetching raw_text...")
+    raw_text = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "text/plain"}, params=params, timeout=15).text
+    
+    # 2. SVGs (NJ, NY, GA, TX, FL)
+    if state in ["NJ", "NY", "GA", "TX", "FL"]:
+        logger.info("⬇️ Fetching big_svg...")
+        big_svg = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=15).content
+        logger.info("⬇️ Fetching small_svg...")
+        small_svg = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=15).content
+        
+    # 3. TIFFs (FL Only)
+    if state == "FL":
+        logger.info("⬇️ Fetching big_tiff...")
+        big_tiff = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=15).content
+        logger.info("⬇️ Fetching small_tiff...")
+        small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=15).content
+        
+    # 4. PNGs (PA & VA Only)
+    if state in ["PA", "VA"]:
+        logger.info("⬇️ Fetching big_png...")
+        big_png = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=15).content
+        logger.info("⬇️ Fetching small_png...")
+        small_png = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=15).content
 
+    logger.info("✅ Selected barcode files downloaded successfully!")
     return barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png
 
 def download_file(filename):
@@ -181,15 +215,12 @@ def download_file(filename):
     url = f"{WEB_SERVER_URL}/uploads/{filename}"
     local_path = os.path.join(TEMP_DIR, filename)
     try:
-        resp = requests.get(url)
+        resp = requests.get(url, timeout=30)
         if resp.status_code == 200:
-            # Check if the server accidentally returned an HTML redirect page
             content_type = resp.headers.get('Content-Type', '')
             if 'text/html' in content_type:
-                logger.error(f"❌ Download Error for {filename}: Server returned an HTML web page instead of an image. "
-                             f"Did you forget to reload PythonAnywhere?")
+                logger.error(f"❌ Download Error for {filename}: Server returned HTML. Ensure PythonAnywhere is reloaded.")
                 return None
-            
             with open(local_path, 'wb') as f:
                 f.write(resp.content)
             return local_path
@@ -207,8 +238,9 @@ def run_worker():
     
     while True:
         try:
-            # 1. Ask server for jobs
-            resp = requests.get(f"{WEB_SERVER_URL}/api/worker/get_job?api_key={API_KEY}")
+            cleanup_temp_files()
+            
+            resp = requests.get(f"{WEB_SERVER_URL}/api/worker/get_job?api_key={API_KEY}", timeout=30)
             if resp.status_code != 200 or 'job_id' not in resp.json():
                 time.sleep(10)
                 continue
@@ -218,15 +250,11 @@ def run_worker():
             cart = data['payload']
             logger.info(f"🚨 New Job Received! ID: {job_id} | Items: {len(cart)}")
 
-            JOB_OUT_DIR = os.path.join(FINAL_DIR, f"ORDER_{job_id}")
-            os.makedirs(JOB_OUT_DIR, exist_ok=True)
-
-            # 2. Process each item
             for idx, user_data in enumerate(cart):
                 jurisdiction = user_data.get('jurisdiction', 'NJ').strip().upper()
                 logger.info(f"⚙️ Processing Item {idx+1}/{len(cart)}: {jurisdiction}")
 
-                # Download and Remove BG for Face
+                # Download Face
                 face_filename = user_data.get('face_path')
                 if face_filename:
                     logger.info("Downloading Face Image...")
@@ -238,9 +266,9 @@ def run_worker():
                         else:
                             user_data['face_path'] = raw_face
                     else:
-                        user_data['face_path'] = "" # Clear path if download failed
+                        user_data['face_path'] = ""
 
-                # Download and Remove BG for Signature
+                # Download Signature
                 sig_filename = user_data.get('signature_path')
                 if sig_filename:
                     logger.info("Downloading Signature Image...")
@@ -254,36 +282,33 @@ def run_worker():
                     else:
                         user_data['signature_path'] = ""
 
-                # Generate Barcodes via FIS API
-                logger.info("Generating Barcodes...")
+                # Barcode Generation
                 api_height, visual_height = parse_height_logic(user_data.get('height', '5-00'))
                 b_res = generate_barcodes(user_data, api_height)
                 barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png = b_res
 
-                # Route to State Module
+                # State Routing: Pass FINAL_DIR so modules save directly to the main root folder
                 if jurisdiction == 'PA':
-                    results = pa_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, JOB_OUT_DIR, BASE_DIR, big_png=big_png, small_png=small_png)
+                    results = pa_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=big_png, small_png=small_png)
                 elif jurisdiction == 'GA':
-                    results = ga_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, JOB_OUT_DIR, BASE_DIR)
+                    results = ga_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
                 elif jurisdiction == 'FL':
-                    results = fl_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, JOB_OUT_DIR, BASE_DIR, big_tiff=big_tiff, small_tiff=small_tiff)
+                    results = fl_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_tiff=big_tiff, small_tiff=small_tiff)
                 elif jurisdiction == 'NY':
-                    results = ny_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, JOB_OUT_DIR, BASE_DIR)
+                    results = ny_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
                 elif jurisdiction == 'VA':
-                    results = va_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, JOB_OUT_DIR, BASE_DIR, big_png, small_png)
+                    results = va_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png, small_png)
                 elif jurisdiction == 'TX':
-                    results = tx_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, JOB_OUT_DIR, BASE_DIR)
+                    results = tx_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
                 else: # NJ
-                    results = nj_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, JOB_OUT_DIR, BASE_DIR)
+                    results = nj_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
 
                 unique_id, data_path, out_front, out_back, out_psd = results[:5]
                 jsx_paths = results[5:]
 
-                # Write active job ticket
                 with open(JOB_TICKET_PATH, "w", encoding="utf-8") as f:
                     f.write(data_path)
                 
-                # Setup Lightburn Data map
                 data_map = {}
                 with open(data_path, "r", encoding="utf-8") as f:
                     for line in f:
@@ -292,62 +317,99 @@ def run_worker():
                             data_map[k.strip()] = v.strip()
 
                 # Trigger Photoshop
-                logger.info(f"🎨 Firing Photoshop for {unique_id}...")
+                logger.info(f"🎨 Triggering Photoshop for {unique_id}...")
                 for jsx in jsx_paths:
                     subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx])
                     time.sleep(2)
 
-                # Wait Loop
+                # Intelligent Wait Loop (State Specific)
                 timeout = 1800
                 start_time = time.time()
                 success = False
 
                 while (time.time() - start_time) < timeout:
                     if jurisdiction in ["NY", "VA", "GA", "TX"]:
-                        base_name = data_map.get("Base Name", "")
                         front_dir = data_map.get("Output Dir Front", "")
                         back_dir = data_map.get("Output Dir Back", "")
                         
-                        def is_psd_saved(directory, match_name):
-                            if not os.path.exists(directory): return False
+                        def has_psd(directory):
+                            if not directory or not os.path.exists(directory): return False
                             for f in os.listdir(directory):
-                                if f.endswith(".psd") and match_name in f and os.path.getsize(os.path.join(directory, f)) > 0:
+                                if f.endswith(".psd") and os.path.getsize(os.path.join(directory, f)) > 0:
                                     return True
                             return False
 
-                        if is_psd_saved(front_dir, base_name) and is_psd_saved(back_dir, base_name):
+                        if has_psd(front_dir) and has_psd(back_dir):
                             time.sleep(2)
                             success = True
                             break
-                    else:
-                        if os.path.exists(out_psd) and os.path.getsize(out_psd) > 0:
-                            target_dir = os.path.dirname(out_psd)
-                            if os.path.exists(target_dir):
-                                all_files = os.listdir(target_dir)
-                                found_front = any("Front" in f and unique_id.split('_')[0] in f for f in all_files)
-                                found_back = any("Back" in f and unique_id.split('_')[0] in f for f in all_files)
-                                if found_front and found_back:
-                                    time.sleep(2)
-                                    success = True
-                                    break
+                            
+                    elif jurisdiction in ["FL", "PA"]:
+                        out_color = data_map.get("Output Color", "")
+                        out_black = data_map.get("Output Black", "")
+                        
+                        if (out_color and os.path.exists(out_color) and os.path.getsize(out_color) > 0 and 
+                            out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0):
+                            time.sleep(2)
+                            success = True
+                            break
+                            
+                    elif jurisdiction == "NJ":
+                        out_psd = data_map.get("Output PSD", "")
+                        if out_psd and os.path.exists(out_psd) and os.path.getsize(out_psd) > 0:
+                            time.sleep(2)
+                            success = True
+                            break
                     
                     time.sleep(3)
 
                 if success:
-                    logger.info("✅ PSD Generation Complete.")
+                    logger.info(f"✅ PSD Generation Complete for {jurisdiction}.")
+                    
                     # Trigger Lightburn
                     lb_modules = {"NY": ny_module, "VA": va_module, "GA": ga_module, "TX": tx_module}
                     if jurisdiction in lb_modules:
                         logger.info("🔥 Generating Lightburn files...")
                         lb_modules[jurisdiction].generate_lightburn_lbrn(data_map, BASE_DIR)
 
-            # 3. Notify Server that Job is done
+                    # Folder Renaming to Exact Spec: FIRST NAME LAST NAME DOB (ORDER <id>)
+                    created_dir = ""
+                    if "Output Dir" in data_map:
+                        created_dir = data_map["Output Dir"]
+                    elif "Output Color" in data_map:
+                        created_dir = os.path.dirname(data_map["Output Color"])
+                    elif "Output Front" in data_map:
+                        created_dir = os.path.dirname(data_map["Output Front"])
+                    elif "Output PSD" in data_map:
+                        created_dir = os.path.dirname(data_map["Output PSD"])
+
+                    if created_dir and os.path.exists(created_dir):
+                        dob_clean = user_data.get('dob', '').replace('/', '-')
+                        first_name = user_data.get('first_name', '').upper()
+                        last_name = user_data.get('last_name', '').upper()
+                        
+                        new_folder_name = f"{first_name} {last_name} {dob_clean} (ORDER {job_id})"
+                        new_dir = os.path.join(FINAL_DIR, new_folder_name)
+                        
+                        if os.path.exists(new_dir):
+                            new_dir = os.path.join(FINAL_DIR, f"{first_name} {last_name} {dob_clean} (ORDER {job_id}_{idx})")
+                            
+                        try:
+                            os.rename(created_dir, new_dir)
+                            logger.info(f"📁 Renamed output folder to: {os.path.basename(new_dir)}")
+                        except Exception as e:
+                            logger.error(f"⚠️ Could not rename folder (Photoshop might still have it open): {e}")
+
+                else:
+                    logger.error(f"❌ Timeout reached waiting for {jurisdiction} files to generate.")
+
+            # Notify Server
             logger.info("📡 Notifying Web Server that job is complete...")
             post_url = f"{WEB_SERVER_URL}/api/worker/submit/{job_id}?api_key={API_KEY}"
-            upload_resp = requests.post(post_url)
+            upload_resp = requests.post(post_url, timeout=30)
                 
             if upload_resp.status_code == 200:
-                logger.info(f"🎉 Job {job_id} fully completed and saved locally in Final_Documents!")
+                logger.info(f"🎉 Job {job_id} fully completed and marked green on the dashboard!")
             else:
                 logger.error(f"Failed to notify server: {upload_resp.text}")
 
