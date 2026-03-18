@@ -12,6 +12,7 @@ store bot guide.txt
 logs
 cart guide.txt
 flask_demo.py
+flask_bot_config.json
 
 
 # Python
