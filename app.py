@@ -1,4 +1,5 @@
 # app.py
+
 import os
 import re
 import json
@@ -12,7 +13,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = 'super-secret-key-change-this'
+app.secret_key = 'super-secret-key'
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'jobs.db')
@@ -20,21 +21,30 @@ app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 db = SQLAlchemy(app)
-WEB_URL = "https://ghostautomation.pythonanywhere.com/"
-WORKER_API_KEY = "worker-secret-123"
-WEB_ADMIN_USERNAME = "Barcodenapster66"
-WEB_ADMIN_PASSWORD = "Password63"
 
-# Load Config for Telegram
+# Load Config Data
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 if os.path.exists(CONFIG_PATH):
     with open(CONFIG_PATH, "r") as f:
         config_data = json.load(f)
-        TELEGRAM_BOT_TOKEN = config_data.get('telegram', {}).get('bot_token', '')
-        ADMIN_CHAT_ID = config_data.get('telegram', {}).get('admin_chat_id', '')
+        
+        # Telegram Settings
+        TELEGRAM_BOT_TOKEN = config_data['telegram']['bot_token_flask']
+        ADMIN_CHAT_ID = config_data['telegram']['admin_chat_id']
+        BOT_USERNAME = config_data['telegram']['flask_bot_username']
+        WEB_URL = config_data['web']['web_url']
+        
+        # Web Settings
+        WORKER_API_KEY = config_data['web']['worker_api_key']
+        WEB_ADMIN_USERNAME = config_data['web']['admin_username']
+        WEB_ADMIN_PASSWORD = config_data['web']['admin_password']
 else:
     TELEGRAM_BOT_TOKEN = ""
     ADMIN_CHAT_ID = ""
+    BOT_USERNAME = "GhostAuthLoginBot"
+    WORKER_API_KEY = "worker-secret-123"
+    WEB_ADMIN_USERNAME = "admin"
+    WEB_ADMIN_PASSWORD = "admin"
 
 # ==========================================
 # CONSTANTS & HELPERS
@@ -146,9 +156,6 @@ def inject_globals():
 # ==========================================
 @app.route('/', methods=['GET', 'POST'])
 def start():
-    # Pass bot username to the template so the widget knows which bot to invoke
-    BOT_USERNAME = "GhostAuthLoginBot" # <-- REPLACE WITH YOUR ACTUAL BOT USERNAME (no @)
-    
     if request.method == 'POST':
         token = request.form.get('token', '').strip()
         invite = Invite.query.get(token)

@@ -14,13 +14,12 @@ from modules import nj_module, fl_module, pa_module, va_module, ny_module, ga_mo
 # ==========================================
 # CONFIGURATION
 # ==========================================
-WEB_SERVER_URL = "https://ghostautomation.pythonanywhere.com" 
-API_KEY = "worker-secret-123"
-
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 with open(CONFIG_PATH, "r") as f:
     config = json.load(f)
 
+API_KEY = config['web']['worker_api_key']
+WEB_SERVER_URL = config['web']['web_url']
 FIS_API_KEY = config['api']['fis_key']
 API_BASE_URL = config['api']['fis_url']
 REMOVEBG_API_KEY = config['api']['removebg_key']

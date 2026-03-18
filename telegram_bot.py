@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+# telegram_bot.py
+
 import os
 import logging
 import asyncio
@@ -26,7 +27,7 @@ with open(CONFIG_PATH, "r") as f:
   config = json.load(f)
 
 # Map Variables
-TELEGRAM_BOT_TOKEN = config['telegram']['bot_token']
+TELEGRAM_BOT_TOKEN = config['telegram']['bot_token_telegram']
 FIS_API_KEY     = config['api']['fis_key']
 API_BASE_URL    = config['api']['fis_url']
 REMOVEBG_API_KEY  = config['api']['removebg_key']
