@@ -124,10 +124,15 @@ init_db()
 # Logging Setup
 os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
 LOG_FILE_PATH = os.path.join(BASE_DIR, "logs", "bot.log")
+
+# Set FileHandler mode to 'w' to overwrite the log file on every restart
 logging.basicConfig(
     format="%(asctime)s - [BOT] - %(levelname)s - %(message)s",
     level=logging.INFO,
-    handlers=[logging.FileHandler(LOG_FILE_PATH, encoding="utf-8"), logging.StreamHandler()]
+    handlers=[
+        logging.FileHandler(LOG_FILE_PATH, mode='w', encoding="utf-8"), 
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING) # Suppress HTTPX (Telegram API) INFO logs to hide 'getUpdates' spam
@@ -332,35 +337,36 @@ def parse_fl_data(text: str) -> dict:
   return data
 
 def parse_bulk_input(text: str) -> dict:
-  data = {}
-  lines = text.split('\n')
-  key_map = {
-    "jurisdiction": "jurisdiction", "state": "jurisdiction",
-    "first name": "first_name", "middle name": "middle_name", "last name": "last_name",
-    "address": "address", "city": "city", "state code": "state_code", 
-    "full zip code + 4 digits": "zip_code", "zip code": "zip_code",
-    "county": "county",
-    "gender": "gender", "dob": "dob", "height": "height", "weight": "weight", "eyes": "eyes",
-    "class": "class", "endorsements": "endorsements", "restrictions": "restrictions",
-    "issue date": "issue_date", "expires date": "expires_date", "real id": "real_id",
-    "not real id": "not_real_id", "signature": "signature",
-    "dl number": "custom_dl", "license number": "custom_dl", "dl": "custom_dl"
-  }
-  
-  for line in lines:
-    if ":" in line:
-      parts = line.split(":", 1)
-      label = parts[0].strip().lower()
-      value = parts[1].strip()
-      if label in key_map:
-        mapped_key = key_map[label]
-        if mapped_key == "gender":
-          val_low = value.lower()
-          if val_low in ["1", "m", "male"]: value = "1"
-          elif val_low in ["2", "f", "female"]: value = "2"
-        data[mapped_key] = value
+    data = {}
+    lines = text.split('\n')
+    key_map = {
+        "jurisdiction": "jurisdiction", "state": "jurisdiction",
+        "first name": "first_name", "middle name": "middle_name", "last name": "last_name",
+        "address": "address", "city": "city", "state code": "state_code", 
+        "full zip code + 4 digits": "zip_code", "zip code": "zip_code",
+        "county": "county",
+        "gender": "gender", "dob": "dob", "height": "height", "weight": "weight", 
+        "hair color": "hair_color", "hair": "hair_color", "race": "race", "eyes": "eyes",
+        "class": "class", "endorsements": "endorsements", "restrictions": "restrictions",
+        "issue date": "issue_date", "expires date": "expires_date", "real id": "real_id",
+        "not real id": "not_real_id", "signature": "signature",
+        "dl number": "custom_dl", "license number": "custom_dl", "dl": "custom_dl"
+    }
+    
+    for line in lines:
+        if ":" in line:
+            parts = line.split(":", 1)
+            label = parts[0].strip().lower()
+            value = parts[1].strip()
+            if label in key_map:
+                mapped_key = key_map[label]
+                if mapped_key == "gender":
+                    val_low = value.lower()
+                    if val_low in ["1", "m", "male"]: value = "1"
+                    elif val_low in ["2", "f", "female"]: value = "2"
+                data[mapped_key] = value
 
-  return data
+    return data
 
 # ==============================================================================
 # CORE LOGIC (API)
@@ -371,6 +377,9 @@ def generate_barcodes(user_data: dict, api_height: str):
     state = user_data.get("jurisdiction", "NJ").upper().strip()
     if state == "FL": state = "FL"
 
+    # --- DEBUG LOGGING ---
+    logger.info(f"🔍 Processing user_data for Barcode: {json.dumps(user_data, indent=2)}")
+
     # --- COMMON PREP ---
     eye_map = {
         "BRN": "BRO", "BROWN": "BRO", "BLU": "BLU", "BLUE": "BLU",
@@ -380,7 +389,18 @@ def generate_barcodes(user_data: dict, api_height: str):
     raw_eyes = user_data.get("eyes", "BRO").upper().strip()
     api_eyes = eye_map.get(raw_eyes, raw_eyes)[:3] 
 
-    # Truncation Calculation (Common)
+    api_weight = user_data.get("weight", "").strip()
+    if api_weight.isdigit(): api_weight = f"{int(api_weight):03d}"
+    
+    hair_map = { "BLACK": "BLK", "BROWN": "BRO", "BLONDE": "BLO", "RED": "RED", "WHITE": "WHI", "GRAY": "GRY", "BALD": "BAL" }
+    raw_hair = user_data.get("hair_color", "").upper().strip()
+    api_hair = hair_map.get(raw_hair, raw_hair)[:3] if raw_hair else ""
+    
+    race_map = { "WHITE": "W", "BLACK": "B", "ASIAN": "A", "HISPANIC": "H", "INDIAN": "I", "NATIVE": "I" }
+    raw_race = user_data.get("race", "").upper().strip()
+    api_race = race_map.get(raw_race, raw_race)[:1] if raw_race else ""
+
+    # Truncation Calculation
     fn_len = len(user_data.get("first_name", "").strip())
     mn_len = len(user_data.get("middle_name", "").strip())
     ln_len = len(user_data.get("last_name", "").strip())
@@ -388,16 +408,46 @@ def generate_barcodes(user_data: dict, api_height: str):
     trunc_last = "T" if ln_len == 1 else "N"
     trunc_middle = "T" if mn_len == 1 else "N" if mn_len > 1 else ""
 
-    # Real ID (Common)
-    real_id_status = "N"
-    if "VISIBLE" in user_data.get("real_id", "").upper() or "YES" in user_data.get("real_id", "").upper():
+    # ==========================================================================
+    # REAL ID COMPLIANCE LOGIC (All States)
+    # F = Compliant (Visible) | N = Non-compliant (Not Visible)
+    # ==========================================================================
+    real_val = user_data.get("real_id", "").strip().upper()
+    not_real_val = user_data.get("not_real_id", "").strip().upper()
+
+    # 1. If they explicitly made 'Not Real ID' visible
+    if "VISIBLE" in not_real_val and "NOT" not in not_real_val:
+        real_id_status = "N"
+    # 2. If they explicitly made 'Real ID' Not Visible/No
+    elif "NOT" in real_val or "NON" in real_val or real_val == "NO":
+        real_id_status = "N"
+    # 3. If they explicitly made 'Real ID' Visible/Yes
+    elif "VISIBLE" in real_val or "YES" in real_val:
         real_id_status = "F"
+    # 4. Default Fallback
+    else:
+        real_id_status = "N"
+
+    logger.info(f"🛡️ Real ID Status Computed as: '{real_id_status}' (Compliant=F, Non=N)")
+
+    # --- DETERMINE DOCUMENT TYPE FOR API ---
+    nj_doc_val = str(user_data.get("nj_doc_type", "")).upper()
+    doc_class = str(user_data.get("class", "")).upper()
+    
+    # Robust check: Looks for Telegram's 'nj_id', Flask's 'ID', or if Class is explicitly 'NONE'
+    if "ID" in nj_doc_val or "IDENTIFICATION" in nj_doc_val:
+        doc_type = "ID"
+    elif state == "NJ" and doc_class == "NONE":
+        doc_type = "ID"
+    else:
+        doc_type = "DL"
+
+    logger.info(f"🔍 Computed Document Type for API: '{doc_type}'")
 
     # ==========================================================================
-    # FLORIDA SPECIFIC LOGIC (Strict Ordering + Safe Driver Fix)
+    # FLORIDA SPECIFIC LOGIC
     # ==========================================================================
     if state == "FL":
-        # 1. FL Specific Variables
         safe_driver_val = "2"
         val_safe = user_data.get("safe_driver", "").strip().upper()
         if val_safe == "YES" or val_safe == "VISIBLE":
@@ -409,13 +459,10 @@ def generate_barcodes(user_data: dict, api_height: str):
 
         customer_id = f"{random.randint(0, 9999999999):010d}"
 
-        # 2. FL Payload Construction
         payload = {
             "jurisdiction": state, 
-            "document": "DL", 
+            "document": doc_type, 
             "save": "true",
-            
-            # Standard D-Fields
             "data[DAC]": user_data.get("first_name", "").upper(),
             "data[DCS]": user_data.get("last_name", "").upper(),
             "data[DAG]": user_data.get("address", "").upper(), 
@@ -425,7 +472,7 @@ def generate_barcodes(user_data: dict, api_height: str):
             "data[DBC]": "1" if user_data.get("gender", "M").upper() in ["M", "1", "MALE"] else "2", 
             "data[DBB]": format_date_for_api(user_data.get("dob", "")),
             "data[DAU]": api_height, 
-            "data[DAY]": api_eyes,       
+            "data[DAY]": api_eyes,        
             "data[DDA]": real_id_status,    
             "data[DDF]": trunc_first,  
             "data[DDE]": trunc_last,  
@@ -437,15 +484,14 @@ def generate_barcodes(user_data: dict, api_height: str):
             "data[DCK]": user_data.get("inventory_control", "")
         }
 
-        # Optional D-Fields (MUST be added BEFORE Z-Fields)
-        if user_data.get("custom_dl"):
-            payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
-
+        if api_weight: payload["data[DAW]"] = api_weight
+        if api_hair: payload["data[DAZ]"] = api_hair
+        if api_race: payload["data[DCL]"] = api_race
+        if user_data.get("custom_dl"): payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
         if mn_len > 0:
             payload["data[DAD]"] = user_data.get("middle_name", "").upper()
             payload["data[DDG]"] = trunc_middle
 
-        # Auxiliary Z-Fields (Strict Order)
         payload["data[ZFA]"] = replaced_date_val   
         payload["data[ZFB]"] = ""          
         payload["data[ZFC]"] = safe_driver_val    
@@ -457,8 +503,6 @@ def generate_barcodes(user_data: dict, api_height: str):
         payload["data[ZFI]"] = "None"        
         payload["data[ZFJ]"] = customer_id      
         payload["data[ZFK]"] = ""          
-
-        # Manufacturer Data (Using ORI to fix Safe Driver)
         payload["data[ZNA]"] = "WX"
         payload["data[ZNB]"] = "11.00"
         payload["data[ZNC]"] = "ORI" 
@@ -469,17 +513,18 @@ def generate_barcodes(user_data: dict, api_height: str):
     else:
         payload = {
             "jurisdiction": state, 
-            "document": "DL", "save": "true",
+            "document": doc_type, 
+            "save": "true",
             "data[DAC]": user_data.get("first_name", "").upper(),
             "data[DCS]": user_data.get("last_name", "").upper(),
             "data[DAG]": user_data.get("address", "").upper(), 
             "data[DAI]": user_data.get("city", "").upper(),
             "data[DAJ]": user_data.get("state_code", state).upper(), 
             "data[DAK]": user_data.get("zip_code", ""),
-            "data[DBC]": user_data.get("gender", "1"),
+            "data[DBC]": "1" if user_data.get("gender", "M").upper() in ["M", "1", "MALE"] else "2",
             "data[DBB]": format_date_for_api(user_data.get("dob", "")),
             "data[DAU]": api_height, 
-            "data[DAY]": api_eyes,       
+            "data[DAY]": api_eyes,        
             "data[DDA]": real_id_status,    
             "data[DDF]": trunc_first, 
             "data[DDE]": trunc_last,  
@@ -487,63 +532,86 @@ def generate_barcodes(user_data: dict, api_height: str):
             "data[DCB]": user_data.get("restrictions", "NONE").upper(),
             "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
             "data[DBD]": format_date_for_api(user_data.get("issue_date", "")),
-            
-            # Legacy Manufacturer Data
             "data[ZNA]": "WX", 
             "data[ZNB]": "11.00", 
             "data[ZNC]": "DUP", 
             "data[DDC]": "1"
         }
 
-        # Inject DCK, DDB, and API Revision strictly for TX
         if state == "TX":
-            payload["revision"] = "0900-2021" # Forces API to use the older TX template
+            payload["revision"] = "0900-2021" 
             payload["data[DDB]"] = "2021-07-16"
             
-        #     if user_data.get("inventory_control"):
-        #         payload["data[DCK]"] = user_data.get("inventory_control")
-        #     else:
-        #         # Dynamically generate an 11-digit random inventory number
-        #         payload["data[DCK]"] = str(random.randint(10000000000, 99999999999))
-                
-        # elif user_data.get("inventory_control"):
-        #     payload["data[DCK]"] = user_data.get("inventory_control")
-
-        if user_data.get("custom_dl"):
-            payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
-
+        if api_weight: payload["data[DAW]"] = api_weight
+        if api_hair: payload["data[DAZ]"] = api_hair
+        if api_race: payload["data[DCL]"] = api_race
+        if user_data.get("custom_dl"): payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
         if mn_len > 0:
             payload["data[DAD]"] = user_data.get("middle_name", "").upper()
             payload["data[DDG]"] = trunc_middle
 
+    # --- LOGGING PAYLOAD ---
     logger.info(f"🚀 Sending payload to FIS API for state: {state}")
+    logger.info(f"--- Exact Payload Sent to API ---\n{json.dumps(payload, indent=2)}")
 
     # --- EXECUTE REQUEST ---
-    resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=60)
-    resp.raise_for_status()
+    try:
+        resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=60)
+        resp.raise_for_status()
+    except Exception as e:
+        logger.error(f"❌ FIS API POST Failed: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            logger.error(e.response.text)
+        raise e
+        
     barcode_id = resp.headers.get("X-Barcode-ID")
-    
     logger.info(f"✅ Barcode successfully generated! Barcode ID: {barcode_id}")
 
     # Fetch all formats
     params = {"barcode_id": barcode_id}
+    auth_head = {"Authorization": f"Bearer {FIS_API_KEY}"}
     
-    big_svg = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/svg+xml"}, params=params, timeout=60).content
-    small_svg = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/svg+xml"}, params=params, timeout=60).content
+    big_svg, small_svg, big_tiff, small_tiff, big_png, small_png = b"", b"", None, None, None, None
     
-    big_tiff = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/tiff"}, params=params, timeout=60).content
-    small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/tiff"}, params=params, timeout=60).content
+    logger.info("⬇️ Fetching raw_text...")
+    raw_text = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "text/plain"}, params=params, timeout=60).text
     
-    raw_text = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "text/plain"}, params=params, timeout=60).text
+    # --- LOGGING RAW TEXT & VERIFICATION ---
+    logger.info(f"--- Returned Raw Barcode Text ---\n{raw_text}\n---------------------------------")
+    clean_text = raw_text.replace('\n', '').replace('\r', '')
     
-    big_png = requests.get(f"{API_BASE_URL}/export", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/png"}, params=params, timeout=60).content
-    small_png = requests.get(f"{API_BASE_URL}/linear", headers={"Authorization": f"Bearer {FIS_API_KEY}", "Accept": "image/png"}, params=params, timeout=60).content
+    if "IDDAQ" in clean_text:
+        logger.info("✅ VERIFIED: Document Type correctly set to 'Identification Card' (IDDAQ found).")
+    elif "DLDAQ" in clean_text:
+        logger.info("✅ VERIFIED: Document Type correctly set to 'Driver License' (DLDAQ found).")
+    else:
+        logger.warning("⚠️ UNKNOWN: Could not definitively determine document type from raw text.")
 
+    if f"DDA{real_id_status}" in clean_text:
+        logger.info(f"✅ VERIFIED: Real ID Compliance correctly set to '{real_id_status}' (DDA{real_id_status} found).")
+    else:
+        logger.warning(f"❌ FAIL: Real ID Compliance 'DDA{real_id_status}' was NOT found in the raw text.")
+
+    if state in ["NJ", "NY", "GA", "TX", "FL"]:
+        logger.info("⬇️ Fetching big_svg...")
+        big_svg = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=60).content
+        logger.info("⬇️ Fetching small_svg...")
+        small_svg = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=60).content
+        
+    if state == "FL":
+        logger.info("⬇️ Fetching big_tiff...")
+        big_tiff = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=60).content
+        logger.info("⬇️ Fetching small_tiff...")
+        small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=60).content
+        
+    if state in ["PA", "VA"]:
+        logger.info("⬇️ Fetching big_png...")
+        big_png = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=60).content
+        logger.info("⬇️ Fetching small_png...")
+        small_png = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=60).content
+
+    logger.info("✅ Selected barcode files downloaded successfully!")
     return barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png
-
-# ==============================================================================
-# TELEGRAM FLOW
-# ==============================================================================
 
 # ==============================================================================
 # UI HELPERS
@@ -1107,7 +1175,35 @@ async def admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_unified_prompt(query, context, state_code):
     state_code_upper = state_code.upper()
     
-    if state_code_upper == "GA":
+    if state_code_upper == "TX":
+        msg = (
+            "Please only edit and replace the sample information with your information details exactly in this format.\n\n"
+            "```text\n"
+            "DL: 12345678\n"
+            "First Name: HARROLD\n"
+            "Middle Name: EYES\n"
+            "Last Name: FINCH\n"
+            "Address: 100 EYES RD\n"
+            "City: DALLAS\n"
+            "State Code: TX\n"
+            "Full Zip Code + 4 Digits: 75777-0111\n"
+            "Gender: M\n"
+            "Dob: 03/23/1950\n"
+            "Height: 5'-04\"\n"
+            "Weight: 300\n"
+            "Hair Color: BLACK\n"
+            "Race: WHITE\n"
+            "Eyes: BRO\n"
+            "Class: C\n"
+            "Endorsements: NONE\n"
+            "Restrictions: NONE\n"
+            "Issue Date: 12/07/2025\n"
+            "Expires Date: 03/23/2032\n"
+            "Real ID: Visible\n"
+            "Not Real ID: Not Visible\n"
+            "```"
+        )
+    elif state_code_upper == "GA":
         msg = (
             "Please only edit and replace the sample information with your information details exactly in this format.\n\n"
             "```text\n"

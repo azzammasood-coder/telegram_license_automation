@@ -55,7 +55,18 @@ IMPLEMENTED_STATES = ["NJ", "NY", "FL", "PA", "VA", "GA", "TX"]
 def parse_bulk_input(text: str) -> dict:
     data = {}
     lines = text.split('\n')
-    key_map = { "jurisdiction": "jurisdiction", "state": "jurisdiction", "first name": "first_name", "middle name": "middle_name", "last name": "last_name", "address": "address", "city": "city", "state code": "state_code", "full zip code + 4 digits": "zip_code", "zip code": "zip_code", "county": "county", "gender": "gender", "dob": "dob", "height": "height", "weight": "weight", "eyes": "eyes", "class": "class", "endorsements": "endorsements", "restrictions": "restrictions", "issue date": "issue_date", "expires date": "expires_date", "real id": "real_id", "not real id": "not_real_id", "signature": "signature", "dl number": "custom_dl", "license number": "custom_dl", "dl": "custom_dl" }
+    key_map = { 
+        "jurisdiction": "jurisdiction", "state": "jurisdiction", 
+        "first name": "first_name", "middle name": "middle_name", "last name": "last_name", 
+        "address": "address", "city": "city", "state code": "state_code", 
+        "full zip code + 4 digits": "zip_code", "zip code": "zip_code", "county": "county", 
+        "gender": "gender", "dob": "dob", "height": "height", "weight": "weight", 
+        "hair color": "hair_color", "hair": "hair_color", "race": "race", "eyes": "eyes", 
+        "class": "class", "endorsements": "endorsements", "restrictions": "restrictions", 
+        "issue date": "issue_date", "expires date": "expires_date", 
+        "real id": "real_id", "not real id": "not_real_id", "signature": "signature", 
+        "dl number": "custom_dl", "license number": "custom_dl", "dl": "custom_dl" 
+    }
     for line in lines:
         if ":" in line:
             parts = line.split(":", 1)
@@ -299,7 +310,6 @@ def unified_form(state):
             parsed_data['nj_doc_type'] = request.form.get('nj_doc_type', 'DL')
             parsed_data['nj_grade'] = request.form.get('nj_grade', 'A')
 
-        # Helper to save uploaded images
         def save_file(file_obj, prefix):
             if file_obj and file_obj.filename:
                 filename = secure_filename(f"{prefix}_{uuid.uuid4().hex[:8]}_{file_obj.filename}")
@@ -307,12 +317,10 @@ def unified_form(state):
                 return filename
             return None
 
-        # Process Face Upload
         face_file = save_file(request.files.get('face_img'), 'face')
         if face_file:
             parsed_data['face_path'] = face_file
 
-        # Process Signature
         sig_type = request.form.get('sig_type')
         if sig_type == 'upload':
             sig_file = save_file(request.files.get('sig_img'), 'sig')
@@ -333,12 +341,15 @@ def unified_form(state):
     dl_formats = {"NJ": "H5901 59055 59481", "NY": "689 995 677", "VA": "T67256730", "FL": "F425-104-65-162-0", "PA": "19 059 959", "GA": "049559674", "TX": "96136059"}
     sample_dl = dl_formats.get(state, "H5901 59055 59481")
     
-    if state == "GA":
+    if state == "TX":
+        sample_text = "DL: 12345678\nFirst Name: HARROLD\nMiddle Name: EYES\nLast Name: FINCH\nAddress: 100 EYES RD\nCity: DALLAS\nState Code: TX\nFull Zip Code + 4 Digits: 75777-0111\nGender: M\nDob: 03/23/1950\nHeight: 5'-04\"\nWeight: 300\nHair Color: BLACK\nRace: WHITE\nEyes: BRO\nClass: C\nEndorsements: NONE\nRestrictions: NONE\nIssue Date: 12/07/2025\nExpires Date: 03/23/2032\nReal ID: Visible\nNot Real ID: Not Visible"
+    elif state == "GA":
         sample_text = f"DL: {sample_dl}\nFirst Name: HARROLD\nMiddle Name: EYES\nLast Name: FINCH\nAddress: 100 EYES \nCity: ATLANTA\nState Code: GA\nFull Zip Code + 4 Digits: 39999-1234\nCounty: Fulton\nGender: M\nDob: 01/01/1980\nHeight: 5'-11\"\nWeight: 160\nEyes: BRO\nClass: D\nEndorsements: NONE\nRestrictions: NONE\nIssue Date: 01/01/2023\nExpires Date: 01/01/2030\nReal ID: Visible\nNot Real ID: Not Visible"
     else:
         sample_text = f"DL: {sample_dl}\nFirst Name: HARROLD\nMiddle Name: EYES\nLast Name: FINCH\nAddress: 100 EYES\nCity: NEWARK\nState Code: {state}\nFull Zip Code + 4 Digits: 07101-1234\nGender: M\nDob: 01/01/1980\nHeight: 5'-11\"\nEyes: BRN\nClass: D\nEndorsements: NONE\nRestrictions: NONE\nIssue Date: 01/01/2023\nExpires Date: 01/01/2030\nReal ID: Visible\nNot Real ID: Not Visible"
         
     return render_template('form.html', state=state, sample_text=sample_text)
+
 # ==========================================
 # ROUTES: TRACK ORDER, CART, CHECKOUT, TELEGRAM NOTIFY
 # ==========================================

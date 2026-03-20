@@ -89,8 +89,8 @@ function main() {
                 updateText(boldGroup, "HEIGHT", data["Feet"] + "'-" + data["Inches"] + '"');
                 updateText(boldGroup, "ENDORSEMENT", data["Endorsements"]);
                 updateText(boldGroup, "RESTRICTION", data["Restrictions"]);
-                updateText(boldGroup, "ADDRESS SECOND LINE", data["Address 1"]);
-                updateText(boldGroup, "ADDRESS FIRST LINE", data["City State Zip"]);
+                updateText(boldGroup, "ADDRESS FIRST LINE", data["Address 1"]);
+                updateText(boldGroup, "ADDRESS SECOND LINE", data["City State Zip"]);
                 updateText(boldGroup, "ISSUE", data["Issue Date"]);
                 updateText(boldGroup, "EXPIRY", data["Exp Date"]);
                 updateText(boldGroup, "DOB", data["Dob"]);
@@ -108,7 +108,12 @@ function main() {
             if (lightGroup) {
                 var microGroup = getLayerSet(lightGroup, "Micro Text");
                 if (microGroup) {
-                    updateText(microGroup, "DOB SMALL", data["Dob"]);
+                    var dobStr = data["Dob"] || "";
+                    // Auto-format raw 8-digit DOB to MM/DD/YYYY if missing slashes
+                    if (dobStr.length === 8 && dobStr.indexOf("/") === -1) {
+                        dobStr = dobStr.substring(0,2) + "/" + dobStr.substring(2,4) + "/" + dobStr.substring(4);
+                    }
+                    updateText(microGroup, "DOB SMALL", dobStr);
                 }
             }
 

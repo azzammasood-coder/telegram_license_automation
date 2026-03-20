@@ -49,7 +49,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - [WORKER] - %(message)s",
     handlers=[
-        logging.FileHandler(LOG_FILE_PATH, encoding="utf-8"),
+        logging.FileHandler(LOG_FILE_PATH, mode='w', encoding="utf-8"),
         logging.StreamHandler()
     ]
 )
@@ -109,101 +109,240 @@ def format_date_for_api(date_str: str):
 def generate_barcodes(user_data: dict, api_height: str):
     headers = {"Authorization": f"Bearer {FIS_API_KEY}", "Content-Type": "application/x-www-form-urlencoded"}
     state = user_data.get("jurisdiction", "NJ").upper().strip()
+    if state == "FL": state = "FL"
+
+    # --- DEBUG LOGGING ---
+    logger.info(f"🔍 Processing user_data for Barcode: {json.dumps(user_data, indent=2)}")
+
+    # --- COMMON PREP ---
+    eye_map = {
+        "BRN": "BRO", "BROWN": "BRO", "BLU": "BLU", "BLUE": "BLU",
+        "GRN": "GRN", "GREEN": "GRN", "HZL": "HAZ", "HAZEL": "HAZ", 
+        "BLK": "BLK", "BLACK": "BLK", "GRY": "GRY", "GRAY": "GRY"
+    }
+    raw_eyes = user_data.get("eyes", "BRO").upper().strip()
+    api_eyes = eye_map.get(raw_eyes, raw_eyes)[:3] 
+
+    api_weight = user_data.get("weight", "").strip()
+    if api_weight.isdigit(): api_weight = f"{int(api_weight):03d}"
     
-    eye_map = {"BRN": "BRO", "BROWN": "BRO", "BLU": "BLU", "BLUE": "BLU", "GRN": "GRN", "GREEN": "GRN", "HZL": "HAZ", "HAZEL": "HAZ", "BLK": "BLK", "BLACK": "BLK", "GRY": "GRY", "GRAY": "GRY"}
-    api_eyes = eye_map.get(user_data.get("eyes", "BRO").upper().strip(), "BRO")[:3] 
+    hair_map = { "BLACK": "BLK", "BROWN": "BRO", "BLONDE": "BLO", "RED": "RED", "WHITE": "WHI", "GRAY": "GRY", "BALD": "BAL" }
+    raw_hair = user_data.get("hair_color", "").upper().strip()
+    api_hair = hair_map.get(raw_hair, raw_hair)[:3] if raw_hair else ""
     
+    race_map = { "WHITE": "W", "BLACK": "B", "ASIAN": "A", "HISPANIC": "H", "INDIAN": "I", "NATIVE": "I" }
+    raw_race = user_data.get("race", "").upper().strip()
+    api_race = race_map.get(raw_race, raw_race)[:1] if raw_race else ""
+
+    # Truncation Calculation
     fn_len = len(user_data.get("first_name", "").strip())
     mn_len = len(user_data.get("middle_name", "").strip())
     ln_len = len(user_data.get("last_name", "").strip())
-    
     trunc_first = "T" if fn_len == 1 else "N"
     trunc_last = "T" if ln_len == 1 else "N"
     trunc_middle = "T" if mn_len == 1 else "N" if mn_len > 1 else ""
-    real_id_status = "F" if "VISIBLE" in user_data.get("real_id", "").upper() or "YES" in user_data.get("real_id", "").upper() else "N"
 
-    if state == "FL":
-        safe_driver_val = "1" if user_data.get("safe_driver", "").upper() in ["YES", "VISIBLE"] else "2"
-        replaced_date_val = format_date_for_api(user_data.get("issue_date", "")) if user_data.get("replaced", "").upper() == "YES" else ""
-        payload = {
-            "jurisdiction": state, "document": "DL", "save": "true",
-            "data[DAC]": user_data.get("first_name", "").upper(), "data[DCS]": user_data.get("last_name", "").upper(),
-            "data[DAG]": user_data.get("address", "").upper(), "data[DAI]": user_data.get("city", "").upper(),
-            "data[DAJ]": user_data.get("state_code", state).upper(), "data[DAK]": user_data.get("zip_code", ""),
-            "data[DBC]": "1" if user_data.get("gender", "M").upper() in ["M", "1", "MALE"] else "2", 
-            "data[DBB]": format_date_for_api(user_data.get("dob", "")), "data[DAU]": api_height, 
-            "data[DAY]": api_eyes, "data[DDA]": real_id_status, "data[DDF]": trunc_first, "data[DDE]": trunc_last, 
-            "data[DCA]": user_data.get("class", "E").upper(), "data[DCB]": user_data.get("restrictions", "NONE").upper(),
-            "data[DCD]": user_data.get("endorsements", "NONE").upper(), "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
-            "data[DBD]": format_date_for_api(user_data.get("issue_date", "")),
-            "data[ZFA]": replaced_date_val, "data[ZFB]": "", "data[ZFC]": safe_driver_val, "data[ZFD]": "N",
-            "data[ZFE]": "N", "data[ZFF]": "N", "data[ZFG]": "N", "data[ZFH]": "N", "data[ZFI]": "None",
-            "data[ZFJ]": f"{random.randint(0, 9999999999):010d}", "data[ZFK]": "",
-            "data[ZNA]": "WX", "data[ZNB]": "11.00", "data[ZNC]": "ORI" 
-        }
+    # ==========================================================================
+    # REAL ID COMPLIANCE LOGIC (All States)
+    # F = Compliant (Visible) | N = Non-compliant (Not Visible)
+    # ==========================================================================
+    real_val = user_data.get("real_id", "").strip().upper()
+    not_real_val = user_data.get("not_real_id", "").strip().upper()
+
+    # 1. If they explicitly made 'Not Real ID' visible
+    if "VISIBLE" in not_real_val and "NOT" not in not_real_val:
+        real_id_status = "N"
+    # 2. If they explicitly made 'Real ID' Not Visible/No
+    elif "NOT" in real_val or "NON" in real_val or real_val == "NO":
+        real_id_status = "N"
+    # 3. If they explicitly made 'Real ID' Visible/Yes
+    elif "VISIBLE" in real_val or "YES" in real_val:
+        real_id_status = "F"
+    # 4. Default Fallback
     else:
+        real_id_status = "N"
+
+    logger.info(f"🛡️ Real ID Status Computed as: '{real_id_status}' (Compliant=F, Non=N)")
+
+    # --- DETERMINE DOCUMENT TYPE FOR API ---
+    nj_doc_val = str(user_data.get("nj_doc_type", "")).upper()
+    doc_class = str(user_data.get("class", "")).upper()
+    
+    # Robust check: Looks for Telegram's 'nj_id', Flask's 'ID', or if Class is explicitly 'NONE'
+    if "ID" in nj_doc_val or "IDENTIFICATION" in nj_doc_val:
+        doc_type = "ID"
+    elif state == "NJ" and doc_class == "NONE":
+        doc_type = "ID"
+    else:
+        doc_type = "DL"
+
+    logger.info(f"🔍 Computed Document Type for API: '{doc_type}'")
+
+    # ==========================================================================
+    # FLORIDA SPECIFIC LOGIC
+    # ==========================================================================
+    if state == "FL":
+        safe_driver_val = "2"
+        val_safe = user_data.get("safe_driver", "").strip().upper()
+        if val_safe == "YES" or val_safe == "VISIBLE":
+            safe_driver_val = "1"
+
+        replaced_date_val = ""
+        if user_data.get("replaced", "").upper() == "YES":
+            replaced_date_val = format_date_for_api(user_data.get("issue_date", ""))
+
+        customer_id = f"{random.randint(0, 9999999999):010d}"
+
         payload = {
-            "jurisdiction": state, "document": "DL", "save": "true",
-            "data[DAC]": user_data.get("first_name", "").upper(), "data[DCS]": user_data.get("last_name", "").upper(),
-            "data[DAG]": user_data.get("address", "").upper(), "data[DAI]": user_data.get("city", "").upper(),
-            "data[DAJ]": user_data.get("state_code", state).upper(), "data[DAK]": user_data.get("zip_code", ""),
-            "data[DBC]": "1" if user_data.get("gender", "M").upper() in ["M", "1", "MALE"] else "2",
-            "data[DBB]": format_date_for_api(user_data.get("dob", "")), "data[DAU]": api_height, 
-            "data[DAY]": api_eyes, "data[DDA]": real_id_status, "data[DDF]": trunc_first, "data[DDE]": trunc_last, 
-            "data[DCA]": user_data.get("class", "D").upper(), "data[DCB]": user_data.get("restrictions", "NONE").upper(),
+            "jurisdiction": state, 
+            "document": doc_type, 
+            "save": "true",
+            "data[DAC]": user_data.get("first_name", "").upper(),
+            "data[DCS]": user_data.get("last_name", "").upper(),
+            "data[DAG]": user_data.get("address", "").upper(), 
+            "data[DAI]": user_data.get("city", "").upper(),
+            "data[DAJ]": user_data.get("state_code", state).upper(), 
+            "data[DAK]": user_data.get("zip_code", ""),
+            "data[DBC]": "1" if user_data.get("gender", "M").upper() in ["M", "1", "MALE"] else "2", 
+            "data[DBB]": format_date_for_api(user_data.get("dob", "")),
+            "data[DAU]": api_height, 
+            "data[DAY]": api_eyes,        
+            "data[DDA]": real_id_status,    
+            "data[DDF]": trunc_first,  
+            "data[DDE]": trunc_last,  
+            "data[DCA]": user_data.get("class", "E").upper(), 
+            "data[DCB]": user_data.get("restrictions", "NONE").upper(),
+            "data[DCD]": user_data.get("endorsements", "NONE").upper(),
             "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
             "data[DBD]": format_date_for_api(user_data.get("issue_date", "")),
-            "data[ZNA]": "WX", "data[ZNB]": "11.00", "data[ZNC]": "DUP", "data[DDC]": "1"
+            "data[DCK]": user_data.get("inventory_control", "")
         }
+
+        if api_weight: payload["data[DAW]"] = api_weight
+        if api_hair: payload["data[DAZ]"] = api_hair
+        if api_race: payload["data[DCL]"] = api_race
+        if user_data.get("custom_dl"): payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
+        if mn_len > 0:
+            payload["data[DAD]"] = user_data.get("middle_name", "").upper()
+            payload["data[DDG]"] = trunc_middle
+
+        payload["data[ZFA]"] = replaced_date_val   
+        payload["data[ZFB]"] = ""          
+        payload["data[ZFC]"] = safe_driver_val    
+        payload["data[ZFD]"] = "N"          
+        payload["data[ZFE]"] = "N"          
+        payload["data[ZFF]"] = "N"          
+        payload["data[ZFG]"] = "N"          
+        payload["data[ZFH]"] = "N"          
+        payload["data[ZFI]"] = "None"        
+        payload["data[ZFJ]"] = customer_id      
+        payload["data[ZFK]"] = ""          
+        payload["data[ZNA]"] = "WX"
+        payload["data[ZNB]"] = "11.00"
+        payload["data[ZNC]"] = "ORI" 
+
+    # ==========================================================================
+    # STANDARD SPECIFIC LOGIC (Legacy Payload)
+    # ==========================================================================
+    else:
+        payload = {
+            "jurisdiction": state, 
+            "document": doc_type, 
+            "save": "true",
+            "data[DAC]": user_data.get("first_name", "").upper(),
+            "data[DCS]": user_data.get("last_name", "").upper(),
+            "data[DAG]": user_data.get("address", "").upper(), 
+            "data[DAI]": user_data.get("city", "").upper(),
+            "data[DAJ]": user_data.get("state_code", state).upper(), 
+            "data[DAK]": user_data.get("zip_code", ""),
+            "data[DBC]": "1" if user_data.get("gender", "M").upper() in ["M", "1", "MALE"] else "2",
+            "data[DBB]": format_date_for_api(user_data.get("dob", "")),
+            "data[DAU]": api_height, 
+            "data[DAY]": api_eyes,        
+            "data[DDA]": real_id_status,    
+            "data[DDF]": trunc_first, 
+            "data[DDE]": trunc_last,  
+            "data[DCA]": user_data.get("class", "D").upper(), 
+            "data[DCB]": user_data.get("restrictions", "NONE").upper(),
+            "data[DBA]": format_date_for_api(user_data.get("expires_date", "")),
+            "data[DBD]": format_date_for_api(user_data.get("issue_date", "")),
+            "data[ZNA]": "WX", 
+            "data[ZNB]": "11.00", 
+            "data[ZNC]": "DUP", 
+            "data[DDC]": "1"
+        }
+
         if state == "TX":
-            payload["revision"] = "0900-2021"
+            payload["revision"] = "0900-2021" 
             payload["data[DDB]"] = "2021-07-16"
+            
+        if api_weight: payload["data[DAW]"] = api_weight
+        if api_hair: payload["data[DAZ]"] = api_hair
+        if api_race: payload["data[DCL]"] = api_race
+        if user_data.get("custom_dl"): payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
+        if mn_len > 0:
+            payload["data[DAD]"] = user_data.get("middle_name", "").upper()
+            payload["data[DDG]"] = trunc_middle
 
-    if user_data.get("custom_dl"): payload["data[DAQ]"] = user_data["custom_dl"].upper().replace(" ", "")
-    if mn_len > 0:
-        payload["data[DAD]"] = user_data.get("middle_name", "").upper()
-        payload["data[DDG]"] = trunc_middle
+    # --- LOGGING PAYLOAD ---
+    logger.info(f"🚀 Sending payload to FIS API for state: {state}")
+    logger.info(f"--- Exact Payload Sent to API ---\n{json.dumps(payload, indent=2)}")
 
-    logger.info(f"📡 Sending POST request to FIS API for {state}...")
+    # --- EXECUTE REQUEST ---
     try:
-        resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=20)
+        resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=60)
         resp.raise_for_status()
     except Exception as e:
         logger.error(f"❌ FIS API POST Failed: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            logger.error(e.response.text)
         raise e
-
+        
     barcode_id = resp.headers.get("X-Barcode-ID")
-    logger.info(f"✅ Barcode generated! ID: {barcode_id}. Downloading SPECIFIC formats for {state}...")
-    
+    logger.info(f"✅ Barcode successfully generated! Barcode ID: {barcode_id}")
+
+    # Fetch all formats
     params = {"barcode_id": barcode_id}
     auth_head = {"Authorization": f"Bearer {FIS_API_KEY}"}
     
     big_svg, small_svg, big_tiff, small_tiff, big_png, small_png = b"", b"", None, None, None, None
     
-    # 1. EVERY state needs the raw text data
     logger.info("⬇️ Fetching raw_text...")
-    raw_text = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "text/plain"}, params=params, timeout=15).text
+    raw_text = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "text/plain"}, params=params, timeout=60).text
     
-    # 2. SVGs (NJ, NY, GA, TX, FL)
+    # --- LOGGING RAW TEXT & VERIFICATION ---
+    logger.info(f"--- Returned Raw Barcode Text ---\n{raw_text}\n---------------------------------")
+    clean_text = raw_text.replace('\n', '').replace('\r', '')
+    
+    if "IDDAQ" in clean_text:
+        logger.info("✅ VERIFIED: Document Type correctly set to 'Identification Card' (IDDAQ found).")
+    elif "DLDAQ" in clean_text:
+        logger.info("✅ VERIFIED: Document Type correctly set to 'Driver License' (DLDAQ found).")
+    else:
+        logger.warning("⚠️ UNKNOWN: Could not definitively determine document type from raw text.")
+
+    if f"DDA{real_id_status}" in clean_text:
+        logger.info(f"✅ VERIFIED: Real ID Compliance correctly set to '{real_id_status}' (DDA{real_id_status} found).")
+    else:
+        logger.warning(f"❌ FAIL: Real ID Compliance 'DDA{real_id_status}' was NOT found in the raw text.")
+
     if state in ["NJ", "NY", "GA", "TX", "FL"]:
         logger.info("⬇️ Fetching big_svg...")
-        big_svg = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=15).content
+        big_svg = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=60).content
         logger.info("⬇️ Fetching small_svg...")
-        small_svg = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=15).content
+        small_svg = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=60).content
         
-    # 3. TIFFs (FL Only)
     if state == "FL":
         logger.info("⬇️ Fetching big_tiff...")
-        big_tiff = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=15).content
+        big_tiff = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=60).content
         logger.info("⬇️ Fetching small_tiff...")
-        small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=15).content
+        small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=60).content
         
-    # 4. PNGs (PA & VA Only)
     if state in ["PA", "VA"]:
         logger.info("⬇️ Fetching big_png...")
-        big_png = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=15).content
+        big_png = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=60).content
         logger.info("⬇️ Fetching small_png...")
-        small_png = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=15).content
+        small_png = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=60).content
 
     logger.info("✅ Selected barcode files downloaded successfully!")
     return barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png
@@ -393,11 +532,20 @@ def run_worker():
                         if os.path.exists(new_dir):
                             new_dir = os.path.join(FINAL_DIR, f"{first_name} {last_name} {dob_clean} (ORDER {job_id}_{idx})")
                             
-                        try:
-                            os.rename(created_dir, new_dir)
-                            logger.info(f"📁 Renamed output folder to: {os.path.basename(new_dir)}")
-                        except Exception as e:
-                            logger.error(f"⚠️ Could not rename folder (Photoshop might still have it open): {e}")
+                        # WinError 5 Fix: Retry loop to give Photoshop time to release the file handles
+                        rename_success = False
+                        for attempt in range(15):  # Try 15 times (30 seconds total)
+                            try:
+                                os.rename(created_dir, new_dir)
+                                logger.info(f"📁 Renamed output folder to: {os.path.basename(new_dir)}")
+                                rename_success = True
+                                break
+                            except OSError as e:
+                                logger.warning(f"⚠️ Folder locked by Photoshop (Attempt {attempt+1}/15). Waiting 2s...")
+                                time.sleep(2)
+                        
+                        if not rename_success:
+                            logger.error("❌ Failed to rename folder after 15 attempts. File is permanently locked by another process.")
 
                 else:
                     logger.error(f"❌ Timeout reached waiting for {jurisdiction} files to generate.")

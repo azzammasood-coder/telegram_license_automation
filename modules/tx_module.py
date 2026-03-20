@@ -163,11 +163,19 @@ def generate_lightburn_lbrn(data_map, base_dir):
     back_dir = data_map.get("Output Dir Back", "")
     base_name = data_map.get("Base Name", "Unknown")
 
-    logger.info(f"Starting LightBurn generation for TX: {base_name}")
+    logger.info(f"🔥 [TX LightBurn] Starting generation for: {base_name}")
+    logger.info(f"🔥 [TX LightBurn] Main Directory: {main_dir}")
+    logger.info(f"🔥 [TX LightBurn] Front Directory: {front_dir}")
+    logger.info(f"🔥 [TX LightBurn] Back Directory: {back_dir}")
 
     # Create Lightburn output directory next to Front and Back
     lb_out_dir = os.path.join(main_dir, "Lightburn")
-    os.makedirs(lb_out_dir, exist_ok=True)
+    try:
+        os.makedirs(lb_out_dir, exist_ok=True)
+        logger.info(f"🔥 [TX LightBurn] Ensured output directory exists: {lb_out_dir}")
+    except Exception as e:
+        logger.error(f"❌ [TX LightBurn] Failed to create Lightburn output directory: {e}")
+        return
 
     # Pointing to the template files in the root project directory
     template_front = os.path.join(base_dir, "Lightburn", "TX Lasering Front.lbrn2")
@@ -195,17 +203,22 @@ def generate_lightburn_lbrn(data_map, base_dir):
     }
 
     def process_template(template_path, out_path, mapping, img_dir, side):
-        logger.info(f"[{side}] Loading template: {template_path}")
+        logger.info(f"--- Processing {side} Template ---")
+        logger.info(f"[{side}] Loading template from: {template_path}")
+        
         if not os.path.exists(template_path):
-            logger.error(f"[{side}] LightBurn Template NOT FOUND at: {template_path}")
+            logger.error(f"❌ [{side}] LightBurn Template NOT FOUND at: {template_path}")
             return
         
         try:
             tree = ET.parse(template_path)
             root = tree.getroot()
+            logger.info(f"✅ [{side}] Successfully parsed XML tree for template.")
             
             shapes = root.findall(".//Shape[@Type='Bitmap']")
+            logger.info(f"[{side}] Found {len(shapes)} Bitmap shapes in template.")
             
+            processed_count = 0
             for shape in shapes:
                 cut_index = int(shape.get("CutIndex", -1))
                 
@@ -213,8 +226,10 @@ def generate_lightburn_lbrn(data_map, base_dir):
                     png_filename = mapping[cut_index]
                     png_full_path = os.path.join(img_dir, png_filename)
                     
+                    logger.info(f"[{side}] Processing CutIndex {cut_index} -> Expected File: {png_filename}")
+                    
                     if not os.path.exists(png_full_path):
-                        logger.warning(f"[{side}] ⚠️ FILE MISSING for CutIndex {cut_index}: {png_full_path}")
+                        logger.warning(f"⚠️ [{side}] FILE MISSING for CutIndex {cut_index}: {png_full_path}")
                         continue
 
                     # 1. READ IMAGE & CONVERT TO BASE64
@@ -222,8 +237,9 @@ def generate_lightburn_lbrn(data_map, base_dir):
                         with open(png_full_path, "rb") as image_file:
                             raw_data = image_file.read()
                             encoded_string = base64.b64encode(raw_data).decode('utf-8')
+                            logger.info(f"✅ [{side}] Successfully read and base64 encoded: {png_filename}")
                     except Exception as img_err:
-                        logger.error(f"[{side}] ❌ Read Error for {png_full_path}: {img_err}")
+                        logger.error(f"❌ [{side}] Read/Encode Error for {png_full_path}: {img_err}")
                         continue
                         
                     # 2. INJECT DATA
@@ -231,18 +247,35 @@ def generate_lightburn_lbrn(data_map, base_dir):
                     shape.set('File', os.path.abspath(png_full_path).replace("\\", "/"))
                     
                     # 3. CLEANUP CONFLICTS
-                    if 'SourceHash' in shape.attrib: del shape.attrib['SourceHash']
-                    if 'RelativePath' in shape.attrib: del shape.attrib['RelativePath']
+                    if 'SourceHash' in shape.attrib: 
+                        del shape.attrib['SourceHash']
+                    if 'RelativePath' in shape.attrib: 
+                        del shape.attrib['RelativePath']
 
+                    removed_children = 0
                     for child in list(shape):
                         if child.tag in ['data', 'Data', 'ImagePath']:
                             shape.remove(child)
+                            removed_children += 1
+                            
+                    if removed_children > 0:
+                        logger.info(f"🔧 [{side}] Cleaned up {removed_children} conflicting child tags for CutIndex {cut_index}.")
 
-            tree.write(out_path, encoding="utf-8", xml_declaration=True)
-            logger.info(f"[{side}] Successfully saved Lightburn file to: {out_path}")
+                    processed_count += 1
+                    logger.info(f"✅ [{side}] Successfully injected data for CutIndex {cut_index}.")
+
+            logger.info(f"[{side}] Total shapes successfully processed: {processed_count}/{len(mapping)}")
+
+            # 4. WRITE FILE
+            try:
+                tree.write(out_path, encoding="utf-8", xml_declaration=True)
+                logger.info(f"🎉 [{side}] Successfully saved finalized Lightburn file to: {out_path}")
+            except Exception as write_err:
+                logger.error(f"❌ [{side}] Failed to write output file to {out_path}: {write_err}")
             
         except Exception as e:
-            logger.error(f"[{side}] Error processing LightBurn template: {e}")
+            logger.error(f"❌ [{side}] Critical Error processing LightBurn template: {e}")
 
     process_template(template_front, out_front, front_mapping, front_dir, "Front")
     process_template(template_back, out_back, back_mapping, back_dir, "Back")
+    logger.info(f"[TX LightBurn] Generation complete for {base_name}.")
