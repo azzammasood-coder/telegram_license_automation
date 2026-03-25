@@ -1,3 +1,5 @@
+# tx_module.py
+
 import os
 import re
 import logging
@@ -74,7 +76,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     addr1 = user_data.get('address', '').upper()
     city = user_data.get('city', '').upper()
     state = user_data.get('state_code', 'TX').upper()
-    zip_code = user_data.get('zip_code', '').split('-')[0]
+    zip_code = user_data.get('zip_code', '').strip().replace('-', '')[:5]
     city_state_zip = f"{city}, {state} {zip_code}"
     
     restrictions = user_data.get('restrictions', 'NONE').upper()

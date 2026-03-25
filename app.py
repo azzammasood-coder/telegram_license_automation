@@ -342,11 +342,19 @@ def unified_form(state):
     sample_dl = dl_formats.get(state, "H5901 59055 59481")
     
     if state == "TX":
-        sample_text = "DL: 12345678\nFirst Name: HARROLD\nMiddle Name: EYES\nLast Name: FINCH\nAddress: 100 EYES RD\nCity: DALLAS\nState Code: TX\nFull Zip Code + 4 Digits: 75777-0111\nGender: M\nDob: 03/23/1950\nHeight: 5'-04\"\nWeight: 300\nHair Color: BLACK\nRace: WHITE\nEyes: BRO\nClass: C\nEndorsements: NONE\nRestrictions: NONE\nIssue Date: 12/07/2025\nExpires Date: 03/23/2032\nReal ID: Visible\nNot Real ID: Not Visible"
+        sample_text = "DL: 12345678\nFirst Name: HARROLD\nMiddle Name: EYES\nLast Name: FINCH\nAddress: 100 EYES RD\nCity: DALLAS\nState Code: TX\nFull Zip Code + 4 Digits: 75777-0111\nGender: M\nDob: 03/23/1950\nHeight: 5'-04\"\nWeight: 300\nHair Color: BLACK\nRace: WHITE\nEyes: BRO\nClass: C\nEndorsements: NONE\nRestrictions: NONE\nIssue Date: 12/07/2025\nExpires Date: 03/23/2033\nReal ID: Visible\nNot Real ID: Not Visible"
     elif state == "GA":
-        sample_text = f"DL: {sample_dl}\nFirst Name: HARROLD\nMiddle Name: EYES\nLast Name: FINCH\nAddress: 100 EYES \nCity: ATLANTA\nState Code: GA\nFull Zip Code + 4 Digits: 39999-1234\nCounty: Fulton\nGender: M\nDob: 01/01/1980\nHeight: 5'-11\"\nWeight: 160\nEyes: BRO\nClass: D\nEndorsements: NONE\nRestrictions: NONE\nIssue Date: 01/01/2023\nExpires Date: 01/01/2030\nReal ID: Visible\nNot Real ID: Not Visible"
+        sample_text = f"DL: {sample_dl}\nFirst Name: HARROLD\nMiddle Name: EYES\nLast Name: FINCH\nAddress: 100 EYES \nCity: ATLANTA\nState Code: GA\nFull Zip Code + 4 Digits: 39999-1234\nCounty: Fulton\nGender: M\nDob: 01/01/1980\nHeight: 5'-11\"\nWeight: 160\nEyes: BRO\nClass: C\nEndorsements: NONE\nRestrictions: NONE\nIssue Date: 01/01/2023\nExpires Date: 01/01/2031\nReal ID: Visible\nNot Real ID: Not Visible"
     else:
-        sample_text = f"DL: {sample_dl}\nFirst Name: HARROLD\nMiddle Name: EYES\nLast Name: FINCH\nAddress: 100 EYES\nCity: NEWARK\nState Code: {state}\nFull Zip Code + 4 Digits: 07101-1234\nGender: M\nDob: 01/01/1980\nHeight: 5'-11\"\nEyes: BRN\nClass: D\nEndorsements: NONE\nRestrictions: NONE\nIssue Date: 01/01/2023\nExpires Date: 01/01/2030\nReal ID: Visible\nNot Real ID: Not Visible"
+        # Mappings for accurate state data
+        class_map = {"NJ": "D", "NY": "D", "VA": "D", "FL": "E", "PA": "C"}
+        validity_map = {"NJ": 4, "NY": 8, "VA": 8, "FL": 8, "PA": 4}
+        
+        class_val = class_map.get(state, "D")
+        validity = validity_map.get(state, 4)
+        exp_year = 2023 + validity
+        
+        sample_text = f"DL: {sample_dl}\nFirst Name: HARROLD\nMiddle Name: EYES\nLast Name: FINCH\nAddress: 100 EYES\nCity: NEWARK\nState Code: {state}\nFull Zip Code + 4 Digits: 07101-1234\nGender: M\nDob: 01/01/1980\nHeight: 5'-11\"\nEyes: BRN\nClass: {class_val}\nEndorsements: NONE\nRestrictions: NONE\nIssue Date: 01/01/2023\nExpires Date: 01/01/{exp_year}\nReal ID: Visible\nNot Real ID: Not Visible"
         
     return render_template('form.html', state=state, sample_text=sample_text)
 

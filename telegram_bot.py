@@ -1198,7 +1198,7 @@ async def show_unified_prompt(query, context, state_code):
             "Endorsements: NONE\n"
             "Restrictions: NONE\n"
             "Issue Date: 12/07/2025\n"
-            "Expires Date: 03/23/2032\n"
+            "Expires Date: 03/23/2033\n"
             "Real ID: Visible\n"
             "Not Real ID: Not Visible\n"
             "```"
@@ -1221,11 +1221,11 @@ async def show_unified_prompt(query, context, state_code):
             "Height: 5'-11\"\n"
             "Weight: 160\n"
             "Eyes: BRO\n"
-            "Class: D\n"
+            "Class: C\n"
             "Endorsements: NONE\n"
             "Restrictions: NONE\n"
             "Issue Date: 01/01/2023\n"
-            "Expires Date: 01/01/2030\n"
+            "Expires Date: 01/01/2031\n"
             "Real ID: Visible\n"
             "Not Real ID: Not Visible\n"
             "```"
@@ -1236,11 +1236,18 @@ async def show_unified_prompt(query, context, state_code):
             "NY": "689 995 677",
             "VA": "T67256730",
             "FL": "F425-104-65-162-0",
-            "PA": "19 059 959",
-            "TX": "96136059"
+            "PA": "19 059 959"
         }
 
         sample_dl = dl_formats.get(state_code_upper, "H5901 59055 59481")
+        
+        # Mappings for accurate state data
+        class_map = {"NJ": "D", "NY": "D", "VA": "D", "FL": "E", "PA": "C"}
+        validity_map = {"NJ": 4, "NY": 8, "VA": 8, "FL": 8, "PA": 4}
+        
+        class_val = class_map.get(state_code_upper, "D")
+        validity = validity_map.get(state_code_upper, 4)
+        exp_year = 2023 + validity
 
         msg = (
             "Please only edit and replace the sample information with your information details exactly in this format.\n\n"
@@ -1257,11 +1264,11 @@ async def show_unified_prompt(query, context, state_code):
             "Dob: 01/01/1980\n"
             "Height: 5'-11\"\n"
             "Eyes: BRN\n"
-            "Class: D\n"
+            f"Class: {class_val}\n"
             "Endorsements: NONE\n"
             "Restrictions: NONE\n"
             "Issue Date: 01/01/2023\n"
-            "Expires Date: 01/01/2030\n"
+            f"Expires Date: 01/01/{exp_year}\n"
             "Real ID: Visible\n"
             "Not Real ID: Not Visible\n"
             "```"

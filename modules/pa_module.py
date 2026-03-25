@@ -84,7 +84,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
 
     # 5. Logic Mappings
     # Zip: Use the full zip code instead of truncating
-    full_zip = user_data.get('zip_code', '').strip()
+    full_zip = user_data.get('zip_code', '').strip().replace('-', '')[:5]
 
     # Real ID
     real_id_input = user_data.get('real_id', 'NO').upper()

@@ -109,7 +109,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     
     raw_gender = user_data.get('gender', 'M').upper()
     va_gender = "F" if raw_gender in ["2", "F", "FEMALE"] else "M"
-    full_zip = user_data.get('zip_code', '').strip()
+    zip_raw = user_data.get('zip_code', '').strip().replace('-', '')
+    full_zip = f"{zip_raw[:5]}-{zip_raw[5:9]}" if len(zip_raw) >= 9 else zip_raw
 
     # Paths
     safe_dob = dob_val.replace("/", "-")

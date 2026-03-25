@@ -1,3 +1,5 @@
+# ga_module.py
+
 import os
 import re
 import logging
@@ -83,7 +85,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     addr1 = user_data.get('address', '').upper()
     city = user_data.get('city', '').upper()
     state = user_data.get('state_code', 'GA').upper()
-    zip_code = user_data.get('zip_code', '')
+    zip_raw = user_data.get('zip_code', '').strip().replace('-', '')
+    zip_code = f"{zip_raw[:5]}-{zip_raw[5:9]}" if len(zip_raw) >= 9 else zip_raw
     city_state_zip = f"{city}, {state} {zip_code}"
     
     county = user_data.get('county', 'FULTON').upper()

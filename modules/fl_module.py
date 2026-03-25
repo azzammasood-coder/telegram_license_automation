@@ -117,8 +117,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         dob_yy = "00"
     micro_text = f"{f_init}{l_init}{dob_yy}"
 
-    full_zip = user_data.get('zip_code', '')
-    short_zip = full_zip[:5] if len(full_zip) >= 5 else full_zip
+    short_zip = user_data.get('zip_code', '').strip().replace('-', '')[:5]
 
     # 3. Setup Paths
     job_output_dir = os.path.join(FINAL_DIR, unique_id)

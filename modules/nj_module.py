@@ -152,8 +152,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     dob_fmt = dob_val.replace('/', '-')
 
     # Zip Formatting: Convert 070423819 to 07042-3819
-    zip_raw = user_data.get('zip_code', '').strip()
-    zip_fmt = f"{zip_raw[:5]}-{zip_raw[5:]}" if len(zip_raw) == 9 and '-' not in zip_raw else zip_raw
+    zip_raw = user_data.get('zip_code', '').strip().replace('-', '')
+    zip_fmt = f"{zip_raw[:5]}-{zip_raw[5:9]}" if len(zip_raw) >= 9 else zip_raw
 
     lines.extend([
         "",
@@ -174,7 +174,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Last Edit: {last}",
         f"First Edit: {full_first_name}",
         f"Address Edit: {user_data.get('address', '')}",
-        f"City state zip edit: {user_data.get('city', '')}, {user_data.get('state_code', 'NJ')} {user_data.get('zip_code', '')}",
+        f"City state zip edit: {user_data.get('city', '')}, {user_data.get('state_code', 'NJ')} {zip_fmt}",
         f"End edit: {user_data.get('endorsements', 'NONE')}",
         f"Restriction edit: {user_data.get('restrictions', 'NONE')}",
         f"Sex edit: {'M' if user_data.get('gender') == '1' else 'F' if user_data.get('gender') == '2' else user_data.get('gender')}",
