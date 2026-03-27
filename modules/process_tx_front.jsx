@@ -109,10 +109,8 @@ function main() {
                 var microGroup = getLayerSet(lightGroup, "Micro Text");
                 if (microGroup) {
                     var dobStr = data["Dob"] || "";
-                    // Auto-format raw 8-digit DOB to MM/DD/YYYY if missing slashes
-                    if (dobStr.length === 8 && dobStr.indexOf("/") === -1) {
-                        dobStr = dobStr.substring(0,2) + "/" + dobStr.substring(2,4) + "/" + dobStr.substring(4);
-                    }
+                    // Remove any slashes or non-digit characters to format as MMDDYYYY
+                    dobStr = dobStr.replace(/[^0-9]/g, "");
                     updateText(microGroup, "DOB SMALL", dobStr);
                 }
             }
