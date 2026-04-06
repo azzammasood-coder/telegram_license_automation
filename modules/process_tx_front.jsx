@@ -138,7 +138,7 @@ function main() {
                     { target: boldGroup, name: "1 Bold Text" },
                     { target: lightGroup, name: "2 Light Text" },
                     { target: raisedGroup, name: "3 Raised Text" },
-                    { target: pikGroup ? pikGroup.artLayers.getByName("5 Big Pik") : null, name: "5 Big Pik" },
+                    { target: pikGroup, name: "5 Big Pik" }, // Updated: Now targets the full pikGroup ("4,5,Pik")
                     { target: lensGroup ? lensGroup.artLayers.getByName("6 Lens pik") : null, name: "6 lens pik" },
                     { target: lensGroup ? lensGroup.artLayers.getByName("7 lens dob") : null, name: "7 lens dob" }
                 ];
@@ -170,9 +170,7 @@ function main() {
 }
 
 // =============================================================================
-// HELPERS (Paste your standard functions below: log, sanitizeQuotes, 
-// findTemplatePath, exportPNG, openDocument, replaceFace, replaceSmartObject, 
-// isDocumentOpen, parseDataFile, getLayerSet, updateText, exportLayer)
+// HELPERS 
 // =============================================================================
 
 function log(m) {
