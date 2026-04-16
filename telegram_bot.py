@@ -315,26 +315,32 @@ def format_date_for_api(date_str: str) -> str:
   return date_str
 
 def parse_fl_data(text: str) -> dict:
-  data = {}
-  lines = text.split('\n')
-  key_map = {
-    "First Name": "first_name", "Middle Name": "middle_name", "Last Name": "last_name",
-    "Address": "address", "City": "city", "State Code": "state_code",
-    "Full Zip Code + 4 Digits": "zip_code", "Dob": "dob", "Gender": "gender",
-    "Height": "height", "Eyes": "eyes", "Issue Date": "issue_date",
-    "Expires Date": "expires_date", "Class": "class", "Signature": "signature_text",
-    "Driver License Number": "custom_dl", "DL Number": "custom_dl", "DL": "custom_dl"
-  }
-  for line in lines:
-    if ":" in line:
-      parts = line.split(":", 1)
-      key, val = parts[0].strip(), parts[1].strip()
-      # Match case-insensitively for flexibility
-      for k, v in key_map.items():
-          if key.lower() == k.lower():
-              data[v] = val
+    data = {}
+    lines = text.split('\n')
+    
+    # Expanded key_map to catch common variations
+    key_map = {
+        "first name": "first_name", "middle name": "middle_name", "last name": "last_name",
+        "address": "address", "city": "city", "state code": "state_code",
+        "full zip code + 4 digits": "zip_code", "zip code": "zip_code", 
+        "dob": "dob", "gender": "gender",
+        "height": "height", "eyes": "eyes", "issue date": "issue_date",
+        "expires date": "expires_date", "class": "class", "signature": "signature_text",
+        "driver license number": "custom_dl", "dl number": "custom_dl", "dl": "custom_dl",
+        "weight": "weight", "hair color": "hair_color", "hair": "hair_color", "race": "race"
+    }
+    
+    for line in lines:
+        if ":" in line:
+            parts = line.split(":", 1)
+            label = parts[0].strip().lower()
+            value = parts[1].strip()
+            
+            # Direct dictionary lookup is faster and more reliable
+            if label in key_map:
+                data[key_map[label]] = value
 
-  return data
+    return data
 
 def parse_bulk_input(text: str) -> dict:
     data = {}
