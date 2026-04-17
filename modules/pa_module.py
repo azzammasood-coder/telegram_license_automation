@@ -122,6 +122,10 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     else:
         final_sex = "F"
 
+    # --- PA SPECIFIC HEIGHT FORMATTING ---
+    # Converts shared format "5’ 08”" or "5' 08" into PA format "5'-08""
+    pa_height = visual_height.replace("’ ", "'-").replace("' ", "'-").replace("”", '"')
+
     # 6. Build Text Content (PA Specific)
     lines = [
         f"Jurisdiction: PA",
@@ -148,7 +152,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Iss Date: {final_iss}",
         f"Sex: {final_sex}",
         f"Eye Color: {user_data.get('eyes', 'BRO')}",
-        f"Height: {visual_height}",
+        f"Height: {pa_height}",
         f"Class: {user_data.get('class', 'C')}",
         f"DD Line 1: {dd_value[:13] if dd_value else ''}",
         f"DD Line 2: {dd_value[13:] if dd_value else ''}",
