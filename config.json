@@ -1,6 +1,6 @@
 {
     "telegram": {
-        "bot_token_telegram": "8560545532:AAHHmT0HWhKhz3sp-P29GEK8twaWioxJJrc",
+        "bot_token_telegram": "8773518018:AAGWtFfvRJdeQSz_By8mg1fWhPAEGp5k_wc",
         "bot_token_flask": "8734895812:AAGD3yTBMCr6nxI-PuQEWUKwsZUg8C_zfvw",
         "flask_bot_username": "GhostAuthLoginBot",
         "admin_chat_id": 8237067905
