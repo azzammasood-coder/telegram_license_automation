@@ -4,6 +4,7 @@ import os
 import logging
 import asyncio
 import time
+import sys
 import subprocess
 import requests
 import re
@@ -16,6 +17,7 @@ from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters,)
 from modules import nj_module, fl_module, pa_module, va_module, ny_module, ga_module, tx_module
+from telegram.error import Forbidden, InvalidToken, NetworkError
 
 # ==============================================================================
 # CONFIGURATION & SETTINGS
@@ -27,7 +29,7 @@ with open(CONFIG_PATH, "r") as f:
   config = json.load(f)
 
 # Map Variables
-TELEGRAM_BOT_TOKEN = config['telegram']['bot_token_telegram']
+# TELEGRAM_BOT_TOKEN = config['telegram']['bot_token_telegram']
 FIS_API_KEY     = config['api']['fis_key']
 API_BASE_URL    = config['api']['fis_url']
 REMOVEBG_API_KEY  = config['api']['removebg_key']
@@ -421,16 +423,12 @@ def generate_barcodes(user_data: dict, api_height: str):
     real_val = user_data.get("real_id", "").strip().upper()
     not_real_val = user_data.get("not_real_id", "").strip().upper()
 
-    # 1. If they explicitly made 'Not Real ID' visible
     if "VISIBLE" in not_real_val and "NOT" not in not_real_val:
         real_id_status = "N"
-    # 2. If they explicitly made 'Real ID' Not Visible/No
     elif "NOT" in real_val or "NON" in real_val or real_val == "NO":
         real_id_status = "N"
-    # 3. If they explicitly made 'Real ID' Visible/Yes
     elif "VISIBLE" in real_val or "YES" in real_val:
         real_id_status = "F"
-    # 4. Default Fallback
     else:
         real_id_status = "N"
 
@@ -440,7 +438,6 @@ def generate_barcodes(user_data: dict, api_height: str):
     nj_doc_val = str(user_data.get("nj_doc_type", "")).upper()
     doc_class = str(user_data.get("class", "")).upper()
     
-    # Robust check: Looks for Telegram's 'nj_id', Flask's 'ID', or if Class is explicitly 'NONE'
     if "ID" in nj_doc_val or "IDENTIFICATION" in nj_doc_val:
         doc_type = "ID"
     elif state == "NJ" and doc_class == "NONE":
@@ -560,16 +557,28 @@ def generate_barcodes(user_data: dict, api_height: str):
     logger.info(f"🚀 Sending payload to FIS API for state: {state}")
     logger.info(f"--- Exact Payload Sent to API ---\n{json.dumps(payload, indent=2)}")
 
-    # --- EXECUTE REQUEST ---
+    # ==========================================================================
+    # API EXECUTION & SAFE ERROR HANDLING
+    # ==========================================================================
     try:
-        resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=60)
+        # Increased timeout to 120 seconds
+        resp = requests.post(f"{API_BASE_URL}/barcode", headers=headers, data=payload, timeout=120)
         resp.raise_for_status()
+        
+    except requests.exceptions.Timeout:
+        logger.error("❌ FIS API POST Failed: Read timed out.")
+        raise Exception("API service timed out (took too long to respond). Please try again later.")
+        
+    except requests.exceptions.ConnectionError:
+        logger.error("❌ FIS API POST Failed: Connection Error.")
+        raise Exception("API service is currently unreachable.")
+        
     except Exception as e:
         logger.error(f"❌ FIS API POST Failed: {e}")
         if hasattr(e, 'response') and e.response is not None:
             logger.error(e.response.text)
-        raise e
-        
+        raise Exception("API service returned an error. Please try again.")
+
     barcode_id = resp.headers.get("X-Barcode-ID")
     logger.info(f"✅ Barcode successfully generated! Barcode ID: {barcode_id}")
 
@@ -579,42 +588,55 @@ def generate_barcodes(user_data: dict, api_height: str):
     
     big_svg, small_svg, big_tiff, small_tiff, big_png, small_png = b"", b"", None, None, None, None
     
-    logger.info("⬇️ Fetching raw_text...")
-    raw_text = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "text/plain"}, params=params, timeout=60).text
-    
-    # --- LOGGING RAW TEXT & VERIFICATION ---
-    logger.info(f"--- Returned Raw Barcode Text ---\n{raw_text}\n---------------------------------")
-    clean_text = raw_text.replace('\n', '').replace('\r', '')
-    
-    if "IDDAQ" in clean_text:
-        logger.info("✅ VERIFIED: Document Type correctly set to 'Identification Card' (IDDAQ found).")
-    elif "DLDAQ" in clean_text:
-        logger.info("✅ VERIFIED: Document Type correctly set to 'Driver License' (DLDAQ found).")
-    else:
-        logger.warning("⚠️ UNKNOWN: Could not definitively determine document type from raw text.")
-
-    if f"DDA{real_id_status}" in clean_text:
-        logger.info(f"✅ VERIFIED: Real ID Compliance correctly set to '{real_id_status}' (DDA{real_id_status} found).")
-    else:
-        logger.warning(f"❌ FAIL: Real ID Compliance 'DDA{real_id_status}' was NOT found in the raw text.")
-
-    if state in ["NJ", "NY", "GA", "TX", "FL"]:
-        logger.info("⬇️ Fetching big_svg...")
-        big_svg = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=60).content
-        logger.info("⬇️ Fetching small_svg...")
-        small_svg = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=60).content
+    try:
+        logger.info("⬇️ Fetching raw_text...")
+        raw_text = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "text/plain"}, params=params, timeout=120).text
         
-    if state == "FL":
-        logger.info("⬇️ Fetching big_tiff...")
-        big_tiff = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=60).content
-        logger.info("⬇️ Fetching small_tiff...")
-        small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=60).content
+        # --- LOGGING RAW TEXT & VERIFICATION ---
+        logger.info(f"--- Returned Raw Barcode Text ---\n{raw_text}\n---------------------------------")
+        clean_text = raw_text.replace('\n', '').replace('\r', '')
         
-    if state in ["PA", "VA"]:
-        logger.info("⬇️ Fetching big_png...")
-        big_png = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=60).content
-        logger.info("⬇️ Fetching small_png...")
-        small_png = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=60).content
+        if "IDDAQ" in clean_text:
+            logger.info("✅ VERIFIED: Document Type correctly set to 'Identification Card' (IDDAQ found).")
+        elif "DLDAQ" in clean_text:
+            logger.info("✅ VERIFIED: Document Type correctly set to 'Driver License' (DLDAQ found).")
+        else:
+            logger.warning("⚠️ UNKNOWN: Could not definitively determine document type from raw text.")
+
+        if f"DDA{real_id_status}" in clean_text:
+            logger.info(f"✅ VERIFIED: Real ID Compliance correctly set to '{real_id_status}' (DDA{real_id_status} found).")
+        else:
+            logger.warning(f"❌ FAIL: Real ID Compliance 'DDA{real_id_status}' was NOT found in the raw text.")
+
+        if state in ["NJ", "NY", "GA", "TX", "FL"]:
+            logger.info("⬇️ Fetching big_svg...")
+            big_svg = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=120).content
+            logger.info("⬇️ Fetching small_svg...")
+            small_svg = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=120).content
+            
+        if state == "FL":
+            logger.info("⬇️ Fetching big_tiff...")
+            big_tiff = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=120).content
+            logger.info("⬇️ Fetching small_tiff...")
+            small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=120).content
+            
+        if state in ["PA", "VA"]:
+            logger.info("⬇️ Fetching big_png...")
+            big_png = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=120).content
+            logger.info("⬇️ Fetching small_png...")
+            small_png = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=120).content
+
+    except requests.exceptions.Timeout:
+        logger.error("❌ FIS API GET Failed: File download timed out.")
+        raise Exception("API service timed out while downloading barcode files.")
+        
+    except requests.exceptions.ConnectionError:
+        logger.error("❌ FIS API GET Failed: Connection Error.")
+        raise Exception("API service disconnected while downloading barcode files.")
+        
+    except Exception as e:
+        logger.error(f"❌ FIS API GET Failed: {e}")
+        raise Exception("API service error while downloading barcode files.")
 
     logger.info("✅ Selected barcode files downloaded successfully!")
     return barcode_id, big_svg, small_svg, raw_text, big_tiff, small_tiff, big_png, small_png
@@ -1518,10 +1540,6 @@ async def cleanup_worker():
   
   await asyncio.sleep(86400) # Sleep for 24 hours before checking again
 
-async def post_init(application: Application):
- asyncio.create_task(process_queue_worker(application))
- asyncio.create_task(cleanup_worker())
-
 # --- ADMIN COMMANDS ---
 async def block_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.id != ADMIN_CHAT_ID:
@@ -1607,8 +1625,54 @@ async def invite_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # MAIN FUNCTION
 # ==============================================================================
 
-def main():
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(post_init).build()
+async def post_init(application: Application):
+    asyncio.create_task(process_queue_worker(application))
+    asyncio.create_task(cleanup_worker())
+    
+    # Fetch bot info and display it in the console
+    try:
+        bot_info = await application.bot.get_me()
+        print("\n" + "="*50)
+        print(f"🤖 ACTIVE BOT DEPLOYED")
+        print(f"👤 Username: @{bot_info.username}")
+        print(f"🔗 Link: https://t.me/{bot_info.username}")
+        print("="*50 + "\n")
+    except Exception as e:
+        logger.error(f"Failed to fetch bot info during init: {e}")
+
+def load_active_token():
+    with open(CONFIG_PATH, "r") as f:
+        current_config = json.load(f)
+    pool = current_config['telegram'].get('bot_tokens_pool', [])
+    idx = current_config['telegram'].get('active_token_index', 0)
+    
+    if idx < len(pool):
+        return pool[idx]
+    return None
+
+def rotate_to_next_token():
+    with open(CONFIG_PATH, "r") as f:
+        current_config = json.load(f)
+    
+    pool = current_config['telegram'].get('bot_tokens_pool', [])
+    idx = current_config['telegram'].get('active_token_index', 0)
+    
+    if idx + 1 < len(pool):
+        current_config['telegram']['active_token_index'] = idx + 1
+        with open(CONFIG_PATH, "w") as f:
+            json.dump(current_config, f, indent=4)
+        logger.warning(f"🔄 Rotated to backup bot token (New Index: {idx + 1}).")
+        return True
+    
+    return False
+
+def run_bot():
+    token = load_active_token()
+    if not token:
+        logger.error("No valid bot tokens found in config.")
+        return False
+
+    app = Application.builder().token(token).post_init(post_init).build()
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
@@ -1639,7 +1703,7 @@ def main():
             FL_SAFE_DRIVER: [CallbackQueryHandler(fl_ask_safe_driver)],
             FL_REPLACED: [CallbackQueryHandler(fl_ask_replaced)],
             
-            # PA SPECIFIC FLOW (Retained paths internally if needed)
+            # PA SPECIFIC FLOW
             PA_REAL_ID: [CallbackQueryHandler(pa_real_id)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
@@ -1652,12 +1716,49 @@ def main():
     app.add_handler(CommandHandler("block", block_command))
     app.add_handler(CommandHandler("unblock", unblock_command))
     app.add_handler(CommandHandler("status", status_command))
-    app.add_handler(CommandHandler("invite", invite_command)) # <--- ADDED LINE
+    app.add_handler(CommandHandler("invite", invite_command))
     
-    print(f"✅ Bot is active and polling! (Token ends in: ...{TELEGRAM_BOT_TOKEN[-5:]})")
+    print(f"✅ Bot initialized! (Token ends in: ...{token[-5:]})")
     print("📝 Waiting for messages in Telegram...")
     
-    app.run_polling()
+    try:
+        # Polling blocks the thread here until the bot stops or crashes
+        app.run_polling()
+        return True # Normal exit (e.g., you pressed Ctrl+C)
+    
+    except (Forbidden, InvalidToken) as e:
+        logger.error(f"🚨 Bot Token Banned or Invalid: {e}")
+        return False # Triggers rotation
+    
+    except NetworkError as e:
+        # This catches httpx.ConnectError and other connection drops
+        logger.error(f"🚨 Telegram Network/Connection Error: {e}")
+        return False # Triggers rotation
+    
+    except Exception as e:
+        logger.error(f"🚨 Unexpected Error during polling: {e}")
+        return False # Triggers rotation
+
+def main():
+    while True:
+        success = run_bot()
+        
+        # If run_bot returned False, it means an error occurred and we need to rotate
+        if not success:
+            logger.info("Attempting automatic token rotation...")
+            if rotate_to_next_token():
+                time.sleep(3) # Brief pause before reconnecting to avoid spamming the API
+                continue
+            else:
+                # All 5 bots are dead
+                print("\n" + "!"*50)
+                print("🚨 FATAL ERROR: All 5 bots used up and not working.")
+                print("Please generate new bots via BotFather and update config.json")
+                print("!"*50 + "\n")
+                sys.exit(1)
+        else:
+            # If run_bot returned True, it was a clean exit (user stopped the script)
+            break
 
 if __name__ == "__main__":
   main()

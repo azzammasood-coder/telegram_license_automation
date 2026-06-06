@@ -1,6 +1,13 @@
 {
     "telegram": {
-        "bot_token_telegram": "8773518018:AAGWtFfvRJdeQSz_By8mg1fWhPAEGp5k_wc",
+        "bot_tokens_pool": [
+            "8560545532:AAHHmT0HWhKhz3sp-P29GEK8twaWioxJJrc",
+            "8682340815:AAF5c5sv5XrsF7jnhZWAjlCG-5msYR-qt_Y",
+            "8799657558:AAGIyKq6SD-eJ-RTTz-1DvVGdbPTD5oJghk",
+            "8748180134:AAFA1uFl0dQgC47hlsfr1ZmSTHSAZrHV3hM",
+            "8783031676:AAFNmlm0ePylNOfdlsNrWGmCmnnwmtGIFnA"
+        ],
+        "active_token_index": 0,
         "bot_token_flask": "8734895812:AAGD3yTBMCr6nxI-PuQEWUKwsZUg8C_zfvw",
         "flask_bot_username": "GhostAuthLoginBot",
         "admin_chat_id": 8237067905
