@@ -142,7 +142,22 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     doc_discriminator = dcf_match.group(1).strip() if dcf_match else "XF1F6X3S93"
 
     # --- BARCODE NUMBER ---
-    barcode_num_text = f"01223 {raw_dl} 94"
+    # Retrieve barcode value from the API-generated linear barcode
+    extracted_barcode_val = ""
+    try:
+        small_svg_str = small_svg.decode('utf-8', errors='ignore')
+        match = re.search(r'<desc>(.*?)</desc>', small_svg_str)
+        if match:
+            extracted_barcode_val = match.group(1).strip()
+    except Exception as e:
+        logger.error(f"Error parsing small_svg: {e}")
+
+    if extracted_barcode_val and len(extracted_barcode_val) == 16:
+        barcode_num_text = f"{extracted_barcode_val[:5]} {extracted_barcode_val[5:14]} {extracted_barcode_val[14:]}"
+    elif extracted_barcode_val:
+        barcode_num_text = extracted_barcode_val
+    else:
+        barcode_num_text = f"01223 {raw_dl} 94"
 
     # --- GRAYSCALE PROCESSING ---
     face_path = user_data.get("face_path", "")
