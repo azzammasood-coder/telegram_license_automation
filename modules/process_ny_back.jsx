@@ -1,6 +1,5 @@
 /**
  * PROCESS NY BACK (JSX)
- * Fixed: Updated Point Sizes for DOB and Raised Text
  */
 
 #target photoshop
