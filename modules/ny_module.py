@@ -142,20 +142,14 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     doc_discriminator = dcf_match.group(1).strip() if dcf_match else "XF1F6X3S93"
 
     # --- BARCODE NUMBER ---
-    # Retrieve barcode value from the API-generated linear barcode
-    extracted_barcode_val = ""
-    try:
-        small_svg_str = small_svg.decode('utf-8', errors='ignore')
-        match = re.search(r'<desc>(.*?)</desc>', small_svg_str)
-        if match:
-            extracted_barcode_val = match.group(1).strip()
-    except Exception as e:
-        logger.error(f"Error parsing small_svg: {e}")
+    # Retrieve barcode number from raw_text DCK (Inventory Control) field, same as VA
+    dck_match = re.search(r'DCK([^\n\r]+)', raw_text)
+    barcode_num_val = dck_match.group(1).strip() if dck_match else ""
 
-    if extracted_barcode_val and len(extracted_barcode_val) == 16:
-        barcode_num_text = f"{extracted_barcode_val[:5]} {extracted_barcode_val[5:14]} {extracted_barcode_val[14:]}"
-    elif extracted_barcode_val:
-        barcode_num_text = extracted_barcode_val
+    if barcode_num_val and len(barcode_num_val) == 16:
+        barcode_num_text = f"{barcode_num_val[:5]} {barcode_num_val[5:14]} {barcode_num_val[14:]}"
+    elif barcode_num_val:
+        barcode_num_text = barcode_num_val
     else:
         barcode_num_text = f"01223 {raw_dl} 94"
 
