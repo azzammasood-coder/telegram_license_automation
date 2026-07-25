@@ -1,0 +1,57 @@
+Document: Photoshop8Up-(Perforated).psd
+--------------------------------------------------
++ [Group] FRONT UV
+    - [SMARTOBJECT Layer] Card 1
+    - [SMARTOBJECT Layer] Card 2
+    - [SMARTOBJECT Layer] Card 3
+    - [SMARTOBJECT Layer] Card 4
+    - [SMARTOBJECT Layer] Card 5
+    - [SMARTOBJECT Layer] Card 6
+    - [SMARTOBJECT Layer] Card 7
+    - [SMARTOBJECT Layer] Card 8
++ [Group] FRONT
+    - [SMARTOBJECT Layer] Card 1
+    - [SMARTOBJECT Layer] Card 2
+    - [SMARTOBJECT Layer] Card 3
+    - [SMARTOBJECT Layer] Card 4
+    - [SMARTOBJECT Layer] Card 5
+    - [SMARTOBJECT Layer] Card 6
+    - [SMARTOBJECT Layer] Card 7
+    - [SMARTOBJECT Layer] Card 8
++ [Group] BACK
+    - [SMARTOBJECT Layer] Card 1
+    - [SMARTOBJECT Layer] Card 2
+    - [SMARTOBJECT Layer] Card 3
+    - [SMARTOBJECT Layer] Card 4
+    - [SMARTOBJECT Layer] Card 5
+    - [SMARTOBJECT Layer] Card 6
+    - [SMARTOBJECT Layer] Card 7
+    - [SMARTOBJECT Layer] Card 8
++ [Group] LASER FRONT
+    - [SMARTOBJECT Layer] Card 1
+    - [SMARTOBJECT Layer] Card 2
+    - [SMARTOBJECT Layer] Card 3
+    - [SMARTOBJECT Layer] Card 4
+    - [SMARTOBJECT Layer] Card 5
+    - [SMARTOBJECT Layer] Card 6
+    - [SMARTOBJECT Layer] Card 7
+    - [SMARTOBJECT Layer] Card 8
++ [Group] LASER BACK
+    - [SMARTOBJECT Layer] Card 1
+    - [SMARTOBJECT Layer] Card 2
+    - [SMARTOBJECT Layer] Card 3
+    - [SMARTOBJECT Layer] Card 4
+    - [SMARTOBJECT Layer] Card 5
+    - [SMARTOBJECT Layer] Card 6
+    - [SMARTOBJECT Layer] Card 7
+    - [SMARTOBJECT Layer] Card 8
++ [Group] BACK UV
+- [NORMAL Layer] Crop Marks
+- [NORMAL Layer] Mag Strip Placement
+- [NORMAL Layer] Mag Strip Placement
+- [NORMAL Layer] Card Masks
+- [NORMAL Layer] IDs - Back
+- [NORMAL Layer] Back
+- [NORMAL Layer] IDs - Front
+- [NORMAL Layer] Front
+- [NORMAL Layer] Background
