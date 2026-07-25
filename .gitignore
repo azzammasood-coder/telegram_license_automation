@@ -1,2 +1,6 @@
 # Ignore all hidden directories
 .*/
+backup-files/
+final-documents/
+templates/
+testing-files/
