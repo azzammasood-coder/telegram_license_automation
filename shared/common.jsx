@@ -538,6 +538,13 @@ var UPSHEET_SIDE_GROUPS = [
 
 var UPSHEET_CARD_COUNT = 8;
 
+// Each side is a separate physical print pass (UV ink, standard ink, laser),
+// so one PNG gets exported per group in this exact order - not one flattened
+// composite. BACK UV is static registration/crop-mark content (no per-card
+// Smart Objects) and doesn't exist on every state's template yet (e.g. CA),
+// so it's skipped automatically when the template doesn't have that group.
+var UPSHEET_PNG_EXPORT_ORDER = ["FRONT UV", "BACK UV", "FRONT", "BACK", "LASER FRONT", "LASER BACK"];
+
 function templateBaseName(path) {
     if (!path) return null;
     var f = new File(path);
@@ -674,19 +681,39 @@ function buildOneSheet(chunk, upsheetTemplatePath, bucketLabel, sheetNum, destFo
                 }
                 replaceSmartObject(group, "Card " + cardSlot, pngFile, false);
             }
-
-            // The template's side groups start hidden - unhide each one we
-            // touched so the saved PSD/PNG actually shows the placed cards
-            // instead of just the template's default (all-hidden) state.
-            group.visible = true;
         }
 
         var bucketFolder = new Folder(destFolder.fsName + "/Upsheets/" + bucketLabel);
         if (!bucketFolder.exists) bucketFolder.create();
 
+        // Each side is a separate physical print pass (UV ink, standard ink,
+        // laser), so they can't be flattened into one PNG - resolve which of
+        // the fixed print-pass-order groups this template actually has
+        // (e.g. BACK UV doesn't exist for CA yet) and unhide all of them for
+        // the archival PSD.
+        var presentGroups = [];
+        for (var o = 0; o < UPSHEET_PNG_EXPORT_ORDER.length; o++) {
+            var exportGroupName = UPSHEET_PNG_EXPORT_ORDER[o];
+            var exportGroupLayer = findLayerRecursive(doc, exportGroupName);
+            if (exportGroupLayer && exportGroupLayer.typename === "LayerSet") {
+                presentGroups.push({ name: exportGroupName, layer: exportGroupLayer });
+            } else {
+                log("Upsheet: group '" + exportGroupName + "' not present in " + doc.name + ", skipping");
+            }
+        }
+        for (var pg = 0; pg < presentGroups.length; pg++) {
+            presentGroups[pg].layer.visible = true;
+        }
+
         var outputName = "Sheet " + sheetNum;
 
-        var psdFile = new File(bucketFolder.fsName + "/" + outputName + ".psd");
+        // Each sheet gets its own subfolder since the PNGs are named just
+        // "FRONT UV.png", "BACK.png", etc. - a bare group name would collide
+        // across different sheets if they all landed in the bucket folder.
+        var sheetFolder = new Folder(bucketFolder.fsName + "/" + outputName);
+        if (!sheetFolder.exists) sheetFolder.create();
+
+        var psdFile = new File(sheetFolder.fsName + "/" + outputName + ".psd");
         var psdOptions = new PhotoshopSaveOptions();
         psdOptions.embedColorProfile = true;
         psdOptions.alphaChannels = true;
@@ -694,10 +721,17 @@ function buildOneSheet(chunk, upsheetTemplatePath, bucketLabel, sheetNum, destFo
         doc.saveAs(psdFile, psdOptions, true, Extension.LOWERCASE);
         log("Upsheet: saved PSD: " + psdFile.fsName);
 
-        var pngFileOut = new File(bucketFolder.fsName + "/" + outputName + ".png");
-        var pngOptions = new PNGSaveOptions();
-        doc.saveAs(pngFileOut, pngOptions, true, Extension.LOWERCASE);
-        log("Upsheet: saved PNG: " + pngFileOut.fsName);
+        // One PNG per group, in print-pass order, each showing only that
+        // group visible so it matches exactly what that print pass needs.
+        for (var e = 0; e < presentGroups.length; e++) {
+            for (var h = 0; h < presentGroups.length; h++) {
+                presentGroups[h].layer.visible = (h === e);
+            }
+            var sidePngFile = new File(sheetFolder.fsName + "/" + presentGroups[e].name + ".png");
+            var sidePngOptions = new PNGSaveOptions();
+            doc.saveAs(sidePngFile, sidePngOptions, true, Extension.LOWERCASE);
+            log("Upsheet: saved PNG: " + sidePngFile.fsName);
+        }
 
         doc.close(SaveOptions.DONOTSAVECHANGES);
         doc = null;
