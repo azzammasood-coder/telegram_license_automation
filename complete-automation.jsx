@@ -82,6 +82,18 @@ var scriptFile = new File($.fileName);
         return lbs + " lb";
     }
 
+    // Normalizes CSV Sex values to "M"/"F". Accepts the AAMVA numeric codes
+    // (1=Male, 2=Female) as well as "M"/"Male"/"F"/"Female" text, compared
+    // case-insensitively.
+    function formatSex(value) {
+        if (!value) return "";
+        var v = value.trim().toLowerCase();
+        if (v === "m" || v === "male" || v === "1") return "M";
+        if (v === "f" || v === "female" || v === "2") return "F";
+        log("Unrecognized Sex value '" + value + "', passing through unchanged");
+        return value;
+    }
+
     // --- 1. UI SETUP (dark theme) ---
     function rgba(r, g, b, a) { return [r, g, b, a === undefined ? 1 : a]; }
 
@@ -270,7 +282,7 @@ var scriptFile = new File($.fileName);
         updateAllTextLayers(doc, "STREET ADDRESS", streetAddress.toUpperCase());
 
         updateAllTextLayers(doc, "DOB MM/DD/YYYY", formatDateSlash(dob));
-        updateAllTextLayers(doc, "M OR F", cardData["DBC"] || "");
+        updateAllTextLayers(doc, "M OR F", formatSex(cardData["DBC"] || ""));
         updateAllTextLayers(doc, "HAIR COLOR", cardData["DAZ"] || "");
         updateAllTextLayers(doc, "EYES COLOR", cardData["DAY"] || "");
         updateAllTextLayers(doc, "HEIGHT #'-##''", formatHeight(cardData["DAU"] || ""));

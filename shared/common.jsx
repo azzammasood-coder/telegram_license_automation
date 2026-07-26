@@ -526,7 +526,7 @@ function applySignatureToGroup(doc, groupName, imageLayerName, textLayerName, si
 
 // Maps each upsheet group name to the config.ini key holding that side's
 // per-state template, so we can derive the rendered PNG's basename
-// (license_generator.jsx names output files after the template's own
+// (complete-automation.jsx names output files after the template's own
 // filename, so this stays in sync automatically).
 var UPSHEET_SIDE_GROUPS = [
     { group: "FRONT", templateKey: "FrontPSD" },
@@ -535,6 +535,8 @@ var UPSHEET_SIDE_GROUPS = [
     { group: "BACK", templateKey: "BackPSD" },
     { group: "LASER BACK", templateKey: "BackLaserPSD" }
 ];
+
+var UPSHEET_CARD_COUNT = 8;
 
 function templateBaseName(path) {
     if (!path) return null;
@@ -621,11 +623,10 @@ function runUpsheetAutomation(rows, destFolder, separateNonPerforated) {
 }
 
 function buildSheetsForBucket(records, upsheetTemplatePath, bucketLabel, destFolder) {
-    var chunkSize = 8;
     var sheetsBuilt = 0;
-    for (var offset = 0; offset < records.length; offset += chunkSize) {
-        var chunk = records.slice(offset, offset + chunkSize);
-        var sheetNum = Math.floor(offset / chunkSize) + 1;
+    for (var offset = 0; offset < records.length; offset += UPSHEET_CARD_COUNT) {
+        var chunk = records.slice(offset, offset + UPSHEET_CARD_COUNT);
+        var sheetNum = Math.floor(offset / UPSHEET_CARD_COUNT) + 1;
         if (buildOneSheet(chunk, upsheetTemplatePath, bucketLabel, sheetNum, destFolder)) {
             sheetsBuilt++;
         }
@@ -656,7 +657,10 @@ function buildOneSheet(chunk, upsheetTemplatePath, bucketLabel, sheetNum, destFo
 
             for (var c = 0; c < chunk.length; c++) {
                 var record = chunk[c];
-                var cardSlot = c + 1;
+                // Fill from Card 8 downward (Card 8, then 7, then 6...) rather
+                // than from Card 1 up - matches how the print shop expects a
+                // partially-filled sheet to be laid out.
+                var cardSlot = UPSHEET_CARD_COUNT - c;
                 var baseName = templateBaseName(record.templates[templateKey]);
                 if (!baseName) {
                     log("Upsheet: row " + record.rowIndex + " (" + record.state + ") has no '" + templateKey + "' configured, skipping " + groupName + " slot " + cardSlot);
@@ -670,6 +674,11 @@ function buildOneSheet(chunk, upsheetTemplatePath, bucketLabel, sheetNum, destFo
                 }
                 replaceSmartObject(group, "Card " + cardSlot, pngFile, false);
             }
+
+            // The template's side groups start hidden - unhide each one we
+            // touched so the saved PSD/PNG actually shows the placed cards
+            // instead of just the template's default (all-hidden) state.
+            group.visible = true;
         }
 
         var bucketFolder = new Folder(destFolder.fsName + "/Upsheets/" + bucketLabel);
