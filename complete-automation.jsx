@@ -94,6 +94,79 @@ var scriptFile = new File($.fileName);
         return value;
     }
 
+    // --- MA-SPECIFIC HELPERS ---
+
+    // Massachusetts revision date is a fixed registrar issue date printed on
+    // every MA 2016 ID (see "Massachusetts ID rules.txt": REV 02/22/2016).
+    var MA_REVISION_DATE = "02/22/2016";
+
+    // 9-digit ZIP -> "12345-6789" (dashed). Passes 5-digit through as-is and
+    // leaves anything else untouched.
+    function formatZip9(zip) {
+        if (!zip) return "";
+        var digits = zip.replace(/\D/g, "");
+        if (digits.length >= 9) return digits.substring(0, 5) + "-" + digits.substring(5, 9);
+        if (digits.length === 5) return digits;
+        return zip;
+    }
+
+    // Total inches -> "F'-II''" (MA "Height (0`-00``)" layer format, e.g. 6'-02'').
+    function formatHeightMA(totalInches) {
+        var n = parseInt(totalInches, 10);
+        if (isNaN(n)) return "";
+        var feet = Math.floor(n / 12);
+        var inches = n % 12;
+        return feet + "'-" + String(inches).padStart(2, '0') + "''";
+    }
+
+    // MM/DD/YY with slashes (2-digit year) - for the MA "Raised Text MM/DD/YY"
+    // layers. (formatDOB_MMDDYY above is the digits-only CA variant.)
+    function formatDOB_MMDDYY_slash(dob) {
+        if (!dob) return "";
+        var match = dob.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+        if (match) {
+            return match[1].padStart(2, '0') + "/" + match[2].padStart(2, '0') + "/" + match[3].slice(-2);
+        }
+        return "";
+    }
+
+    // CSV boolean-ish -> true/false. True for 1/t/true/y/yes (case-insensitive),
+    // false otherwise (0/f/false/n/no or blank). Used for MA ORGAN DONOR /
+    // REAL ID COMPLIANCY group visibility.
+    function isAffirmative(value) {
+        if (!value) return false;
+        var v = value.toString().trim().toLowerCase();
+        return v === "1" || v === "t" || v === "true" || v === "y" || v === "yes";
+    }
+
+    // 1-based day-of-year (Jan 1 = 1), leap-year aware.
+    function dayOfYear(y, m, d) {
+        var days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        if ((y % 4 === 0 && y % 100 !== 0) || y % 400 === 0) days[1] = 29;
+        var t = 0;
+        for (var i = 0; i < m - 1; i++) t += days[i];
+        return t + d;
+    }
+
+    // MA Inventory Control Number, per "Massachusetts ID rules.txt":
+    //   <2-digit issue year><3-digit day-of-year><full DL #>0601
+    // The rules' worked example (ISS 12/25/2021, DL S51201351) gives
+    // 21360S512013510601 - i.e. the day count is dayOfYear + 1 (Dec 25 is the
+    // 359th day; the example uses 360). We reproduce that documented example
+    // exactly; if the print shop later confirms the plain day-of-year, drop the
+    // "+ 1" below.
+    function computeMAInventoryNumber(issue, dlNumber) {
+        if (!issue || !dlNumber) return "";
+        var m = issue.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+        if (!m) return "";
+        var mm = parseInt(m[1], 10);
+        var dd = parseInt(m[2], 10);
+        var yyyy = parseInt(m[3], 10);
+        var yy = m[3].slice(-2);
+        var doy = dayOfYear(yyyy, mm, dd) + 1;
+        return yy + String(doy).padStart(3, '0') + dlNumber + "0601";
+    }
+
     // --- 1. UI SETUP (dark theme) ---
     function rgba(r, g, b, a) { return [r, g, b, a === undefined ? 1 : a]; }
 
@@ -161,7 +234,7 @@ var scriptFile = new File($.fileName);
         return c;
     }
 
-    var win = new Window("dialog", "CA License Card Generator");
+    var win = new Window("dialog", "License Card Generator");
     win.orientation = "column";
     win.alignChildren = ["fill", "top"];
     win.margins = 20;
@@ -433,6 +506,104 @@ var scriptFile = new File($.fileName);
         }
     }
 
+    // --- MA PER-TEMPLATE PROCESSORS ---
+    // Massachusetts uses a different, smaller set of PSDs than CA (no UV /
+    // hologram / separate laser sides): Front, Front Raised, and Back. Layer
+    // names below are the actual names inside the MA 2016 templates.
+
+    // MA Front.psd ("Front" group): all personal-data text layers, donor / real
+    // ID group visibility, the "PHOTO" Smart Object, and the "Signature" Smart
+    // Object. NOTE: the MA front has a single "Signature" SO (no text-vs-image
+    // toggle group like CA), so only a signature *image* can be placed here.
+    function processMAFrontPSD(doc, cardData, cardIndex) {
+        var firstName = cardData["DAC"] || "";
+        var middleName = cardData["DAD"] || "";
+        var issue = cardData["DBD"] || "";
+
+        var firstMiddle = (firstName + " " + middleName).replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "").toUpperCase();
+        updateAllTextLayers(doc, "First and middle name", firstMiddle);
+        updateAllTextLayers(doc, "Last name", (cardData["DCS"] || "").toUpperCase());
+        updateAllTextLayers(doc, "Street address", (cardData["DAG"] || "").toUpperCase());
+
+        var city = (cardData["city"] || "").toUpperCase();
+        updateAllTextLayers(doc, "City, MA 9 digit zipcode with -", city + ", MA " + formatZip9(cardData["DAK"] || ""));
+
+        updateAllTextLayers(doc, "SEX", formatSex(cardData["DBC"] || ""));
+        updateAllTextLayers(doc, "Height (0`-00``)", formatHeightMA(cardData["DAU"] || ""));
+        updateAllTextLayers(doc, "License class", (cardData["DCA"] || "").toUpperCase());
+        updateAllTextLayers(doc, "Restrictions", (cardData["DCB"] || "") || "NONE");
+        updateAllTextLayers(doc, "Endorsements", (cardData["DCD"] || "") || "NONE");
+
+        updateAllTextLayers(doc, "Date Of Birth MM/DD/YYYY", formatDateSlash(cardData["DBB"] || ""));
+        updateAllTextLayers(doc, "Issue Date MM/DD/YYYY", formatDateSlash(issue));
+        updateAllTextLayers(doc, "Expiration Date MM/DD/YYYY", formatDateSlash(cardData["DBA"] || ""));
+        updateAllTextLayers(doc, "Driver License Number", cardData["DAQ"] || "");
+        // Doc. Discriminator on the MA card face is the issue date (see rules:
+        // "DD is the document ... usually the ISS date"). The barcode's +1-day
+        // discriminator, if needed, is produced separately in the barcode data.
+        updateAllTextLayers(doc, "Doc. Discriminator MM/DD/YYYY", formatDateSlash(issue));
+        updateAllTextLayers(doc, "Rev. Date MM/DD/YYYY", MA_REVISION_DATE);
+        updateAllTextLayers(doc, "Raised Text MM/DD/YY", formatDOB_MMDDYY_slash(cardData["DBB"] || ""));
+
+        setGroupVisibility(doc, "ORGAN DONOR", isAffirmative(cardData["DDK"]));
+        setGroupVisibility(doc, "REAL ID COMPLIANCY", isAffirmative(cardData["DDA"]));
+
+        var photoPath = cardData["photo"] ? stripQuotes(cardData["photo"]).trim() : "";
+        if (photoPath) {
+            var photoFile = new File(photoPath);
+            if (photoFile.exists) {
+                replaceSmartObject(doc, "PHOTO", photoFile, false, "cover");
+            } else {
+                log("Row " + cardIndex + ": Photo not found: " + photoPath);
+            }
+        }
+
+        var sigData = getSignatureData(cardData);
+        log("Row " + cardIndex + ": MA front signature source = " + sigData.type + " (" + sigData.value + ")");
+        applySignatureToGroup(doc, "SIGNATURES", "SIGNATURE IMAGE", "SIGNATURE TEXT", sigData, cardIndex);
+    }
+
+    // MA Front Raised.psd: single "Raised Text MM/DD/YY" layer (DOB, 2-digit year).
+    function processMAFrontRaisedPSD(doc, cardData, cardIndex) {
+        updateAllTextLayers(doc, "Raised Text MM/DD/YY", formatDOB_MMDDYY_slash(cardData["DBB"] || ""));
+    }
+
+    // MA Back.psd: DOB, revision date, inventory control number text layers, and
+    // the "Barcodes" group's two Smart Objects (PDF417 + Code 128).
+    function processMABackPSD(doc, cardData, cardIndex) {
+        updateAllTextLayers(doc, "DOB MM/DD/YYYY", formatDateSlash(cardData["DBB"] || ""));
+        updateAllTextLayers(doc, "Revision date MM/DD/YYYY", MA_REVISION_DATE);
+
+        var inv = cardData["DCK"] || "";
+        var computed = computeMAInventoryNumber(cardData["DBD"] || "", cardData["DAQ"] || "");
+        if (computed) inv = computed;
+        if (inv) updateAllTextLayers(doc, "Inventory Control Number", inv);
+
+        try {
+            var barcodePath = cardData["barcode"] ? stripQuotes(cardData["barcode"]).trim() : "";
+            if (barcodePath) {
+                var barcodeFile = new File(barcodePath);
+                if (barcodeFile.exists) {
+                    replaceSmartObject(doc, "2D or PDF417 barcode", barcodeFile, false);
+                } else {
+                    log("Row " + cardIndex + ": Barcode file not found: " + barcodePath);
+                }
+            }
+
+            var linearPath = cardData["linear"] ? stripQuotes(cardData["linear"]).trim() : "";
+            if (linearPath) {
+                var linearFile = new File(linearPath);
+                if (linearFile.exists) {
+                    replaceSmartObject(doc, "1D or Code 128barcode", linearFile, false);
+                } else {
+                    log("Row " + cardIndex + ": Linear barcode file not found: " + linearPath);
+                }
+            }
+        } catch (e) {
+            log("Row " + cardIndex + ": Error processing MA barcodes: " + e.message);
+        }
+    }
+
     // --- 3. EXECUTION LOGIC ---
     btnOk.onClick = function() {
         var destPath = destTxt.text;
@@ -465,10 +636,13 @@ var scriptFile = new File($.fileName);
         processBatch(destFolder, buildUpsheets, separateNonPerforated);
     };
 
-    // Each CA record is made up of these separate PSDs, opened/processed/
-    // saved/closed one at a time. HologramPSD has no processFn since it
-    // requires no edits - it's opened and saved through unchanged.
-    var TEMPLATE_JOBS = [
+    // Each record is made up of these separate PSDs, opened/processed/saved/
+    // closed one at a time. The job list is per-state since states don't share
+    // a template layout (CA has UV/hologram/laser sides; MA is Front + Front
+    // Raised + Back). A job with processFn: null is opened and saved through
+    // unchanged (e.g. CA HologramPSD). Each job.key must match a key in that
+    // state's config.ini section.
+    var CA_TEMPLATE_JOBS = [
         { key: "FrontPSD", suffix: "FRONT", processFn: processFrontPSD },
         { key: "FrontUVPSD", suffix: "FRONT_UV", processFn: processFrontUVPSD },
         { key: "FrontLaserPSD", suffix: "FRONT_LASER", processFn: processFrontLaserPSD },
@@ -476,6 +650,17 @@ var scriptFile = new File($.fileName);
         { key: "BackPSD", suffix: "BACK", processFn: processBackPSD },
         { key: "BackLaserPSD", suffix: "BACK_LASER", processFn: processBackLaserPSD }
     ];
+
+    var MA_TEMPLATE_JOBS = [
+        { key: "FrontPSD", suffix: "FRONT", processFn: processMAFrontPSD },
+        { key: "FrontRaisedPSD", suffix: "FRONT_RAISED", processFn: processMAFrontRaisedPSD },
+        { key: "BackPSD", suffix: "BACK", processFn: processMABackPSD }
+    ];
+
+    function getJobsForState(state) {
+        if (state === "MA") return MA_TEMPLATE_JOBS;
+        return CA_TEMPLATE_JOBS;
+    }
 
     function processBatch(destFolder, buildUpsheets, separateNonPerforated) {
         var originalRulerUnits = app.preferences.rulerUnits;
@@ -519,9 +704,10 @@ var scriptFile = new File($.fileName);
             if (!personFolder.exists) personFolder.create();
 
             var jobsSucceeded = 0;
+            var jobs = getJobsForState(state);
 
-            for (var j = 0; j < TEMPLATE_JOBS.length; j++) {
-                var job = TEMPLATE_JOBS[j];
+            for (var j = 0; j < jobs.length; j++) {
+                var job = jobs[j];
                 var templatePath = templates[job.key];
                 if (!templatePath) {
                     log("Row " + cardIndex + ": No '" + job.key + "' configured for state " + state + ", skipping " + job.suffix);
