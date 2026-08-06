@@ -167,6 +167,18 @@ var scriptFile = new File($.fileName);
         return yy + String(doy).padStart(3, '0') + dlNumber + "0601";
     }
 
+    // The MA back "Inventory Control Number" text layer is two lines, broken
+    // right after the "S" + the 3 digits following it, e.g.
+    //   21360S512013510601  ->  "21360S512\r013510601"
+    // (matches the template's default "12345S678\r123456789" layout). Falls
+    // back to a mid-string split if there's no "S".
+    function formatMAInventoryDisplay(inv) {
+        if (!inv) return "";
+        var sIdx = inv.indexOf("S");
+        var splitPos = sIdx >= 0 ? sIdx + 4 : Math.ceil(inv.length / 2);
+        return inv.substring(0, splitPos) + "\r" + inv.substring(splitPos);
+    }
+
     // --- 1. UI SETUP (dark theme) ---
     function rgba(r, g, b, a) { return [r, g, b, a === undefined ? 1 : a]; }
 
@@ -577,7 +589,7 @@ var scriptFile = new File($.fileName);
         var inv = cardData["DCK"] || "";
         var computed = computeMAInventoryNumber(cardData["DBD"] || "", cardData["DAQ"] || "");
         if (computed) inv = computed;
-        if (inv) updateAllTextLayers(doc, "Inventory Control Number", inv);
+        if (inv) updateAllTextLayers(doc, "Inventory Control Number", formatMAInventoryDisplay(inv));
 
         try {
             var barcodePath = cardData["barcode"] ? stripQuotes(cardData["barcode"]).trim() : "";
