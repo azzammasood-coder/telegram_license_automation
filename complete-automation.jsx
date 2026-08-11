@@ -139,6 +139,19 @@ var scriptFile = new File($.fileName);
         return v === "1" || v === "t" || v === "true" || v === "y" || v === "yes";
     }
 
+    // REAL ID / AAMVA DDA "Compliance Type" indicator. Per AAMVA this column
+    // holds "F" = Fully compliant (REAL ID) and "N" = Non-compliant -- note
+    // this is NOT a boolean, so "F" means compliant here, the opposite of a
+    // false flag. Anything else is treated as non-compliant and logged.
+    function isRealIdCompliant(value) {
+        if (!value) return false;
+        var v = value.toString().trim().toLowerCase();
+        if (v === "f") return true;
+        if (v === "n") return false;
+        log("Unrecognized REAL ID (DDA) value '" + value + "' (expected F/N); treating as non-compliant");
+        return false;
+    }
+
     // 1-based day-of-year (Jan 1 = 1), leap-year aware.
     function dayOfYear(y, m, d) {
         var days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -408,14 +421,13 @@ var scriptFile = new File($.fileName);
             setGroupVisibility(doc, "DONOR", false);
         }
 
-        var realIdValue = realIdCompliancy.toUpperCase();
-        if (realIdValue === "F" || realIdValue === "FALSE") {
-            setGroupVisibility(doc, "NO REAL ID COMPLIANCE", true);
-            setGroupVisibility(doc, "REAL ID COMPLAINT", false);
-        } else if (realIdValue === "T" || realIdValue === "TRUE") {
-            setGroupVisibility(doc, "NO REAL ID COMPLIANCE", false);
-            setGroupVisibility(doc, "REAL ID COMPLAINT", false);
-        }
+        // REAL ID: DDA is the AAMVA "Compliance Type" (F = compliant,
+        // N = non-compliant), so the card overlays "NO REAL ID COMPLIANCE"
+        // only for non-compliant holders. (isRealIdCompliant lives in the MA
+        // helpers section but applies to any state's DDA column.)
+        var realIdCompliant = isRealIdCompliant(realIdCompliancy);
+        setGroupVisibility(doc, "NO REAL ID COMPLIANCE", !realIdCompliant);
+        setGroupVisibility(doc, "REAL ID COMPLAINT", false);
     }
 
     // CA FRONT UV.psd: UV DOB layer + inverted holder photo in "PHOTO OF DL HOLDER" SO
@@ -550,15 +562,26 @@ var scriptFile = new File($.fileName);
         updateAllTextLayers(doc, "Issue Date MM/DD/YYYY", formatDateSlash(issue));
         updateAllTextLayers(doc, "Expiration Date MM/DD/YYYY", formatDateSlash(cardData["DBA"] || ""));
         updateAllTextLayers(doc, "Driver License Number", cardData["DAQ"] || "");
-        // Doc. Discriminator on the MA card face is the issue date (see rules:
-        // "DD is the document ... usually the ISS date"). The barcode's +1-day
-        // discriminator, if needed, is produced separately in the barcode data.
-        updateAllTextLayers(doc, "Doc. Discriminator MM/DD/YYYY", formatDateSlash(issue));
+        // Doc. Discriminator: placed exactly as given in the CSV (DCF), with no
+        // slash reformatting - e.g. "09152025" stays "09152025". Falls back to
+        // the issue date as raw MMDDYYYY digits when the column is empty (per
+        // rules: "DD is the document ... usually the ISS date").
+        var docDisc = cardData["DCF"] || "";
+        if (!docDisc) docDisc = formatDOB_MMDDYYYY(issue);
+        updateAllTextLayers(doc, "Doc. Discriminator MM/DD/YYYY", docDisc);
         updateAllTextLayers(doc, "Rev. Date MM/DD/YYYY", MA_REVISION_DATE);
         updateAllTextLayers(doc, "Raised Text MM/DD/YY", formatDOB_MMDDYY_slash(cardData["DBB"] || ""));
 
+        // Microprint: first initial + last initial + last 2 digits of DOB year
+        // (same encoding as CA's MICROTEXT ABYY).
+        var microtext = formatMicrotext(firstName, cardData["DCS"] || "", cardData["DBB"] || "");
+        if (microtext) {
+            updateAllTextLayers(doc, "First Initial Last Initial YY Microprint", microtext);
+            updateAllTextLayers(doc, "First Initial Last Initial YY Microprint2", microtext);
+        }
+
         setGroupVisibility(doc, "ORGAN DONOR", isAffirmative(cardData["DDK"]));
-        setGroupVisibility(doc, "REAL ID COMPLIANCY", isAffirmative(cardData["DDA"]));
+        setGroupVisibility(doc, "REAL ID COMPLIANCY", isRealIdCompliant(cardData["DDA"]));
 
         var photoPath = cardData["photo"] ? stripQuotes(cardData["photo"]).trim() : "";
         if (photoPath) {
