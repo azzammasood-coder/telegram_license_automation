@@ -422,12 +422,14 @@ var scriptFile = new File($.fileName);
         }
 
         // REAL ID: DDA is the AAMVA "Compliance Type" (F = compliant,
-        // N = non-compliant), so the card overlays "NO REAL ID COMPLIANCE"
-        // only for non-compliant holders. (isRealIdCompliant lives in the MA
-        // helpers section but applies to any state's DDA column.)
+        // N = non-compliant). The two groups are complementary - "REAL ID
+        // COMPLAINT" (sic; the actual PSD group name for the compliant stamp)
+        // shows for compliant holders, "NO REAL ID COMPLIANCE" for the rest.
+        // (isRealIdCompliant lives in the MA helpers section but applies to
+        // any state's DDA column.)
         var realIdCompliant = isRealIdCompliant(realIdCompliancy);
+        setGroupVisibility(doc, "REAL ID COMPLAINT", realIdCompliant);
         setGroupVisibility(doc, "NO REAL ID COMPLIANCE", !realIdCompliant);
-        setGroupVisibility(doc, "REAL ID COMPLAINT", false);
     }
 
     // CA FRONT UV.psd: UV DOB layer + inverted holder photo in "PHOTO OF DL HOLDER" SO
