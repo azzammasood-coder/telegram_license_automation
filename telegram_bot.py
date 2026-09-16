@@ -17,7 +17,7 @@ from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters,)
 from modules import nj_module, fl_module, pa_module, va_module, ny_module, ga_module, tx_module, ct_module
-from telegram.error import Forbidden, InvalidToken, NetworkError
+from telegram.error import BadRequest, Forbidden, InvalidToken, NetworkError
 
 # ==============================================================================
 # CONFIGURATION & SETTINGS
@@ -1125,7 +1125,24 @@ async def handle_payment_upload(update: Update, context: ContextTypes.DEFAULT_TY
     admin_text += f"\nUser ID: `{chat_id}`\nUsername: {username}"
     
     if ADMIN_CHAT_ID:
-        await context.bot.send_photo(chat_id=ADMIN_CHAT_ID, photo=photo_file, caption=admin_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        try:
+            await context.bot.send_photo(
+                chat_id=ADMIN_CHAT_ID,
+                photo=photo_file,
+                caption=admin_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="Markdown",
+            )
+        except (BadRequest, Forbidden) as e:
+            # Common when admin never /start-ed this bot, or admin_chat_id is wrong
+            logger.error(
+                "Failed to notify admin %s for job %s: %s. "
+                "Have the admin open this bot and send /start, "
+                "or fix telegram.admin_chat_id in config.json.",
+                ADMIN_CHAT_ID,
+                job_id,
+                e,
+            )
     
     # Empty cart
     context.user_data['cart'] = []

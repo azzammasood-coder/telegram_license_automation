@@ -1,16 +1,12 @@
 {
     "telegram": {
         "bot_tokens_pool": [
-            "8560545532:AAHHmT0HWhKhz3sp-P29GEK8twaWioxJJrc",
-            "8682340815:AAF5c5sv5XrsF7jnhZWAjlCG-5msYR-qt_Y",
-            "8799657558:AAGIyKq6SD-eJ-RTTz-1DvVGdbPTD5oJghk",
-            "8748180134:AAFA1uFl0dQgC47hlsfr1ZmSTHSAZrHV3hM",
-            "8783031676:AAFNmlm0ePylNOfdlsNrWGmCmnnwmtGIFnA"
+            "8663311386:AAGKo8adWDsOCi_NP0OKGOOJlj3w9evgAMc"
         ],
         "active_token_index": 0,
         "bot_token_flask": "8734895812:AAGD3yTBMCr6nxI-PuQEWUKwsZUg8C_zfvw",
         "flask_bot_username": "GhostAuthLoginBot",
-        "admin_chat_id": 8237067905
+        "admin_chat_id": 8665616930
     },
     "web": {
         "worker_api_key": "worker-secret-123",
@@ -24,7 +20,7 @@
         "removebg_key": "sWz6NetFxj4ifLY1w4T3wUK3"
     },
     "paths": {
-        "base_dir": "C:/Users/LENOVO/Documents/personal/Fiver/Telegram License Automation",
+        "base_dir": "C:/Users/pc/Documents/freelance/Telegram License Automation",
         "photoshop_exe": "C:/Program Files/Adobe/Adobe Photoshop 2021/Photoshop.exe"
     },
     "filenames": {
@@ -33,13 +29,16 @@
         "ny_front": "Front NY Automation.psd",
         "ny_back": "Back NY Automation.psd",
         "fl_psd": "FL Revision 2020 For Poly.psd",
+        "fl_back": "FL BACK.psd",
         "pa_psd": "FRONT PA POLY.psd",
+        "pa_back": "PA BACK.psd",
         "va_front": "VA Front.psd",
         "va_back": "VA Back.psd",
         "ga_front": "GA Front Edit For Laser.psd",
         "ga_back": "GA Back Edit For Laser.psd",
         "tx_front": "TX Front.psd",
-        "tx_back": "TX Back.psd"
+        "tx_back": "TX Back.psd",
+        "ct_psd": "CT 8 UP.psb"
     },
     "toggles": {
         "admin_mode": false
