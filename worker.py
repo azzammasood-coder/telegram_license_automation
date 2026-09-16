@@ -9,7 +9,7 @@ import re
 import random
 import shutil
 from datetime import datetime
-from modules import nj_module, fl_module, pa_module, va_module, ny_module, ga_module, tx_module
+from modules import nj_module, fl_module, pa_module, va_module, ny_module, ga_module, tx_module, ct_module
 
 # ==========================================
 # CONFIGURATION
@@ -338,7 +338,7 @@ def generate_barcodes(user_data: dict, api_height: str):
         logger.info("⬇️ Fetching small_tiff...")
         small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=60).content
         
-    if state in ["PA", "VA"]:
+    if state in ["PA", "VA", "CT"]:
         logger.info("⬇️ Fetching big_png...")
         big_png = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=60).content
         logger.info("⬇️ Fetching small_png...")
@@ -428,6 +428,8 @@ def run_worker():
                 # State Routing: Pass FINAL_DIR so modules save directly to the main root folder
                 if jurisdiction == 'PA':
                     results = pa_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=big_png, small_png=small_png)
+                elif jurisdiction == 'CT':
+                    results = ct_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=big_png, small_png=small_png)
                 elif jurisdiction == 'GA':
                     results = ga_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
                 elif jurisdiction == 'FL':
@@ -485,14 +487,23 @@ def run_worker():
                     elif jurisdiction in ["FL", "PA"]:
                         out_color = data_map.get("Output Color", "")
                         out_black = data_map.get("Output Black", "")
+                        out_back = data_map.get("Output Back", "")
                         
-                        if (out_color and os.path.exists(out_color) and os.path.getsize(out_color) > 0 and 
-                            out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0):
+                        front_ready = (
+                            out_color and os.path.exists(out_color) and os.path.getsize(out_color) > 0 and
+                            out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0
+                        )
+                        # PA/FL both require back plate from process_*_back.jsx
+                        back_ready = (
+                            out_back and os.path.exists(out_back) and os.path.getsize(out_back) > 0
+                        )
+
+                        if front_ready and back_ready:
                             time.sleep(2)
                             success = True
                             break
                             
-                    elif jurisdiction == "NJ":
+                    elif jurisdiction in ["NJ", "CT"]:
                         out_psd = data_map.get("Output PSD", "")
                         if out_psd and os.path.exists(out_psd) and os.path.getsize(out_psd) > 0:
                             time.sleep(2)

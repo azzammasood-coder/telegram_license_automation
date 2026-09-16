@@ -42,6 +42,17 @@ def extract_dd_from_raw(raw_text: str) -> str:
     if match: return match.group(1)
     return ""
 
+def calculate_age(dob_str: str, as_of_str: str = None) -> str:
+    """Age in whole years from DOB, as of issue date when available (else today)."""
+    try:
+        dob = datetime.strptime(dob_str, "%m/%d/%Y")
+        as_of = datetime.strptime(as_of_str, "%m/%d/%Y") if as_of_str else datetime.now()
+        age = as_of.year - dob.year - ((as_of.month, as_of.day) < (dob.month, dob.day))
+        return str(max(age, 0))
+    except Exception as e:
+        logger.error(f"PA Age calculation error: {e}")
+        return "21"
+
 def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=None, small_png=None):
     
     # 1. Setup Data & Handle Blanks via API Barcode
@@ -63,6 +74,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
 
     out_front_color = clean_path(os.path.join(job_output_dir, f"Front Color Only.tif"))
     out_front_black = clean_path(os.path.join(job_output_dir, f"Front Black Only.png"))
+    out_back_black = clean_path(os.path.join(job_output_dir, f"Back Black Only.png"))
     
     # 3. Handle Images & Unified Signature
     sig_path_source = user_data.get('signature_path')
@@ -74,7 +86,9 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
 
     final_face_path = clean_path(face_path_source) if face_path_source and os.path.exists(face_path_source) else ""
 
-    # 4. Save Barcodes (Back is just the PNG)
+    # 4. Save Barcodes (PNG used by PA BACK smart objects)
+    big_barcode_path = clean_path(os.path.join(job_output_dir, "barcode.png"))
+    linear_barcode_path = clean_path(os.path.join(job_output_dir, "linear_barcode.png"))
     if big_png:
         with open(os.path.join(job_output_dir, "barcode.png"), "wb") as f:
             f.write(big_png)
@@ -102,7 +116,14 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     else:
         formatted_dl = final_dl_number
 
-    dd_value = extract_dd_from_raw(raw_text)
+    dd_value = re.sub(r'[^A-Za-z0-9]', '', extract_dd_from_raw(raw_text) or "")
+    # Front keeps historical 13 / remainder split; back uses 11 + 5 (e.g. 02501000044 / 24369)
+    dd_front_1 = dd_value[:13] if dd_value else ""
+    dd_front_2 = dd_value[13:] if dd_value else ""
+    dd_back_1 = dd_value[:11] if dd_value else ""
+    dd_back_2 = dd_value[11:16] if dd_value else ""
+
+    age_val = calculate_age(dob_val, final_iss)
     
     # MICRO TEXT (Simple: AM98)
     try:
@@ -131,19 +152,23 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Jurisdiction: PA",
         f"Output Color: {out_front_color}",
         f"Output Black: {out_front_black}",
+        f"Output Back: {out_back_black}",
         f"Sig Path: {final_sig_path}",
         f"Sig Text: {final_sig_text}",
         f"Use Sig Image: {use_sig_image}",
         f"Face Path: {final_face_path}",
+        f"Load Big Barcode: {big_barcode_path}",
+        f"Load Linear Barcode: {linear_barcode_path}",
         
         # Color Group
         f"Micro Top: {micro_text}",
         f"Real ID: {is_real_id}",
         
-        # Black Group
+        # Front Black Group
         f"Top Micro Initials: {micro_text}",
         f"DL: {formatted_dl}",
         f"DOB: {dob_val}",
+        f"Age: {age_val}",
         f"Last Name: {last_name.upper()}",
         f"First Middle: {first_name.upper()} {middle_name.upper()}".strip(),
         f"Street 1: {user_data.get('address', '').upper()}",
@@ -154,8 +179,10 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Eye Color: {user_data.get('eyes', 'BRO')}",
         f"Height: {pa_height}",
         f"Class: {user_data.get('class', 'C')}",
-        f"DD Line 1: {dd_value[:13] if dd_value else ''}",
-        f"DD Line 2: {dd_value[13:] if dd_value else ''}",
+        f"DD Line 1: {dd_front_1}",
+        f"DD Line 2: {dd_front_2}",
+        f"DD First Line: {dd_back_1}",
+        f"DD Second Line: {dd_back_2}",
         f"Bottom Micro Initials: {micro_text}"
     ]
 
@@ -163,4 +190,6 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     with open(data_file_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
-    return unique_id, data_file_path, out_front_color, out_front_black, "dummy.psd", clean_path(os.path.join(BASE_DIR, "modules", "process_pa.jsx"))
+    jsx_front = clean_path(os.path.join(BASE_DIR, "modules", "process_pa.jsx"))
+    jsx_back = clean_path(os.path.join(BASE_DIR, "modules", "process_pa_back.jsx"))
+    return unique_id, data_file_path, out_front_color, out_front_black, "dummy.psd", jsx_front, jsx_back

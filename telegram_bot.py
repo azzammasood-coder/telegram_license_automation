@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, CallbackQueryHandler, filters,)
-from modules import nj_module, fl_module, pa_module, va_module, ny_module, ga_module, tx_module
+from modules import nj_module, fl_module, pa_module, va_module, ny_module, ga_module, tx_module, ct_module
 from telegram.error import Forbidden, InvalidToken, NetworkError
 
 # ==============================================================================
@@ -213,7 +213,29 @@ async def process_queue_worker(app: Application):
             success = True
             break
 
-        # --- STANDARD SUCCESS CONDITION ---
+        elif jurisdiction == "PA":
+          out_color = data_map.get("Output Color", "")
+          out_black = data_map.get("Output Black", "")
+          out_back = data_map.get("Output Back", "")
+          if (out_color and os.path.exists(out_color) and os.path.getsize(out_color) > 0 and
+              out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0 and
+              out_back and os.path.exists(out_back) and os.path.getsize(out_back) > 0):
+            await asyncio.sleep(2)
+            success = True
+            break
+
+        elif jurisdiction == "FL":
+          out_color = data_map.get("Output Color", "")
+          out_black = data_map.get("Output Black", "")
+          out_back = data_map.get("Output Back", "")
+          if (out_color and os.path.exists(out_color) and os.path.getsize(out_color) > 0 and
+              out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0 and
+              out_back and os.path.exists(out_back) and os.path.getsize(out_back) > 0):
+            await asyncio.sleep(2)
+            success = True
+            break
+
+        # --- STANDARD SUCCESS CONDITION (e.g. NJ) ---
         else:
           # Check for main PSD (out_psd passed in queue)
           if os.path.exists(out_psd) and os.path.getsize(out_psd) > 0:
@@ -620,7 +642,7 @@ def generate_barcodes(user_data: dict, api_height: str):
             logger.info("⬇️ Fetching small_tiff...")
             small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=120).content
             
-        if state in ["PA", "VA"]:
+        if state in ["PA", "VA", "CT"]:
             logger.info("⬇️ Fetching big_png...")
             big_png = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=120).content
             logger.info("⬇️ Fetching small_png...")
@@ -1264,18 +1286,20 @@ async def show_unified_prompt(query, context, state_code):
             "NY": "689 995 677",
             "VA": "T67256730",
             "FL": "F425-104-65-162-0",
-            "PA": "19 059 959"
+            "PA": "19 059 959",
+            "CT": "123456789"
         }
 
         sample_dl = dl_formats.get(state_code_upper, "H5901 59055 59481")
         
         # Mappings for accurate state data
-        class_map = {"NJ": "D", "NY": "D", "VA": "D", "FL": "E", "PA": "C"}
-        validity_map = {"NJ": 4, "NY": 8, "VA": 8, "FL": 8, "PA": 4}
+        class_map = {"NJ": "D", "NY": "D", "VA": "D", "FL": "E", "PA": "C", "CT": "D"}
+        validity_map = {"NJ": 4, "NY": 8, "VA": 8, "FL": 8, "PA": 4, "CT": 7}
         
         class_val = class_map.get(state_code_upper, "D")
         validity = validity_map.get(state_code_upper, 4)
         exp_year = 2023 + validity
+        eyes_sample = "BRO" if state_code_upper == "CT" else "BRN"
 
         msg = (
             "Please only edit and replace the sample information with your information details exactly in this format.\n\n"
@@ -1291,7 +1315,7 @@ async def show_unified_prompt(query, context, state_code):
             "Gender: M\n"
             "Dob: 01/01/1980\n"
             "Height: 5'-11\"\n"
-            "Eyes: BRN\n"
+            f"Eyes: {eyes_sample}\n"
             f"Class: {class_val}\n"
             "Endorsements: NONE\n"
             "Restrictions: NONE\n"
@@ -1342,7 +1366,7 @@ async def select_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         return await enter_command(update, context)
         
     selected = query.data.upper()
-    implemented_states = ["NJ", "NY", "FL", "PA", "VA", "GA", "TX"]
+    implemented_states = ["NJ", "NY", "FL", "PA", "VA", "GA", "TX", "CT"]
     
     if selected not in implemented_states:
         await query.answer("Coming Soon!", show_alert=True)
@@ -1499,6 +1523,8 @@ async def execute_generation(bot, chat_id, user_data):
     
     if jurisdiction == 'PA':
       results = pa_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=big_png, small_png=small_png)
+    elif jurisdiction == 'CT':
+      results = ct_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=big_png, small_png=small_png)
     elif jurisdiction == 'GA':
       results = ga_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
     elif jurisdiction == 'FL':
@@ -1666,12 +1692,19 @@ def rotate_to_next_token():
     
     return False
 
+def ensure_open_event_loop():
+    """PTB closes the loop after run_polling; recreate it before each attempt."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    return loop
+
 def run_bot():
     token = load_active_token()
     if not token:
         logger.error("No valid bot tokens found in config.")
-        return False
+        return "fatal"
 
+    ensure_open_event_loop()
     app = Application.builder().token(token).post_init(post_init).build()
 
     conv_handler = ConversationHandler(
@@ -1724,41 +1757,59 @@ def run_bot():
     try:
         # Polling blocks the thread here until the bot stops or crashes
         app.run_polling()
-        return True # Normal exit (e.g., you pressed Ctrl+C)
+        return "ok"  # Normal exit (e.g., you pressed Ctrl+C)
     
     except (Forbidden, InvalidToken) as e:
         logger.error(f"🚨 Bot Token Banned or Invalid: {e}")
-        return False # Triggers rotation
+        return "rotate"
     
     except NetworkError as e:
         # This catches httpx.ConnectError and other connection drops
         logger.error(f"🚨 Telegram Network/Connection Error: {e}")
-        return False # Triggers rotation
+        return "retry"
+
+    except RuntimeError as e:
+        # Common after PTB closes the loop on the previous attempt
+        if "Event loop is closed" in str(e):
+            logger.warning(f"Event loop closed; retrying same token with a fresh loop: {e}")
+            return "retry"
+        logger.error(f"🚨 Unexpected RuntimeError during polling: {e}")
+        return "retry"
     
     except Exception as e:
         logger.error(f"🚨 Unexpected Error during polling: {e}")
-        return False # Triggers rotation
+        return "retry"
 
 def main():
+    consecutive_retries = 0
     while True:
-        success = run_bot()
+        result = run_bot()
         
-        # If run_bot returned False, it means an error occurred and we need to rotate
-        if not success:
-            logger.info("Attempting automatic token rotation...")
-            if rotate_to_next_token():
-                time.sleep(3) # Brief pause before reconnecting to avoid spamming the API
-                continue
-            else:
-                # All 5 bots are dead
-                print("\n" + "!"*50)
-                print("🚨 FATAL ERROR: All 5 bots used up and not working.")
-                print("Please generate new bots via BotFather and update config.json")
-                print("!"*50 + "\n")
-                sys.exit(1)
-        else:
-            # If run_bot returned True, it was a clean exit (user stopped the script)
+        if result == "ok":
             break
+        if result == "fatal":
+            sys.exit(1)
+        if result == "retry":
+            consecutive_retries += 1
+            if consecutive_retries > 5:
+                logger.error("Too many consecutive retries without a successful connection.")
+                result = "rotate"
+            else:
+                time.sleep(2)
+                continue
+
+        # result == "rotate" (invalid/banned token)
+        consecutive_retries = 0
+        logger.info("Attempting automatic token rotation...")
+        if rotate_to_next_token():
+            time.sleep(3)  # Brief pause before reconnecting to avoid spamming the API
+            continue
+
+        print("\n" + "!"*50)
+        print("🚨 FATAL ERROR: All bots used up and not working.")
+        print("Please generate new bots via BotFather and update config.json")
+        print("!"*50 + "\n")
+        sys.exit(1)
 
 if __name__ == "__main__":
   main()

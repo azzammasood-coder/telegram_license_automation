@@ -79,6 +79,17 @@ def extract_date_from_raw(raw_text: str, prefix: str) -> str:
         return f"{d[0:2]}/{d[2:4]}/{d[4:]}"
     return ""
 
+def calculate_age(dob_str: str, as_of_str: str = None) -> str:
+    """Age in whole years from DOB, as of issue date when available (else today)."""
+    try:
+        dob = datetime.strptime(dob_str, "%m/%d/%Y")
+        as_of = datetime.strptime(as_of_str, "%m/%d/%Y") if as_of_str else datetime.now()
+        age = as_of.year - dob.year - ((as_of.month, as_of.day) < (dob.month, dob.day))
+        return str(max(age, 0))
+    except Exception as e:
+        logger.error(f"FL Age calculation error: {e}")
+        return "21"
+
 def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_tiff=None, small_tiff=None):
     """
     Creates the FL specific data.txt file and moves images.
@@ -125,6 +136,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
 
     out_front_color = clean_path(os.path.join(job_output_dir, f"Front_Color_Only.tif"))
     out_front_black = clean_path(os.path.join(job_output_dir, f"Front_Black_Only.tif"))
+    out_back_black = clean_path(os.path.join(job_output_dir, f"Back_Black_Only.tif"))
     
     # 4. Handle Images & Unified Signature
     sig_path_source = user_data.get('signature_path')
@@ -136,6 +148,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     final_face_path = clean_path(face_path_source) if face_path_source and os.path.exists(face_path_source) else ""
 
     # 5. Save Barcodes (4 Files Total)
+    big_barcode_path = clean_path(os.path.join(job_output_dir, "barcode.tiff"))
+    linear_barcode_path = clean_path(os.path.join(job_output_dir, "linear barcode.tiff"))
     if big_tiff:
         with open(os.path.join(job_output_dir, "barcode.tiff"), "wb") as f:
             f.write(big_tiff)
@@ -150,7 +164,11 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         with open(os.path.join(job_output_dir, "linear barcode.svg"), "wb") as f:
             f.write(small_svg)
 
-    dd_value = extract_dd_from_raw(raw_text)
+    # DD = Document Discriminator (AAMVA DCF). Front uses full value; back splits 11 + 5.
+    dd_value = re.sub(r'[^A-Za-z0-9]', '', extract_dd_from_raw(raw_text) or "")
+    dd_back_1 = dd_value[:11] if dd_value else ""
+    dd_back_2 = dd_value[11:16] if dd_value else ""
+    age_val = calculate_age(dob_val, iss_val)
 
     # Priority: User Custom DL -> API Generated DL
     final_dl_number = user_data.get('custom_dl', '').strip()
@@ -162,9 +180,12 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"State Code: FL",
         f"Output Color: {out_front_color}",
         f"Output Black: {out_front_black}",
+        f"Output Back: {out_back_black}",
         f"Sig Path: {final_sig_path}",
         f"Sig Text: {final_sig_text}",
         f"Face Path: {final_face_path}",
+        f"Load Big Barcode: {big_barcode_path}",
+        f"Load Linear Barcode: {linear_barcode_path}",
         
         f"Top Micro Text: {micro_text}",
         f"Driver License Number: {format_fl_dl_number(final_dl_number)}",
@@ -174,6 +195,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Street Address Apt/Unit: {user_data.get('address', '').upper()}",
         f"City State Zip: {user_data.get('city', '').upper()} FL {short_zip}",
         f"Dob: {dob_val}",
+        f"Age: {age_val}",
         f"Sex: {user_data.get('gender', 'M')}",
         f"Exp: {exp_val}",
         f"Height: {visual_height}",
@@ -181,6 +203,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"End: {user_data.get('endorsements', 'NONE')}",
         f"Issue Date: {iss_val}",
         f"DD: {dd_value}",
+        f"DD First Line: {dd_back_1}",
+        f"DD Second Line: {dd_back_2}",
         f"Bottom Micro Text: {micro_text}",
         f"REPLACED DATE: {iss_val}",
         
@@ -194,4 +218,6 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     with open(data_file_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
-    return unique_id, data_file_path, out_front_color, out_front_black, "dummy.psd", clean_path(os.path.join(BASE_DIR, "modules", "process_fl.jsx"))
+    jsx_front = clean_path(os.path.join(BASE_DIR, "modules", "process_fl.jsx"))
+    jsx_back = clean_path(os.path.join(BASE_DIR, "modules", "process_fl_back.jsx"))
+    return unique_id, data_file_path, out_front_color, out_front_black, "dummy.psd", jsx_front, jsx_back

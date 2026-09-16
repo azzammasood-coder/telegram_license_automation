@@ -50,7 +50,7 @@ else:
 # CONSTANTS & HELPERS
 # ==========================================
 ALL_STATES = { "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "DC": "District of Columbia", "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland", "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York", "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming" }
-IMPLEMENTED_STATES = ["NJ", "NY", "FL", "PA", "VA", "GA", "TX"]
+IMPLEMENTED_STATES = ["NJ", "NY", "FL", "PA", "VA", "GA", "TX", "CT"]
 
 def parse_bulk_input(text: str) -> dict:
     data = {}
@@ -338,7 +338,7 @@ def unified_form(state):
         flash("✅ Item added to cart! Proceed to checkout or add another.", "success")
         return redirect(url_for('main_menu'))
 
-    dl_formats = {"NJ": "H5901 59055 59481", "NY": "689 995 677", "VA": "T67256730", "FL": "F425-104-65-162-0", "PA": "19 059 959", "GA": "049559674", "TX": "96136059"}
+    dl_formats = {"NJ": "H5901 59055 59481", "NY": "689 995 677", "VA": "T67256730", "FL": "F425-104-65-162-0", "PA": "19 059 959", "GA": "049559674", "TX": "96136059", "CT": "123456789"}
     sample_dl = dl_formats.get(state, "H5901 59055 59481")
     
     if state == "TX":
@@ -347,8 +347,8 @@ def unified_form(state):
         sample_text = f"DL: {sample_dl}\nFirst Name: HARROLD\nMiddle Name: EYES\nLast Name: FINCH\nAddress: 100 EYES \nCity: ATLANTA\nState Code: GA\nFull Zip Code + 4 Digits: 39999-1234\nCounty: Fulton\nGender: M\nDob: 01/01/1980\nHeight: 5'-11\"\nWeight: 160\nEyes: BRO\nClass: C\nEndorsements: NONE\nRestrictions: NONE\nIssue Date: 01/01/2023\nExpires Date: 01/01/2031\nReal ID: Visible\nNot Real ID: Not Visible"
     else:
         # Mappings for accurate state data
-        class_map = {"NJ": "D", "NY": "D", "VA": "D", "FL": "E", "PA": "C"}
-        validity_map = {"NJ": 4, "NY": 8, "VA": 8, "FL": 8, "PA": 4}
+        class_map = {"NJ": "D", "NY": "D", "VA": "D", "FL": "E", "PA": "C", "CT": "D"}
+        validity_map = {"NJ": 4, "NY": 8, "VA": 8, "FL": 8, "PA": 4, "CT": 7}
         
         class_val = class_map.get(state, "D")
         validity = validity_map.get(state, 4)
