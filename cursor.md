@@ -188,6 +188,13 @@ Bulk prompts live in `show_unified_prompt` (Telegram) and the web form; TX/GA pr
 4. Telegram path: `python telegram_bot.py`
 5. Web path: deploy/run `app.py` on host; on Windows with Photoshop: `python worker.py`
 6. Debug via `logs/` and per-state `process_*.log`.
+7. **Re-run a failed Telegram job locally (offline — no APIs/Telegram):**
+   - Reuses existing `temp_files/*_job_*.txt` ticket + barcodes already on disk
+   - `python rerun_latest_job.py` — `active_job.txt` or newest ticket
+   - `python rerun_latest_job.py --list` — tickets + recent jobs.db rows
+   - `python rerun_latest_job.py <job_id>` — resolve ticket for that job
+   - `python rerun_latest_job.py --again` — same ticket as last offline rerun
+   - Does **not** regenerate barcodes or call network APIs
 
 Photoshop must allow script execution (`PSUserConfig.txt` setup noted in README).
 

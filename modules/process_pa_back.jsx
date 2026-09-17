@@ -70,6 +70,37 @@ function readFile(path) {
     return data;
 }
 
+function isDocumentOpen(name) {
+    for (var i = 0; i < app.documents.length; i++) {
+        if (app.documents[i].name == name) return true;
+    }
+    return false;
+}
+
+function openTemplate(psdPath, psdName) {
+    if (isDocumentOpen(psdName)) {
+        log("PSD already open — activating: " + psdName);
+        app.activeDocument = app.documents.getByName(psdName);
+        return app.activeDocument;
+    }
+
+    var fileRef = new File(psdPath);
+    if (!fileRef.exists) {
+        throw "PSD missing at: " + psdPath;
+    }
+
+    try {
+        log("Opening PSD via app.open: " + psdPath);
+        app.open(fileRef);
+    } catch (e1) {
+        log("app.open failed (" + e1 + ") — retrying via Action Manager...");
+        var desc = new ActionDescriptor();
+        desc.putPath(charIDToTypeID("null"), fileRef);
+        executeAction(charIDToTypeID("Opn "), desc, DialogModes.NO);
+    }
+    return app.activeDocument;
+}
+
 function findLayerByName(parent, name) {
     for (var i = 0; i < parent.layers.length; i++) {
         if (parent.layers[i].name.toUpperCase() == name.toUpperCase()) return parent.layers[i];
@@ -177,13 +208,13 @@ function main() {
     var data = readFile(dataFilePath);
 
     log("Opening PSD: " + PSD_PATH);
-    app.open(File(PSD_PATH));
-    var doc = app.activeDocument;
+    var doc = openTemplate(PSD_PATH, PSD_NAME);
 
     // Reset to original template state if history exists
     try {
         if (doc.historyStates.length > 0) {
             doc.activeHistoryState = doc.historyStates[0];
+            log("Reset history to original template state.");
         }
     } catch (e) {
         log("WARN: Could not reset history: " + e);

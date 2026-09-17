@@ -101,6 +101,38 @@ function setLayerText(parent, layerName, text) {
     }
 }
 
+function isDocumentOpen(name) {
+    for (var i = 0; i < app.documents.length; i++) {
+        if (app.documents[i].name == name) return true;
+    }
+    return false;
+}
+
+function openTemplate(psdPath, psdName) {
+    // If already open, reusing it avoids: "Cannot open the file because the open options are incorrect"
+    if (isDocumentOpen(psdName)) {
+        log("PSD already open — activating: " + psdName);
+        app.activeDocument = app.documents.getByName(psdName);
+        return app.activeDocument;
+    }
+
+    var fileRef = new File(psdPath);
+    if (!fileRef.exists) {
+        throw "PSD missing at: " + psdPath;
+    }
+
+    try {
+        log("Opening PSD via app.open: " + psdPath);
+        app.open(fileRef);
+    } catch (e1) {
+        log("app.open failed (" + e1 + ") — retrying via Action Manager...");
+        var desc = new ActionDescriptor();
+        desc.putPath(charIDToTypeID("null"), fileRef);
+        executeAction(charIDToTypeID("Opn "), desc, DialogModes.NO);
+    }
+    return app.activeDocument;
+}
+
 function replaceSmartObject(parentSet, layerName, filePath) {
     // 1. Validate inputs
     // if (!parentSet || !fileRef.exists) return;
@@ -308,8 +340,17 @@ function main() {
     var data = readFile(dataFilePath);
 
     log("Opening PSD: " + PSD_PATH);
-    app.open(File(PSD_PATH));
-    var doc = app.activeDocument;
+    var doc = openTemplate(PSD_PATH, PSD_NAME);
+
+    // Reset to clean template state (important when reusing an already-open doc)
+    try {
+        if (doc.historyStates.length > 0) {
+            doc.activeHistoryState = doc.historyStates[0];
+            log("Reset history to original template state.");
+        }
+    } catch (e) {
+        log("WARN: Could not reset history: " + e);
+    }
 
     var frontGroup = findLayerByName(doc, "Front");
     var colorGroup = findLayerByName(frontGroup, "Color");

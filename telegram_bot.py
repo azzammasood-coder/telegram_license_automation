@@ -175,11 +175,40 @@ async def process_queue_worker(app: Application):
 
       # 3. Trigger Photoshop
       if os.path.exists(PHOTOSHOP_EXE_PATH):
-        logger.info(f"⚙️  Triggering Photoshop for {unique_id}. Running {len(jsx_paths)} JSX script(s).")
-        for jsx in jsx_paths:
-          logger.info(f"   -> Executing JSX: {os.path.basename(jsx)}")
-          subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx])
-          await asyncio.sleep(2)
+        # PA: run front first (large PSD), wait for front plates, then back.
+        # Parallel -r launches caused front open failures when the PSD was already open.
+        if jurisdiction == "PA" and len(jsx_paths) >= 2:
+          jsx_front, jsx_back = jsx_paths[0], jsx_paths[1]
+          logger.info(f"⚙️  PA sequential Photoshop for {unique_id}: front → back")
+          logger.info(f"   -> Executing JSX: {os.path.basename(jsx_front)}")
+          subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx_front])
+
+          out_color = data_map.get("Output Color", "")
+          out_black = data_map.get("Output Black", "")
+          front_ok = False
+          front_wait_start = time.time()
+          while (time.time() - front_wait_start) < 1800:
+            if (out_color and os.path.exists(out_color) and os.path.getsize(out_color) > 0 and
+                out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0):
+              front_ok = True
+              await asyncio.sleep(2)
+              break
+            if int(time.time() - front_wait_start) % 20 == 0:
+              logger.info(f"⏳ Waiting for PA Front plates... {unique_id}")
+            await asyncio.sleep(3)
+
+          if not front_ok:
+            await bot.send_message(chat_id, "⚠️ PA Front timed out — back not started.")
+            continue
+
+          logger.info(f"   -> Executing JSX: {os.path.basename(jsx_back)}")
+          subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx_back])
+        else:
+          logger.info(f"⚙️  Triggering Photoshop for {unique_id}. Running {len(jsx_paths)} JSX script(s).")
+          for jsx in jsx_paths:
+            logger.info(f"   -> Executing JSX: {os.path.basename(jsx)}")
+            subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx])
+            await asyncio.sleep(2)
       else:
         await bot.send_message(chat_id, "⚠️ Error: Photoshop path incorrect.")
         continue
@@ -227,10 +256,8 @@ async def process_queue_worker(app: Application):
         elif jurisdiction == "FL":
           out_color = data_map.get("Output Color", "")
           out_black = data_map.get("Output Black", "")
-          out_back = data_map.get("Output Back", "")
           if (out_color and os.path.exists(out_color) and os.path.getsize(out_color) > 0 and
-              out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0 and
-              out_back and os.path.exists(out_back) and os.path.getsize(out_back) > 0):
+              out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0):
             await asyncio.sleep(2)
             success = True
             break

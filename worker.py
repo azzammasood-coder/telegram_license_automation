@@ -457,10 +457,36 @@ def run_worker():
                             data_map[k.strip()] = v.strip()
 
                 # Trigger Photoshop
-                logger.info(f"🎨 Triggering Photoshop for {unique_id}...")
-                for jsx in jsx_paths:
-                    subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx])
-                    time.sleep(2)
+                # PA: front first (large PSD), wait for front plates, then back
+                if jurisdiction == "PA" and len(jsx_paths) >= 2:
+                    jsx_front, jsx_back = jsx_paths[0], jsx_paths[1]
+                    logger.info(f"🎨 PA sequential Photoshop for {unique_id}: front → back")
+                    logger.info(f"   -> Executing JSX: {os.path.basename(jsx_front)}")
+                    subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx_front])
+
+                    out_color = data_map.get("Output Color", "")
+                    out_black = data_map.get("Output Black", "")
+                    front_ok = False
+                    front_wait_start = time.time()
+                    while (time.time() - front_wait_start) < 1800:
+                        if (out_color and os.path.exists(out_color) and os.path.getsize(out_color) > 0 and
+                            out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0):
+                            front_ok = True
+                            time.sleep(2)
+                            break
+                        time.sleep(3)
+
+                    if not front_ok:
+                        logger.error(f"❌ PA Front timed out for {unique_id} — skipping back.")
+                        continue
+
+                    logger.info(f"   -> Executing JSX: {os.path.basename(jsx_back)}")
+                    subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx_back])
+                else:
+                    logger.info(f"🎨 Triggering Photoshop for {unique_id}...")
+                    for jsx in jsx_paths:
+                        subprocess.Popen([PHOTOSHOP_EXE_PATH, "-r", jsx])
+                        time.sleep(2)
 
                 # Intelligent Wait Loop (State Specific)
                 timeout = 1800
@@ -484,21 +510,24 @@ def run_worker():
                             success = True
                             break
                             
-                    elif jurisdiction in ["FL", "PA"]:
+                    elif jurisdiction == "PA":
                         out_color = data_map.get("Output Color", "")
                         out_black = data_map.get("Output Black", "")
                         out_back = data_map.get("Output Back", "")
-                        
-                        front_ready = (
-                            out_color and os.path.exists(out_color) and os.path.getsize(out_color) > 0 and
-                            out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0
-                        )
-                        # PA/FL both require back plate from process_*_back.jsx
-                        back_ready = (
-                            out_back and os.path.exists(out_back) and os.path.getsize(out_back) > 0
-                        )
 
-                        if front_ready and back_ready:
+                        if (out_color and os.path.exists(out_color) and os.path.getsize(out_color) > 0 and
+                            out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0 and
+                            out_back and os.path.exists(out_back) and os.path.getsize(out_back) > 0):
+                            time.sleep(2)
+                            success = True
+                            break
+
+                    elif jurisdiction == "FL":
+                        out_color = data_map.get("Output Color", "")
+                        out_black = data_map.get("Output Black", "")
+
+                        if (out_color and os.path.exists(out_color) and os.path.getsize(out_color) > 0 and
+                            out_black and os.path.exists(out_black) and os.path.getsize(out_black) > 0):
                             time.sleep(2)
                             success = True
                             break
