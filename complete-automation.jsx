@@ -641,6 +641,146 @@ var scriptFile = new File($.fileName);
         }
     }
 
+    // --- SC-SPECIFIC HELPERS ---
+    // South Carolina 2018 is a single combined PSD (UV + FRONT + BACK groups).
+
+    // Total inches -> "F -II" (e.g. 74 -> "6 -02"); preserves the space before the hyphen.
+    function formatHeightSC(totalInches) {
+        var n = parseInt(totalInches, 10);
+        if (isNaN(n)) return "";
+        var feet = Math.floor(n / 12);
+        var inches = n % 12;
+        return feet + " -" + String(inches).padStart(2, "0");
+    }
+
+    // Organ donor text for the SC back "DONOR" layer ("YES" / "NO").
+    function formatDonorYesNo(value) {
+        return isAffirmative(value) ? "YES" : "NO";
+    }
+
+    // Update every matching text layer under a parent LayerSet (not the whole
+    // doc) so SC can target EDIT vs BACK without hitting DON'T TOUCH duplicates.
+    function updateTextUnder(parentSet, layerName, newText) {
+        if (!parentSet || parentSet.typename !== "LayerSet") {
+            log("Text update skipped: parent group missing for '" + layerName + "'");
+            return 0;
+        }
+        var count = 0;
+        for (var i = 0; i < parentSet.layers.length; i++) {
+            count += updateTextLayersRecursive(parentSet.layers[i], layerName, newText);
+        }
+        if (count === 0) log("Text layer '" + layerName + "' not found under '" + parentSet.name + "'");
+        return count;
+    }
+
+    // SC combined PSD: front personal data + photos + signature, and back
+    // donor/restrictions/endorsements + PDF417/Code128 barcodes.
+    function processSCCombinedPSD(doc, cardData, cardIndex) {
+        var editGroup = findLayerRecursive(doc, "EDIT");
+        var backGroup = findLayerRecursive(doc, "BACK");
+
+        var firstName = cardData["DAC"] || "";
+        var middleName = cardData["DAD"] || "";
+        var firstMiddle = (firstName + " " + middleName).replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+
+        var city = cardData["city"] || "";
+        var state = cardData["DAJ"] || "";
+        var zip = cardData["DAK"] || "";
+        var addressLine2 = (city + " " + state + " " + zip).replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+
+        var restrictions = (cardData["DCB"] || "") || "None";
+        var endorsements = (cardData["DCD"] || "") || "None";
+        var dobSlash = formatDateSlash(cardData["DBB"] || "");
+
+        updateTextUnder(editGroup, "ID", cardData["DAQ"] || "");
+        updateTextUnder(editGroup, "LAST", cardData["DCS"] || "");
+        updateTextUnder(editGroup, "FIRST MIDDLE", firstMiddle);
+        updateTextUnder(editGroup, "ADDRESS FIRST LINE", cardData["DAG"] || "");
+        updateTextUnder(editGroup, "ADDRESS SECOND LINE", addressLine2);
+        updateTextUnder(editGroup, "DOB", dobSlash);
+        updateTextUnder(editGroup, "DOB 2", dobSlash);
+        updateTextUnder(editGroup, "ISSUE", formatDateSlash(cardData["DBD"] || ""));
+        updateTextUnder(editGroup, "EXPIRY", formatDateSlash(cardData["DBA"] || ""));
+        updateTextUnder(editGroup, "SEX", formatSex(cardData["DBC"] || ""));
+        updateTextUnder(editGroup, "HGT", formatHeightSC(cardData["DAU"] || ""));
+        updateTextUnder(editGroup, "WGT", formatWeight(cardData["DAW"] || ""));
+        updateTextUnder(editGroup, "EYES", (cardData["DAY"] || "").toUpperCase());
+        updateTextUnder(editGroup, "CLASS", cardData["DCA"] || "");
+        updateTextUnder(editGroup, "ENDORSE", endorsements);
+        updateTextUnder(editGroup, "RESTRICTIONS", restrictions);
+        updateTextUnder(editGroup, "DD", cardData["DCF"] || "");
+
+        var photoPath = cardData["photo"] ? stripQuotes(cardData["photo"]).trim() : "";
+        if (photoPath) {
+            var photoFile = new File(photoPath);
+            if (photoFile.exists) {
+                // Top-level MAIN/GHOST under FRONT, then copies inside PHOTO.
+                replaceSmartObject(doc, "MAIN PHOTO", photoFile, false, "cover");
+                replaceSmartObject(doc, "GHOST PHOTO", photoFile, false, "cover");
+                var photoGroup = findLayerRecursive(doc, "PHOTO");
+                if (photoGroup && photoGroup.typename === "LayerSet") {
+                    replaceSmartObject(photoGroup, "MAIN PHOTO", photoFile, false, "cover");
+                    replaceSmartObject(photoGroup, "GHOST PHOTO", photoFile, false, "cover");
+                }
+            } else {
+                log("Row " + cardIndex + ": Photo not found: " + photoPath);
+            }
+        }
+
+        var sigData = getSignatureData(cardData);
+        log("Row " + cardIndex + ": SC signature source = " + sigData.type + " (" + sigData.value + ")");
+        applySignatureToGroup(doc, "SIGNATURE EDIT", "SIGNATURE IMAGE", "SIGNATURE TEXT", sigData, cardIndex);
+
+        updateTextUnder(backGroup, "DONOR", formatDonorYesNo(cardData["DDK"]));
+        updateTextUnder(backGroup, "RESTRICTIONS (BACK)", restrictions);
+        updateTextUnder(backGroup, "ENDORSEMENTS (BACK)", endorsements);
+
+        try {
+            var barcodePath = cardData["barcode"] ? stripQuotes(cardData["barcode"]).trim() : "";
+            if (barcodePath) {
+                var barcodeFile = new File(barcodePath);
+                if (barcodeFile.exists) {
+                    replaceSmartObject(doc, "PDF417 2D BARCODE", barcodeFile, false);
+                } else {
+                    log("Row " + cardIndex + ": Barcode file not found: " + barcodePath);
+                }
+            }
+
+            var linearPath = cardData["linear"] ? stripQuotes(cardData["linear"]).trim() : "";
+            if (linearPath) {
+                var linearFile = new File(linearPath);
+                if (linearFile.exists) {
+                    replaceSmartObject(doc, "CODE128 1D BARCODE", linearFile, false);
+                } else {
+                    log("Row " + cardIndex + ": Linear barcode file not found: " + linearPath);
+                }
+            }
+        } catch (e) {
+            log("Row " + cardIndex + ": Error processing SC barcodes: " + e.message);
+        }
+    }
+
+    // SC combined PSD: export one JPG per side by toggling FRONT/BACK group
+    // visibility (PSD is already saved with both sides intact).
+    function exportSCFrontBackJpgs(doc, personFolder) {
+        var jpegOptions = new JPEGSaveOptions();
+        jpegOptions.quality = 12;
+        jpegOptions.embedColorProfile = true;
+        jpegOptions.formatOptions = FormatOptions.STANDARDBASELINE;
+
+        setGroupVisibility(doc, "FRONT", true);
+        setGroupVisibility(doc, "BACK", false);
+        var frontFile = new File(personFolder.fsName + "/FRONT.jpg");
+        doc.saveAs(frontFile, jpegOptions, true, Extension.LOWERCASE);
+        log("Saved JPG: " + frontFile.fsName);
+
+        setGroupVisibility(doc, "FRONT", false);
+        setGroupVisibility(doc, "BACK", true);
+        var backFile = new File(personFolder.fsName + "/BACK.jpg");
+        doc.saveAs(backFile, jpegOptions, true, Extension.LOWERCASE);
+        log("Saved JPG: " + backFile.fsName);
+    }
+
     // --- 3. EXECUTION LOGIC ---
     btnOk.onClick = function() {
         var destPath = destTxt.text;
@@ -676,9 +816,10 @@ var scriptFile = new File($.fileName);
     // Each record is made up of these separate PSDs, opened/processed/saved/
     // closed one at a time. The job list is per-state since states don't share
     // a template layout (CA has UV/hologram/laser sides; MA is Front + Front
-    // Raised + Back). A job with processFn: null is opened and saved through
-    // unchanged (e.g. CA HologramPSD). Each job.key must match a key in that
-    // state's config.ini section.
+    // Raised + Back; SC is one combined UV/FRONT/BACK PSD). A job with
+    // processFn: null is opened and saved through unchanged (e.g. CA
+    // HologramPSD). Each job.key must match a key in that state's config.ini
+    // section.
     var CA_TEMPLATE_JOBS = [
         { key: "FrontPSD", suffix: "FRONT", processFn: processFrontPSD },
         { key: "FrontUVPSD", suffix: "FRONT_UV", processFn: processFrontUVPSD },
@@ -694,8 +835,14 @@ var scriptFile = new File($.fileName);
         { key: "BackPSD", suffix: "BACK", processFn: processMABackPSD }
     ];
 
+    // SC 2018 ships as one combined PSD (UV + FRONT + BACK in a single file).
+    var SC_TEMPLATE_JOBS = [
+        { key: "FrontPSD", suffix: "COMBINED", processFn: processSCCombinedPSD }
+    ];
+
     function getJobsForState(state) {
         if (state === "MA") return MA_TEMPLATE_JOBS;
+        if (state === "SC") return SC_TEMPLATE_JOBS;
         return CA_TEMPLATE_JOBS;
     }
 
@@ -776,10 +923,14 @@ var scriptFile = new File($.fileName);
                     doc.saveAs(psdFile, psdOptions, true, Extension.LOWERCASE);
                     log("Saved PSD: " + psdFile.fsName);
 
-                    var pngFile = new File(personFolder.fsName + "/" + outputName + ".png");
-                    var pngOptions = new PNGSaveOptions();
-                    doc.saveAs(pngFile, pngOptions, true, Extension.LOWERCASE);
-                    log("Saved PNG: " + pngFile.fsName);
+                    if (state === "SC") {
+                        exportSCFrontBackJpgs(doc, personFolder);
+                    } else {
+                        var pngFile = new File(personFolder.fsName + "/" + outputName + ".png");
+                        var pngOptions = new PNGSaveOptions();
+                        doc.saveAs(pngFile, pngOptions, true, Extension.LOWERCASE);
+                        log("Saved PNG: " + pngFile.fsName);
+                    }
 
                     doc.close(SaveOptions.DONOTSAVECHANGES);
                     doc = null;
