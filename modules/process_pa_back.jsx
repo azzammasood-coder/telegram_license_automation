@@ -232,6 +232,9 @@ function main() {
     // DD = Document Discriminator from barcode DCF field (11 + next 5 digits)
     setLayerText(blackText, "DD First Line", data["DD First Line"] || "");
     setLayerText(blackText, "DD Second Line", data["DD Second Line"] || "");
+    // From bulk Endorsements / Restrictions (default None)
+    setLayerText(blackText, "Restrictions (Back)", data["Restrictions Back"] || "None");
+    setLayerText(blackText, "Endorsements (Back)", data["Endorsements Back"] || "None");
 
     var bigBarcodePath = data["Load Big Barcode"];
     var linearBarcodePath = data["Load Linear Barcode"];

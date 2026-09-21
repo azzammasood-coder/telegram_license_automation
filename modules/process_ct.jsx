@@ -97,6 +97,20 @@ function setLayerText(parent, layerName, text) {
     }
 }
 
+function setLayerVisibility(parent, layerName, visible) {
+    try {
+        var layer = findLayerByName(parent, layerName);
+        if (layer) {
+            layer.visible = visible;
+            log("Set visibility [" + layerName + "]: " + visible);
+        } else {
+            log("WARN: Layer missing for visibility: " + layerName);
+        }
+    } catch (e) {
+        log("ERROR setting visibility for " + layerName + ": " + e);
+    }
+}
+
 /**
  * Open smart object, place target image, delete existing layers, save and close.
  * Same pattern used by process_pa.jsx / process_pa_back.jsx.
@@ -237,8 +251,23 @@ function main() {
             setLayerText(textEdit, "ADDRESS", data["Street 1"] || "");
             setLayerText(textEdit, "CITY STATE ZIP", data["City State Zip"] || "");
             setLayerText(textEdit, "CLASS", data["Class"] || "D");
+            setLayerText(textEdit, "REST", data["Restrictions"] || "NONE");
+            setLayerText(textEdit, "END", data["Endorsements"] || "NONE");
         } else {
             log("CRITICAL: 'TEXT EDIT' group not found!");
+        }
+
+        // --- REAL ID / DONOR ---
+        var realIdGroup = front ? findLayerByName(front, "REAL ID / NFFI / DONOR") : null;
+        var realIdParent = realIdGroup ? realIdGroup : front;
+        if (realIdParent) {
+            log("--- Real ID / Donor visibility ---");
+            var showRealId = (data["Real ID"] == "YES");
+            var showDonor = (data["Donor"] == "YES");
+            setLayerVisibility(realIdParent, "REAL ID STAR", showRealId);
+            setLayerVisibility(realIdParent, "DONOR SYMBOL", showDonor);
+        } else {
+            log("WARN: REAL ID / NFFI / DONOR group not found");
         }
 
         // --- SIGNATURE ---

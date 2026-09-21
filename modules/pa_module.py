@@ -147,6 +147,18 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     # Converts shared format "5’ 08”" or "5' 08" into PA format "5'-08""
     pa_height = visual_height.replace("’ ", "'-").replace("' ", "'-").replace("”", '"')
 
+    # Back Restrictions / Endorsements from bulk data (default "None")
+    restri_raw = str(user_data.get('restrictions', '') or '').strip()
+    endor_raw = str(user_data.get('endorsements', '') or '').strip()
+    if not restri_raw or restri_raw.upper() in ("NONE", "N/A", "NA", "-"):
+        pa_restrictions = "None"
+    else:
+        pa_restrictions = restri_raw
+    if not endor_raw or endor_raw.upper() in ("NONE", "N/A", "NA", "-"):
+        pa_endorsements = "None"
+    else:
+        pa_endorsements = endor_raw
+
     # 6. Build Text Content (PA Specific)
     lines = [
         f"Jurisdiction: PA",
@@ -183,6 +195,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"DD Line 2: {dd_front_2}",
         f"DD First Line: {dd_back_1}",
         f"DD Second Line: {dd_back_2}",
+        f"Restrictions Back: {pa_restrictions}",
+        f"Endorsements Back: {pa_endorsements}",
         f"Bottom Micro Initials: {micro_text}"
     ]
 

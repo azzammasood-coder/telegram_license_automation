@@ -120,8 +120,9 @@ init_db()
   FL_REAL_ID, FL_RESTRICTION, FL_ENDORSEMENT, FL_SAFE_DRIVER, FL_REPLACED,
   PA_DL_CHECK, PA_DL_INPUT, PA_ISS_CHECK, PA_ISS_INPUT, PA_EXP_CHECK, PA_EXP_INPUT,
   PA_SIG_CHECK, PA_SIG_UPLOAD, PA_REAL_ID,
+  CT_REAL_ID, CT_DONOR,
   FACE_CHECK, FACE_UPLOAD, PAYMENT_UPLOAD, CART_MENU   
-) = range(32)
+) = range(34)
 
 # Logging Setup
 os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
@@ -407,6 +408,7 @@ def parse_bulk_input(text: str) -> dict:
         "class": "class", "endorsements": "endorsements", "restrictions": "restrictions",
         "issue date": "issue_date", "expires date": "expires_date", "real id": "real_id",
         "not real id": "not_real_id", "signature": "signature",
+        "donor": "donor", "organ donor": "donor",
         "dl number": "custom_dl", "license number": "custom_dl", "dl": "custom_dl"
     }
     
@@ -664,10 +666,11 @@ def generate_barcodes(user_data: dict, api_height: str):
             small_svg = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=120).content
             
         if state == "FL":
-            logger.info("⬇️ Fetching big_tiff...")
-            big_tiff = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=120).content
-            logger.info("⬇️ Fetching small_tiff...")
-            small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=120).content
+            # FIS does not support image/tiff (returns JSON error); PNG works for back SOs
+            logger.info("⬇️ Fetching big_png...")
+            big_png = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=120).content
+            logger.info("⬇️ Fetching small_png...")
+            small_png = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=120).content
             
         if state in ["PA", "VA", "CT"]:
             logger.info("⬇️ Fetching big_png...")
@@ -1106,6 +1109,21 @@ async def pa_real_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   await query.message.edit_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
   return FACE_CHECK
 
+# --- CT SPECIFIC HANDLERS ---
+async def ct_real_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+  query = update.callback_query
+  await query.answer()
+  context.user_data['real_id'] = "YES" if query.data.lower() == "yes" else "NO"
+  await query.message.edit_text("🫀 *CT: Organ Donor?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
+  return CT_DONOR
+
+async def ct_donor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+  query = update.callback_query
+  await query.answer()
+  context.user_data['donor'] = "YES" if query.data.lower() == "yes" else "NO"
+  await query.message.edit_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
+  return FACE_CHECK
+
 async def request_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   msg_path = os.path.join(BASE_DIR, "Automated Messages", "Messages", "payment_message.txt")
   payment_msg = "💳 *Please send the payment screenshot.*"
@@ -1136,7 +1154,10 @@ async def handle_payment_upload(update: Update, context: ContextTypes.DEFAULT_TY
     finally:
         conn.close()
                      
-    photo_file = update.message.photo[-1].file_id if update.message.photo else update.message.document.file_id
+    is_photo = bool(update.message.photo)
+    media_file_id = (
+        update.message.photo[-1].file_id if is_photo else update.message.document.file_id
+    )
     keyboard = [
         [InlineKeyboardButton("✅ Approve All", callback_data=f"approve_{job_id}"),
          InlineKeyboardButton("❌ Reject", callback_data=f"reject_{job_id}")],
@@ -1153,13 +1174,18 @@ async def handle_payment_upload(update: Update, context: ContextTypes.DEFAULT_TY
     
     if ADMIN_CHAT_ID:
         try:
-            await context.bot.send_photo(
+            # Telegram distinguishes compressed photos vs file/document uploads.
+            # Sending a document file_id via send_photo raises BadRequest.
+            send_kwargs = dict(
                 chat_id=ADMIN_CHAT_ID,
-                photo=photo_file,
                 caption=admin_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode="Markdown",
             )
+            if is_photo:
+                await context.bot.send_photo(photo=media_file_id, **send_kwargs)
+            else:
+                await context.bot.send_document(document=media_file_id, **send_kwargs)
         except (BadRequest, Forbidden) as e:
             # Common when admin never /start-ed this bot, or admin_chat_id is wrong
             logger.error(
@@ -1445,28 +1471,57 @@ async def ask_signature(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
   await query.answer()
 
   if query.data.lower() == "yes":
-    await query.message.edit_text("📤 *Please type your signature text or upload a signature image.*", parse_mode="Markdown")
+    kb = InlineKeyboardMarkup([
+      [InlineKeyboardButton("⏭️ Skip (auto-generate)", callback_data="sig_skip")]
+    ])
+    await query.message.edit_text(
+      "📤 *Optional:* type signature text *or* upload a signature image.\n\n"
+      "If you skip, a signature will be auto-generated.",
+      reply_markup=kb,
+      parse_mode="Markdown"
+    )
     return SIGNATURE_INPUT
   else:
-    fn = context.user_data.get('first_name', 'Unknown')
-    ln = context.user_data.get('last_name', 'User')
-    f_init = fn[0].upper() if fn else ""
-    context.user_data['signature'] = f"{f_init}{ln.title()}"
-    
-    state = context.user_data.get('jurisdiction')
-    if state == "FL":
-      await query.message.edit_text("🌴 *FL: Real ID?*", reply_markup=get_options_kb(["YES", "NO"]), parse_mode="Markdown")
-      return FL_REAL_ID
-    elif state == "PA":
-      await query.message.edit_text("⭐ *PA: Real ID?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
-      return PA_REAL_ID
-      
-    await query.message.edit_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
-    return FACE_CHECK
+    return await _apply_auto_signature_and_continue(query, context, from_callback=True)
+
+async def signature_skip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+  """Skip custom signature → auto-generate, then continue state flow."""
+  query = update.callback_query
+  await query.answer()
+  return await _apply_auto_signature_and_continue(query, context, from_callback=True)
+
+async def _apply_auto_signature_and_continue(update_or_query, context, from_callback=False) -> int:
+  fn = context.user_data.get('first_name', 'Unknown')
+  ln = context.user_data.get('last_name', 'User')
+  f_init = fn[0].upper() if fn else ""
+  context.user_data['signature'] = f"{f_init}{ln.title()}"
+  context.user_data.pop('signature_path', None)
+  return await _continue_after_signature(update_or_query, context, from_callback=from_callback)
+
+async def _continue_after_signature(update_or_query, context, from_callback=False) -> int:
+  state = context.user_data.get('jurisdiction')
+  if from_callback:
+    send = update_or_query.message.edit_text
+  else:
+    send = update_or_query.message.reply_text
+
+  if state == "FL":
+    await send("🌴 *FL: Real ID?*", reply_markup=get_options_kb(["YES", "NO"]), parse_mode="Markdown")
+    return FL_REAL_ID
+  elif state == "PA":
+    await send("⭐ *PA: Real ID?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
+    return PA_REAL_ID
+  elif state == "CT":
+    await send("⭐ *CT: Real ID?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
+    return CT_REAL_ID
+
+  await send("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
+  return FACE_CHECK
 
 async def get_signature_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   if update.message.text:
       context.user_data["signature"] = update.message.text.strip()
+      context.user_data.pop('signature_path', None)
   else:
       file_obj = None
       if update.message.document:
@@ -1485,19 +1540,12 @@ async def get_signature_input(update: Update, context: ContextTypes.DEFAULT_TYPE
         success = remove_bg_removebg(raw_path, clean_path)
         
         context.user_data["signature_path"] = clean_path if success else raw_path
+        context.user_data.pop('signature', None)
       else:
-        await update.message.reply_text("❌ Couldn't download image or read text.")
+        await update.message.reply_text("❌ Couldn't download image or read text. Auto-generating signature.")
+        return await _apply_auto_signature_and_continue(update, context, from_callback=False)
 
-  state = context.user_data.get('jurisdiction')
-  if state == "FL":
-    await update.message.reply_text("🌴 *FL: Real ID?*", reply_markup=get_options_kb(["YES", "NO"]), parse_mode="Markdown")
-    return FL_REAL_ID
-  elif state == "PA":
-    await update.message.reply_text("⭐ *PA: Real ID?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
-    return PA_REAL_ID
-
-  await update.message.reply_text("📸 *Upload Face Picture?*", reply_markup=get_yes_no_kb(), parse_mode="Markdown")
-  return FACE_CHECK
+  return await _continue_after_signature(update, context, from_callback=False)
 
 async def ask_face(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
   query = update.callback_query
@@ -1572,7 +1620,7 @@ async def execute_generation(bot, chat_id, user_data):
     elif jurisdiction == 'GA':
       results = ga_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
     elif jurisdiction == 'FL':
-      results = fl_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR,big_tiff=big_tiff, small_tiff=small_tiff)
+      results = fl_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=big_png, small_png=small_png)
     elif jurisdiction == 'NY':
       results = ny_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
     elif jurisdiction == 'VA':
@@ -1767,7 +1815,10 @@ def run_bot():
             BUY_CHECK: [CallbackQueryHandler(handle_buy_check)],
             BULK_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_bulk_input)],
             SIGNATURE_CHECK: [CallbackQueryHandler(ask_signature)],
-            SIGNATURE_INPUT: [MessageHandler(filters.TEXT | filters.Document.ALL | filters.PHOTO, get_signature_input)],
+            SIGNATURE_INPUT: [
+                CallbackQueryHandler(signature_skip, pattern="^sig_skip$"),
+                MessageHandler(filters.TEXT | filters.Document.ALL | filters.PHOTO, get_signature_input),
+            ],
             FACE_CHECK: [CallbackQueryHandler(ask_face)],
             FACE_UPLOAD: [MessageHandler(filters.Document.ALL | filters.PHOTO, get_face_upload)],
             SECOND_FORM_CHECK: [CallbackQueryHandler(handle_second_form)],
@@ -1782,6 +1833,10 @@ def run_bot():
             
             # PA SPECIFIC FLOW
             PA_REAL_ID: [CallbackQueryHandler(pa_real_id)],
+
+            # CT SPECIFIC FLOW
+            CT_REAL_ID: [CallbackQueryHandler(ct_real_id)],
+            CT_DONOR: [CallbackQueryHandler(ct_donor)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         allow_reentry=True

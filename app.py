@@ -64,7 +64,8 @@ def parse_bulk_input(text: str) -> dict:
         "hair color": "hair_color", "hair": "hair_color", "race": "race", "eyes": "eyes", 
         "class": "class", "endorsements": "endorsements", "restrictions": "restrictions", 
         "issue date": "issue_date", "expires date": "expires_date", 
-        "real id": "real_id", "not real id": "not_real_id", "signature": "signature", 
+        "real id": "real_id", "not real id": "not_real_id", "signature": "signature",
+        "donor": "donor", "organ donor": "donor",
         "dl number": "custom_dl", "license number": "custom_dl", "dl": "custom_dl" 
     }
     for line in lines:
@@ -306,6 +307,9 @@ def unified_form(state):
             parsed_data['replaced'] = request.form.get('fl_replaced', 'NO')
         elif state == "PA":
             parsed_data['real_id'] = request.form.get('pa_real_id', 'NO')
+        elif state == "CT":
+            parsed_data['real_id'] = request.form.get('ct_real_id', parsed_data.get('real_id', 'NO'))
+            parsed_data['donor'] = request.form.get('ct_donor', parsed_data.get('donor', 'NO'))
         elif state == "NJ":
             parsed_data['nj_doc_type'] = request.form.get('nj_doc_type', 'DL')
             parsed_data['nj_grade'] = request.form.get('nj_grade', 'A')

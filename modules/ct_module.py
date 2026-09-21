@@ -48,14 +48,24 @@ def extract_dd_from_raw(raw_text: str) -> str:
     return ""
 
 
-def extract_ic_digits(raw_text: str) -> str:
-    """Inventory control (DCK) digits only."""
+def extract_ic_lines(raw_text: str) -> tuple:
+    """
+    Split DCK inventory control like NJ does with 'NJ'.
+    Example: 123456789CT77SL01 -> ('123456789', 'CT77SL01')
+    Falls back to first 9 / next 9 digits if no 'CT' marker.
+    """
     if not raw_text:
-        return ""
+        return "", ""
     match = re.search(r"DCK([^\n\r]+)", raw_text)
-    if not match:
-        return ""
-    return re.sub(r"[^0-9]", "", match.group(1).strip())
+    found = match.group(1).strip() if match else ""
+    found = found.replace("-", "")
+    if not found:
+        return "", ""
+    if "CT" in found:
+        parts = found.partition("CT")
+        return parts[0], parts[1] + parts[2]
+    digits = re.sub(r"[^0-9]", "", found)
+    return digits[:9], digits[9:18]
 
 
 def format_ct_height(visual_height: str, raw_height: str = "") -> str:
@@ -121,6 +131,10 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
 
     final_sig_path = clean_path(sig_path_source) if sig_path_source and os.path.exists(sig_path_source) else ""
     final_sig_text = user_data.get('signature', '').strip()
+    # If neither text nor image provided, auto-generate like other states
+    if not final_sig_text and not final_sig_path:
+        f_init = first_name[0].upper() if first_name else ""
+        final_sig_text = f"{f_init}{last_name.title()}" if (f_init or last_name) else "Signature"
     # Prefer typed signature text when present; otherwise use image
     use_sig_image = "TRUE" if (not final_sig_text and final_sig_path) else "FALSE"
 
@@ -138,9 +152,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     final_dl_number = user_data.get('custom_dl', '').strip() or extract_dl_from_raw(raw_text)
     dd_value = re.sub(r'[^A-Za-z0-9]', '', extract_dd_from_raw(raw_text) or "")
 
-    ic_digits = extract_ic_digits(raw_text)
-    ic_line_1 = ic_digits[:9] if ic_digits else ""
-    ic_line_2 = ic_digits[9:18] if ic_digits else ""
+    ic_line_1, ic_line_2 = extract_ic_lines(raw_text)
 
     raw_gen = str(user_data.get('gender', '1')).strip().upper()
     if raw_gen in ["1", "M", "MALE", "TRUE"]:
@@ -163,6 +175,20 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     zip_fmt = format_zip(user_data.get('zip_code', ''))
     city_state_zip = f"{city}, CT  {zip_fmt}".strip()
 
+    # Back DOB in PSD uses spaces (e.g. 12 03 1998)
+    dob_back = dob_val.replace("/", " ")
+
+    # Real ID STAR visibility
+    real_raw = str(user_data.get('real_id', '')).strip().upper()
+    is_real_id = "YES" if real_raw in ["YES", "Y", "TRUE", "VISIBLE", "F"] else "NO"
+
+    # Organ donor symbol visibility
+    donor_raw = str(user_data.get('donor', user_data.get('organ_donor', 'NO'))).strip().upper()
+    is_donor = "YES" if donor_raw in ["YES", "Y", "TRUE", "VISIBLE"] else "NO"
+
+    restrictions = (user_data.get('restrictions') or 'NONE').strip() or "NONE"
+    endorsements = (user_data.get('endorsements') or 'NONE').strip() or "NONE"
+
     lines = [
         f"Jurisdiction: CT",
         f"Output Front: {out_front}",
@@ -176,7 +202,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Load Linear Barcode: {linear_barcode_path}",
         f"DL: {final_dl_number}",
         f"DOB: {dob_val}",
-        f"DOB Back: {dob_val}",
+        f"DOB Back: {dob_back}",
         f"Exp Date: {final_exp}",
         f"Iss Date: {final_iss}",
         f"Sex: {final_sex}",
@@ -190,6 +216,10 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"City State Zip: {city_state_zip}",
         f"IC Line 1: {ic_line_1}",
         f"IC Line 2: {ic_line_2}",
+        f"Real ID: {is_real_id}",
+        f"Donor: {is_donor}",
+        f"Restrictions: {restrictions}",
+        f"Endorsements: {endorsements}",
     ]
 
     data_file_path = os.path.join(TEMP_DIR, f"ct_job_{sanitize_filename(unique_id)}.txt")

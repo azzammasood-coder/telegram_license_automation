@@ -240,7 +240,7 @@ function main() {
 
     log("--- Editing BLACK ---");
 
-    // DD = Document Discriminator from barcode DCF (11 + next 5 digits)
+    // DD First/Second Line = Inventory Control (DCK) split 11 + 5
     setLayerText(blackGroup, "DD First Line", data["DD First Line"] || "");
     setLayerText(blackGroup, "DD Second Line", data["DD Second Line"] || "");
 

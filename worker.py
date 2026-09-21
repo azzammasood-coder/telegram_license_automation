@@ -333,10 +333,11 @@ def generate_barcodes(user_data: dict, api_height: str):
         small_svg = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/svg+xml"}, params=params, timeout=60).content
         
     if state == "FL":
-        logger.info("⬇️ Fetching big_tiff...")
-        big_tiff = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=60).content
-        logger.info("⬇️ Fetching small_tiff...")
-        small_tiff = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/tiff"}, params=params, timeout=60).content
+        # FIS does not support image/tiff (returns JSON error); PNG works for back SOs
+        logger.info("⬇️ Fetching big_png...")
+        big_png = requests.get(f"{API_BASE_URL}/export", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=60).content
+        logger.info("⬇️ Fetching small_png...")
+        small_png = requests.get(f"{API_BASE_URL}/linear", headers={**auth_head, "Accept": "image/png"}, params=params, timeout=60).content
         
     if state in ["PA", "VA", "CT"]:
         logger.info("⬇️ Fetching big_png...")
@@ -433,7 +434,7 @@ def run_worker():
                 elif jurisdiction == 'GA':
                     results = ga_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
                 elif jurisdiction == 'FL':
-                    results = fl_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_tiff=big_tiff, small_tiff=small_tiff)
+                    results = fl_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_png=big_png, small_png=small_png)
                 elif jurisdiction == 'NY':
                     results = ny_module.prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR)
                 elif jurisdiction == 'VA':

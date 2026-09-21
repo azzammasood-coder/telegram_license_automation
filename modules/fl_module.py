@@ -60,6 +60,15 @@ def extract_dd_from_raw(raw_text: str) -> str:
         return match.group(1)
     return ""
 
+def extract_dck_from_raw(raw_text: str) -> str:
+    """Extracts Inventory Control Number (DCK) digits for FL back DD lines."""
+    if not raw_text:
+        return ""
+    match = re.search(r"DCK([^\n\r]+)", raw_text)
+    if not match:
+        return ""
+    return re.sub(r"[^0-9]", "", match.group(1).strip())
+
 def extract_dl_from_raw(raw_text: str) -> str:
     """Extracts the Customer ID/DL Number (DAQ) from the raw barcode data."""
     if not raw_text:
@@ -90,7 +99,7 @@ def calculate_age(dob_str: str, as_of_str: str = None) -> str:
         logger.error(f"FL Age calculation error: {e}")
         return "21"
 
-def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_tiff=None, small_tiff=None):
+def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TEMP_DIR, FINAL_DIR, BASE_DIR, big_tiff=None, small_tiff=None, big_png=None, small_png=None):
     """
     Creates the FL specific data.txt file and moves images.
     """
@@ -147,27 +156,27 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     
     final_face_path = clean_path(face_path_source) if face_path_source and os.path.exists(face_path_source) else ""
 
-    # 5. Save Barcodes (4 Files Total)
-    big_barcode_path = clean_path(os.path.join(job_output_dir, "barcode.tiff"))
-    linear_barcode_path = clean_path(os.path.join(job_output_dir, "linear barcode.tiff"))
-    if big_tiff:
-        with open(os.path.join(job_output_dir, "barcode.tiff"), "wb") as f:
-            f.write(big_tiff)
+    # 5. Save Barcodes — PNG for back smart objects (FIS TIFF is unsupported)
+    big_barcode_path = clean_path(os.path.join(job_output_dir, "barcode.png"))
+    linear_barcode_path = clean_path(os.path.join(job_output_dir, "linear_barcode.png"))
+    if big_png:
+        with open(os.path.join(job_output_dir, "barcode.png"), "wb") as f:
+            f.write(big_png)
+    if small_png:
+        with open(os.path.join(job_output_dir, "linear_barcode.png"), "wb") as f:
+            f.write(small_png)
     if big_svg:
         with open(os.path.join(job_output_dir, "barcode.svg"), "wb") as f:
             f.write(big_svg)
-            
-    if small_tiff:
-        with open(os.path.join(job_output_dir, "linear barcode.tiff"), "wb") as f:
-            f.write(small_tiff)
     if small_svg:
         with open(os.path.join(job_output_dir, "linear barcode.svg"), "wb") as f:
             f.write(small_svg)
 
-    # DD = Document Discriminator (AAMVA DCF). Front uses full value; back splits 11 + 5.
+    # Front DD = Document Discriminator (DCF). Back DD lines = Inventory Control (DCK) 11 + 5.
     dd_value = re.sub(r'[^A-Za-z0-9]', '', extract_dd_from_raw(raw_text) or "")
-    dd_back_1 = dd_value[:11] if dd_value else ""
-    dd_back_2 = dd_value[11:16] if dd_value else ""
+    dck_value = extract_dck_from_raw(raw_text)
+    dd_back_1 = dck_value[:11] if dck_value else ""
+    dd_back_2 = dck_value[11:16] if dck_value else ""
     age_val = calculate_age(dob_val, iss_val)
 
     # Priority: User Custom DL -> API Generated DL
