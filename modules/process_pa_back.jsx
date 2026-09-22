@@ -252,22 +252,26 @@ function main() {
         log("WARN: Linear barcode file missing: " + linearBarcodePath);
     }
 
-    // ================= EXPORT =================
+    // ================= EXPORT (Grayscale → Bitmap 600dpi 50% → PNG) =================
     log("--- Starting Back Export ---");
     var historyState = doc.activeHistoryState;
 
     try {
         if (blackText) blackText.visible = true;
 
-        log("Converting Profile to sRGB IEC61966-2.1 (Relative Colorimetric)...");
-        doc.convertProfile("sRGB IEC61966-2.1", Intent.RELATIVECOLORIMETRIC, true, true);
+        log("Converting Back Black to Grayscale → Bitmap (600 dpi, 50% threshold)...");
+        doc.changeMode(ChangeMode.GRAYSCALE);
+        var bmpOpts = new BitmapConversionOptions();
+        bmpOpts.method = BitmapConversionType.HALFTHRESHOLD;
+        bmpOpts.resolution = 600;
+        doc.changeMode(ChangeMode.BITMAP, bmpOpts);
 
         var pngOpts = new PNGSaveOptions();
         pngOpts.compression = 0;
         pngOpts.interlaced = false;
 
         var backFile = new File(data["Output Back"]);
-        log("Saving Back PNG to: " + backFile.fsName);
+        log("Saving Back Black PNG to: " + backFile.fsName);
         doc.saveAs(backFile, pngOpts, true, Extension.LOWERCASE);
         log("SUCCESS: Back Exported.");
     } catch(e) {

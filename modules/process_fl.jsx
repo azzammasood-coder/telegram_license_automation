@@ -491,26 +491,29 @@ function main() {
     doc.activeHistoryState = historyStateFilled;
 
     // -------------------------------------------------------------------------
-    // B. EXPORT FRONT BLACK ONLY (TIFF, Grayscale, Dot Grain)
+    // B. EXPORT FRONT BLACK TEXT (PNG, Grayscale → Bitmap 600dpi 50% threshold)
     // -------------------------------------------------------------------------
     try {
         // 1. Set Visibility: HIDE Color, SHOW Black
         colorGroup.visible = false;
         blackGroup.visible = true;
 
-        // 2. Convert to Grayscale
+        // 2. Grayscale → Bitmap @ 600 dpi, 50% threshold
+        log("Converting Front Black to Grayscale → Bitmap (600 dpi, 50% threshold)...");
         doc.changeMode(ChangeMode.GRAYSCALE);
-        
-        // 3. Save TIFF (No Layers, Embed Profile, Transparent)
-        var tiffOptsGray = new TiffSaveOptions();
-        tiffOptsGray.imageCompression = TIFFEncoding.NONE; 
-        tiffOptsGray.layers = false;
-        tiffOptsGray.embedColorProfile = true; 
-        tiffOptsGray.transparency = true; // <--- ENABLE TRANSPARENCY
-        
+        var bmpOpts = new BitmapConversionOptions();
+        bmpOpts.method = BitmapConversionType.HALFTHRESHOLD;
+        bmpOpts.resolution = 600;
+        doc.changeMode(ChangeMode.BITMAP, bmpOpts);
+
+        // 3. Save PNG
+        var pngOpts = new PNGSaveOptions();
+        pngOpts.compression = 0;
+        pngOpts.interlaced = false;
+
         var blackFile = new File(data["Output Black"]);
-        doc.saveAs(blackFile, tiffOptsGray, true, Extension.LOWERCASE);
-        log("Saved Front Black: " + data["Output Black"]);
+        doc.saveAs(blackFile, pngOpts, true, Extension.LOWERCASE);
+        log("Saved Front Black Text: " + data["Output Black"]);
 
     } catch(e) {
         log("ERROR saving Black: " + e);

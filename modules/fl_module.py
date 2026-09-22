@@ -144,8 +144,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     os.makedirs(job_output_dir, exist_ok=True)
 
     out_front_color = clean_path(os.path.join(job_output_dir, f"Front_Color_Only.tif"))
-    out_front_black = clean_path(os.path.join(job_output_dir, f"Front_Black_Only.tif"))
-    out_back_black = clean_path(os.path.join(job_output_dir, f"Back_Black_Only.tif"))
+    out_front_black = clean_path(os.path.join(job_output_dir, f"Front Black Text.png"))
+    out_back_black = clean_path(os.path.join(job_output_dir, f"Back Black.png"))
     
     # 4. Handle Images & Unified Signature
     sig_path_source = user_data.get('signature_path')

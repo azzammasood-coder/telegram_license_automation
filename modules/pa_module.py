@@ -73,8 +73,8 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
     os.makedirs(job_output_dir, exist_ok=True)
 
     out_front_color = clean_path(os.path.join(job_output_dir, f"Front Color Only.tif"))
-    out_front_black = clean_path(os.path.join(job_output_dir, f"Front Black Only.png"))
-    out_back_black = clean_path(os.path.join(job_output_dir, f"Back Black Only.png"))
+    out_front_black = clean_path(os.path.join(job_output_dir, f"Front Black Text.png"))
+    out_back_black = clean_path(os.path.join(job_output_dir, f"Back Black.png"))
     
     # 3. Handle Images & Unified Signature
     sig_path_source = user_data.get('signature_path')
@@ -188,7 +188,7 @@ def prepare_job_files(user_data, big_svg, small_svg, raw_text, visual_height, TE
         f"Exp Date: {final_exp}",  
         f"Iss Date: {final_iss}",
         f"Sex: {final_sex}",
-        f"Eye Color: {user_data.get('eyes', 'BRO')}",
+        f"Eye Color: {'BRO' if user_data.get('eyes', '').upper().strip() in ['BRN', 'BROWN'] else user_data.get('eyes', 'BRO')}",
         f"Height: {pa_height}",
         f"Class: {user_data.get('class', 'C')}",
         f"DD Line 1: {dd_front_1}",

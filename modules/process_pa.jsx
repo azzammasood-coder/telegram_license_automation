@@ -504,7 +504,7 @@ function main() {
         log("ERROR during Color Export: " + e); 
     }
 
-    // 2. Export Black (PNG sRGB)
+    // 2. Export Black Text (PNG: Grayscale → Bitmap 600dpi 50% threshold)
     try {
         log("Configuring for Black Export...");
         colorGroup.visible = false;
@@ -512,9 +512,12 @@ function main() {
         // Ensure Edit Text is visible
         if(blackEdit) blackEdit.visible = true;
 
-        // FIXED: Replaced Intent.MICROSOFTICM with Intent.RELATIVECOLORIMETRIC
-        log("Converting Profile to sRGB IEC61966-2.1 (Relative Colorimetric)...");
-        doc.convertProfile("sRGB IEC61966-2.1", Intent.RELATIVECOLORIMETRIC, true, true);
+        log("Converting Front Black to Grayscale → Bitmap (600 dpi, 50% threshold)...");
+        doc.changeMode(ChangeMode.GRAYSCALE);
+        var bmpOpts = new BitmapConversionOptions();
+        bmpOpts.method = BitmapConversionType.HALFTHRESHOLD;
+        bmpOpts.resolution = 600;
+        doc.changeMode(ChangeMode.BITMAP, bmpOpts);
 
         var pngOpts = new PNGSaveOptions();
         pngOpts.compression = 0;

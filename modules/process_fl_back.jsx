@@ -268,7 +268,7 @@ function main() {
         log("WARN: Linear barcode file missing: " + linearBarcodePath);
     }
 
-    // ================= EXPORT (match FL front black plate style) =================
+    // ================= EXPORT (Grayscale → Bitmap 600dpi 50% → PNG) =================
     log("--- Starting Back Export ---");
     var historyState = doc.activeHistoryState;
 
@@ -276,18 +276,20 @@ function main() {
         if (backGroup) backGroup.visible = true;
         if (blackGroup) blackGroup.visible = true;
 
-        log("Converting to Grayscale for Back Black plate...");
+        log("Converting Back Black to Grayscale → Bitmap (600 dpi, 50% threshold)...");
         doc.changeMode(ChangeMode.GRAYSCALE);
+        var bmpOpts = new BitmapConversionOptions();
+        bmpOpts.method = BitmapConversionType.HALFTHRESHOLD;
+        bmpOpts.resolution = 600;
+        doc.changeMode(ChangeMode.BITMAP, bmpOpts);
 
-        var tiffOptsGray = new TiffSaveOptions();
-        tiffOptsGray.imageCompression = TIFFEncoding.NONE;
-        tiffOptsGray.layers = false;
-        tiffOptsGray.embedColorProfile = true;
-        tiffOptsGray.transparency = true;
+        var pngOpts = new PNGSaveOptions();
+        pngOpts.compression = 0;
+        pngOpts.interlaced = false;
 
         var backFile = new File(data["Output Back"]);
-        log("Saving Back TIFF to: " + backFile.fsName);
-        doc.saveAs(backFile, tiffOptsGray, true, Extension.LOWERCASE);
+        log("Saving Back Black PNG to: " + backFile.fsName);
+        doc.saveAs(backFile, pngOpts, true, Extension.LOWERCASE);
         log("SUCCESS: Back Exported.");
     } catch(e) {
         log("ERROR during Back Export: " + e);
